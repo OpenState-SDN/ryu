@@ -481,9 +481,9 @@ assert (calcsize(OFP_STATE_MOD_PACK_STR)) + OFP_HEADER_SIZE ==OFP_STATE_MOD_SIZE
 # struct ofp_state_mod_entry
 MAX_KEY_LEN=48
 OFP_STATE_MOD_ENTRY_PACK_STR='!II'
-OFP_STATE_MOD_SIZE = 8
+OFP_STATE_MOD_ENTRY_SIZE = 8
 assert (calcsize(OFP_STATE_MOD_ENTRY_PACK_STR) ==
-        OFP_STATE_MOD_SIZE)
+        OFP_STATE_MOD_ENTRY_SIZE)
  
 #struct ofp_state_mod_extraction
 MAX_FIELD_COUNT=6
