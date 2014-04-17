@@ -62,7 +62,8 @@ OFPT_GET_ASYNC_REPLY = 27    # Controller/switch message
 OFPT_SET_ASYNC = 28    # Controller/switch message
 
 OFPT_METER_MOD = 29    # Controller/switch message
-
+OFPT_STATE_MOD = 30  #Controller/switch message
+ 
 # struct ofp_port
 OFP_MAX_PORT_NAME_LEN = 16
 OFP_ETH_ALEN = 6
@@ -202,6 +203,7 @@ OFPIT_APPLY_ACTIONS = 4  # Applies the action(s) immediately
 OFPIT_CLEAR_ACTIONS = 5  # Clears all actions from the datapath action
                          # set
 OFPIT_METER = 6  # Apply meter (rate limiter)
+OFPIT_SET_STATE = 7 #Apply new state 
 OFPIT_EXPERIMENTER = 0xFFFF   # Experimenter instruction
 
 # struct ofp_instruction_goto_table
@@ -226,6 +228,11 @@ assert (calcsize(OFP_INSTRUCTION_ACTIONS_PACK_STR) ==
 OFP_INSTRUCTION_METER_PACK_STR = '!HHI'
 OFP_INSTRUCTION_METER_SIZE = 8
 assert calcsize(OFP_INSTRUCTION_METER_PACK_STR) == OFP_INSTRUCTION_METER_SIZE
+
+#struct ofp_instruction_set_state
+OFP_INSTRUCTION_STATE_PACK_STR = '!HHI'
+OFP_INSTRUCTION_STATE_SIZE = 8
+assert calcsize(OFP_INSTRUCTION_STATE_PACK_STR) == OFP_INSTRUCTION_STATE_SIZE
 
 # enum ofp_action_type
 OFPAT_OUTPUT = 0    # Output to switch port.
@@ -320,6 +327,7 @@ OFPC_GROUP_STATS = 1 << 3    # Group statistics.
 OFPC_IP_REASM = 1 << 5        # Can reassemble IP fragments.
 OFPC_QUEUE_STATS = 1 << 6    # Queue statistics.
 OFPC_PORT_BLOCKED = 1 << 8    # Switch will block looping ports.
+OFPC_TABLE_STATEFULL = 1 << 9 #Switch will extend to support xfsm
 
 # struct ofp_switch_config
 OFP_SWITCH_CONFIG_PACK_STR = '!HH'
@@ -343,12 +351,21 @@ OFP_TABLE_MOD_SIZE = 16
 assert (calcsize(OFP_TABLE_MOD_PACK_STR) + OFP_HEADER_SIZE ==
         OFP_TABLE_MOD_SIZE)
 
+#enum ofp_table_config (added by hanieh)
+OFPTC_TABLE_MISS_CONTROLLER = 0
+OFPTC_TABLE_MISS_CONTINUE = 1 << 0
+OFPTC_TABLE_MISS_DROP = 1 << 1
+OFPTC_TABLE_MISS_MASK = 3
+OFPTC_TABLE_STATEFULL = 1 << 4
+
+# struct ofp_flow_mod
 _OFP_FLOW_MOD_PACK_STR0 = 'QQBBHHHIIIH2x'
 OFP_FLOW_MOD_PACK_STR = '!' + _OFP_FLOW_MOD_PACK_STR0 + _OFP_MATCH_PACK_STR
 OFP_FLOW_MOD_PACK_STR0 = '!' + _OFP_FLOW_MOD_PACK_STR0
 OFP_FLOW_MOD_SIZE = 56
 assert (calcsize(OFP_FLOW_MOD_PACK_STR) + OFP_HEADER_SIZE ==
         OFP_FLOW_MOD_SIZE)
+
 
 # enum ofp_flow_mod_command
 OFPFC_ADD = 0    # New flow.
@@ -455,6 +472,33 @@ OFP_METER_BAND_EXPERIMENTER_PACK_STR = '!HHIII'
 OFP_METER_BAND_EXPERIMENTER_SIZE = 16
 assert (calcsize(OFP_METER_BAND_EXPERIMENTER_PACK_STR) ==
         OFP_METER_BAND_EXPERIMENTER_SIZE)
+
+#state ofp_state_mod
+OFP_STATE_MOD_PACK_STR='!QQBB'
+OFP_STATE_MOD_SIZE =26
+assert (calcsize(OFP_STATE_MOD_PACK_STR)) + OFP_HEADER_SIZE ==OFP_STATE_MOD_SIZE
+
+# struct ofp_state_mod_entry
+MAX_KEY_LEN=48
+OFP_STATE_MOD_ENTRY_PACK_STR='!II'
+OFP_STATE_MOD_SIZE = 8
+assert (calcsize(OFP_STATE_MOD_ENTRY_PACK_STR) ==
+        OFP_STATE_MOD_SIZE)
+ 
+#struct ofp_state_mod_extraction
+MAX_FIELD_COUNT=6
+OFP_STATE_MOD_EXTRACT_PACK_STR='!I'
+OFP_STATE_MOD_EXTRACT_SIZE = 4
+assert (calcsize(OFP_STATE_MOD_EXTRACT_PACK_STR)==
+          OFP_STATE_MOD_EXTRACT_SIZE)
+
+
+#enum ofp_state_mod_command 
+OFPSC_SET_L_EXTRACTOR = 0
+OFPSC_SET_U_EXTRACTOR=1
+OFPSC_ADD_FLOW_STATE=2
+OFPSC_DEL_FLOW_STATE=3
+
 
 # struct ofp_multipart_request
 OFP_MULTIPART_REQUEST_PACK_STR = '!HH4x'
@@ -874,6 +918,7 @@ OFPET_SWITCH_CONFIG_FAILED = 10    # Switch config request failed.
 OFPET_ROLE_REQUEST_FAILED = 11    # Controller Role request failed.
 OFPET_METER_MOD_FAILED = 12    # Error in meter.
 OFPET_TABLE_FEATURES_FAILED = 13    # Setting table features failed.
+OFPET_STATE_MOD_FAILED=14
 OFPET_EXPERIMENTER = 0xffff    # Experimenter error messages.
 
 # enum ofp_hello_failed_code

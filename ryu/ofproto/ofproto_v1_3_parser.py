@@ -2605,6 +2605,38 @@ class OFPInstructionMeter(OFPInstruction):
                       buf, offset, self.type, self.len, self.meter_id)
 
 
+@OFPInstruction.register_instruction_type([ofproto.OFPIT_SET_STATE])
+class OFPInstructionState(OFPInstruction):
+    """
+    Set state instruction
+
+    This instruction applies the state. TO DO: look how deal with ofl msg instruction
+	and also cls
+    ================ ======================================================
+    Attribute        Description
+    ================ ======================================================
+    state            State instance
+    ================ ======================================================
+    """
+
+    def __init__(self, state=0, type_=None, len_=None):
+        super(OFPInstructionMeter, self).__init__()
+        self.type = ofproto.OFPIT_SET_STATE
+        self.len = ofproto.OFP_INSTRUCTION_STATE_SIZE
+        self.state= state
+
+    @classmethod
+    def parser(cls, buf, offset):
+        (type_, len_, state) = struct.unpack_from(
+            ofproto.OFP_INSTRUCTION_STATE_PACK_STR,
+            buf, offset)
+        return cls(state)
+
+    def serialize(self, buf, offset):
+        msg_pack_into(ofproto.OFP_INSTRUCTION_STATE_PACK_STR,
+                      buf, offset, self.type, self.len, self.state)
+
+
 class OFPActionHeader(StringifyMixin):
     def __init__(self, type_, len_):
         self.type = type_
@@ -3436,9 +3468,8 @@ class OFPTableMod(MsgBase):
 
     def _serialize_body(self):
         msg_pack_into(ofproto.OFP_TABLE_MOD_PACK_STR, self.buf,
-                      ofproto.OFP_HEADER_SIZE,
-                      self.table_id, self.config)
-
+                      ofproto.OFP_HEADER_SIZE,self.table_id, self.config)
+        #self.logger.debug('send table mod: n_tables=%d config=%d',self.table_id, self.config)
 
 def _set_stats_type(stats_type, stats_body_cls):
     def _set_cls_stats_type(cls):
@@ -5903,3 +5934,60 @@ class OFPSetAsync(MsgBase):
                       self.packet_in_mask[0], self.packet_in_mask[1],
                       self.port_status_mask[0], self.port_status_mask[1],
                       self.flow_removed_mask[0], self.flow_removed_mask[1])
+
+
+@_set_msg_type(ofproto.OFPT_STATE_MOD)
+class OFPKeyExtract(MsgBase):
+    def __init__(self, datapath, command,field_count,fields,cookie=0, cookie_mask=0, table_id=0
+                 ):
+        super(OFPKeyExtract, self).__init__(datapath)
+        self.cookie = cookie
+        self.cookie_mask = cookie_mask
+        self.table_id = table_id
+        self.command = command
+	self.field_count=field_count
+	self.fields=fields
+    
+	#self.buf=bytearray()
+    def _serialize_body(self):
+	#msg_pack_into('!QQBBII', self.buf,ofproto.OFP_HEADER_SIZE,0,0,0,2,1,2147485190)
+	
+	msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie,self.cookie_mask              ,self.table_id,self.command)
+
+	offset=ofproto.OFP_STATE_MOD_SIZE
+	
+	msg_pack_into(ofproto.OFP_STATE_MOD_EXTRACT_PACK_STR,self.buf,offset,self.field_count)
+	
+	offset += ofproto.OFP_STATE_MOD_EXTRACT_SIZE
+        field_extract_format='!I'
+	#msg_pack_into(field_extract_format, self.buf,offset,self.fields[0])
+	
+	if self.field_count <= ofproto.MAX_FIELD_COUNT:
+	    for f in range(self.field_count):
+	        msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
+		offset +=1
+	else: 
+	    print("You have inserted more than allowed field number")
+      
+@_set_msg_type(ofproto.OFPT_STATE_MOD)
+class OFPStateEntry(MsgBase):
+    def __init__(self, datapath, command,key_count,state,keys,cookie=0, cookie_mask=0, table_id=0
+                 ):
+        super(OFPStateEntry, self).__init__(datapath)
+        self.cookie = cookie
+        self.cookie_mask = cookie_mask
+        self.table_id = table_id
+        self.command = command
+	self.key_count=key_count
+	self.state=state
+	self.keys=keys
+
+
+    def _serialize_body(self):
+        msg_pack_into(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,
+		      self.cookie, self.cookie_mask, self.table_id,self.command,self.key_list[0],
+			self.key_count,self.state)
+        offset=(ofproto.OFP_STATE_MOD_SIZE-key_count)
+	for element in self.keys:
+	    element.serialized(self.buf,offset)
+	    offset+=element.len

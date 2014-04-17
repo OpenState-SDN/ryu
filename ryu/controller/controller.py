@@ -58,7 +58,7 @@ class OpenFlowController(object):
 
     # entry point
     def __call__(self):
-        #LOG.debug('call')
+        LOG.debug('call')
         self.server_loop()
 
     def server_loop(self):
@@ -204,7 +204,7 @@ class Datapath(ofproto_protocol.ProtocolDesc):
         if msg.xid is None:
             self.set_xid(msg)
         msg.serialize()
-        # LOG.debug('send_msg %s', msg)
+        LOG.debug('send_msg %s', msg)
         self.send(msg.buf)
 
     def serve(self):
