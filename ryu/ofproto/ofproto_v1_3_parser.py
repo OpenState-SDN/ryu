@@ -5947,10 +5947,13 @@ class OFPKeyExtract(MsgBase):
         self.command = command
 	self.field_count=field_count
 	self.fields=fields
-    
+   	if self.field_count < ofproto.MAX_FIELD_COUNT:
+	    for i in range(field_count,ofproto.MAX_FIELD_COUNT):
+	        fields.append(0)  
+
+
 	#self.buf=bytearray()
     def _serialize_body(self):
-	#msg_pack_into('!QQBBII', self.buf,ofproto.OFP_HEADER_SIZE,0,0,0,2,1,2147485190)
 	
 	msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie,self.cookie_mask              ,self.table_id,self.command)
 
@@ -5962,13 +5965,11 @@ class OFPKeyExtract(MsgBase):
         field_extract_format='!I'
 	#msg_pack_into(field_extract_format, self.buf,offset,self.fields[0])
 	
-	if self.field_count <= ofproto.MAX_FIELD_COUNT:
-	    for f in range(self.field_count):
-	        msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
-		offset +=1
-	else: 
-	    print("You have inserted more than allowed field number")
-      
+	#if self.field_count <= ofproto.MAX_FIELD_COUNT:
+	for f in range(ofproto.MAX_FIELD_COUNT):
+	    msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
+	    offset +=4
+        print "here is final offset",offset 
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
 class OFPStateEntry(MsgBase):
     def __init__(self, datapath, command,key_count,state,keys,cookie=0, cookie_mask=0, table_id=0
