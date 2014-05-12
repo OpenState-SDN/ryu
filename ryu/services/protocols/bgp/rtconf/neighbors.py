@@ -19,6 +19,18 @@
 from abc import abstractmethod
 import logging
 
+from ryu.lib.packet.bgp import RF_IPv4_UC
+from ryu.lib.packet.bgp import RF_IPv6_UC
+from ryu.lib.packet.bgp import RF_IPv4_VPN
+from ryu.lib.packet.bgp import RF_IPv6_VPN
+from ryu.lib.packet.bgp import RF_RTC_UC
+from ryu.lib.packet.bgp import BGPOptParamCapabilityEnhancedRouteRefresh
+from ryu.lib.packet.bgp import BGPOptParamCapabilityMultiprotocol
+from ryu.lib.packet.bgp import BGPOptParamCapabilityRouteRefresh
+from ryu.lib.packet.bgp import BGP_CAP_ENHANCED_ROUTE_REFRESH
+from ryu.lib.packet.bgp import BGP_CAP_MULTIPROTOCOL
+from ryu.lib.packet.bgp import BGP_CAP_ROUTE_REFRESH
+
 from ryu.services.protocols.bgp.base import OrderedDict
 from ryu.services.protocols.bgp.rtconf.base import ADVERTISE_PEER_AS
 from ryu.services.protocols.bgp.rtconf.base import BaseConf
@@ -45,17 +57,6 @@ from ryu.services.protocols.bgp.rtconf.base import SITE_OF_ORIGINS
 from ryu.services.protocols.bgp.rtconf.base import validate
 from ryu.services.protocols.bgp.rtconf.base import validate_med
 from ryu.services.protocols.bgp.rtconf.base import validate_soo_list
-
-from ryu.services.protocols.bgp.protocols.bgp.capabilities import \
-    EnhancedRouteRefreshCap
-from ryu.services.protocols.bgp.protocols.bgp.capabilities import \
-    MultiprotocolExtentionCap
-from ryu.services.protocols.bgp.protocols.bgp.capabilities import \
-    RouteRefreshCap
-from ryu.services.protocols.bgp.protocols.bgp.nlri import RF_IPv4_UC
-from ryu.services.protocols.bgp.protocols.bgp.nlri import RF_IPv4_VPN
-from ryu.services.protocols.bgp.protocols.bgp.nlri import RF_IPv6_VPN
-from ryu.services.protocols.bgp.protocols.bgp.nlri import RF_RTC_UC
 from ryu.services.protocols.bgp.utils.validation import is_valid_ipv4
 from ryu.services.protocols.bgp.utils.validation import is_valid_old_asn
 
@@ -146,14 +147,14 @@ class NeighborConf(ConfWithId, ConfWithStats):
     UPDATE_MED_EVT = 'update_med_evt'
 
     VALID_EVT = frozenset([UPDATE_ENABLED_EVT, UPDATE_MED_EVT])
-    REQUIRED_SETTINGS = frozenset([REMOTE_AS, IP_ADDRESS, LOCAL_ADDRESS,
-                                   LOCAL_PORT])
+    REQUIRED_SETTINGS = frozenset([REMOTE_AS, IP_ADDRESS])
     OPTIONAL_SETTINGS = frozenset([CAP_REFRESH,
                                    CAP_ENHANCED_REFRESH, CAP_MBGP_VPNV4,
                                    CAP_MBGP_IPV4, CAP_MBGP_VPNV6,
                                    CAP_RTC, RTC_AS, HOLD_TIME,
                                    ENABLED, MULTI_EXIT_DISC, MAX_PREFIXES,
-                                   ADVERTISE_PEER_AS, SITE_OF_ORIGINS])
+                                   ADVERTISE_PEER_AS, SITE_OF_ORIGINS,
+                                   LOCAL_ADDRESS, LOCAL_PORT])
 
     def __init__(self, **kwargs):
         super(NeighborConf, self).__init__(**kwargs)
@@ -192,6 +193,14 @@ class NeighborConf(ConfWithId, ConfWithStats):
         if soos and validate_soo_list(soos):
             self._settings[SITE_OF_ORIGINS] = soos
 
+        # We do not have valid default LOCAL_ADDRESS and LOCAL_PORT value.
+        # If no LOCAL_ADDRESS/PORT is provided then we will bind to system
+        # default.
+        self._settings[LOCAL_ADDRESS] = compute_optional_conf(
+            LOCAL_ADDRESS, None, **kwargs)
+        self._settings[LOCAL_PORT] = compute_optional_conf(
+            LOCAL_PORT, None, **kwargs)
+
         # RTC configurations.
         self._settings[CAP_RTC] = \
             compute_optional_conf(CAP_RTC, DEFAULT_CAP_RTC, **kwargs)
@@ -224,9 +233,9 @@ class NeighborConf(ConfWithId, ConfWithStats):
         self_valid_evts.update(NeighborConf.VALID_EVT)
         return self_valid_evts
 
-    #==========================================================================
+    # =========================================================================
     # Required attributes
-    #==========================================================================
+    # =========================================================================
 
     @property
     def remote_as(self):
@@ -244,9 +253,9 @@ class NeighborConf(ConfWithId, ConfWithStats):
     def host_bind_port(self):
         return self._settings[LOCAL_PORT]
 
-    #==========================================================================
+    # =========================================================================
     # Optional attributes with valid defaults.
-    #==========================================================================
+    # =========================================================================
 
     @property
     def hold_time(self):
@@ -288,9 +297,9 @@ class NeighborConf(ConfWithId, ConfWithStats):
             self._notify_listeners(NeighborConf.UPDATE_ENABLED_EVT,
                                    enable)
 
-    #==========================================================================
+    # =========================================================================
     # Optional attributes with no valid defaults.
-    #==========================================================================
+    # =========================================================================
 
     @property
     def multi_exit_disc(self):
@@ -334,27 +343,35 @@ class NeighborConf(ConfWithId, ConfWithStats):
         capabilities = OrderedDict()
         mbgp_caps = []
         if self.cap_mbgp_ipv4:
-            mbgp_caps.append(MultiprotocolExtentionCap(RF_IPv4_UC))
+            mbgp_caps.append(
+                BGPOptParamCapabilityMultiprotocol(
+                    RF_IPv4_UC.afi, RF_IPv4_UC.safi))
 
         if self.cap_mbgp_vpnv4:
-            mbgp_caps.append(MultiprotocolExtentionCap(RF_IPv4_VPN))
+            mbgp_caps.append(
+                BGPOptParamCapabilityMultiprotocol(
+                    RF_IPv4_VPN.afi, RF_IPv4_VPN.safi))
 
         if self.cap_mbgp_vpnv6:
-            mbgp_caps.append(MultiprotocolExtentionCap(RF_IPv6_VPN))
+            mbgp_caps.append(
+                BGPOptParamCapabilityMultiprotocol(
+                    RF_IPv6_VPN.afi, RF_IPv6_VPN.safi))
 
         if self.cap_rtc:
-            mbgp_caps.append(MultiprotocolExtentionCap(RF_RTC_UC))
+            mbgp_caps.append(
+                BGPOptParamCapabilityMultiprotocol(
+                    RF_RTC_UC.afi, RF_RTC_UC.safi))
 
         if mbgp_caps:
-            capabilities[MultiprotocolExtentionCap.CODE] = mbgp_caps
+            capabilities[BGP_CAP_MULTIPROTOCOL] = mbgp_caps
 
         if self.cap_refresh:
-            capabilities[RouteRefreshCap.CODE] = [
-                RouteRefreshCap.get_singleton()]
+            capabilities[BGP_CAP_ROUTE_REFRESH] = [
+                BGPOptParamCapabilityRouteRefresh()]
 
         if self.cap_enhanced_refresh:
-            capabilities[EnhancedRouteRefreshCap.CODE] = [
-                EnhancedRouteRefreshCap.get_singleton()]
+            capabilities[BGP_CAP_ENHANCED_ROUTE_REFRESH] = [
+                BGPOptParamCapabilityEnhancedRouteRefresh()]
 
         return capabilities
 
@@ -407,13 +424,6 @@ class NeighborsConf(BaseConf):
         if neigh_conf.ip_address in self._neighbors.keys():
             message = 'Neighbor with given ip address already exists'
             raise RuntimeConfigError(desc=message)
-
-        # Check if this neighbor's host address overlaps with other neighbors
-        for nconf in self._neighbors.itervalues():
-            if ((neigh_conf.host_bind_ip, neigh_conf.host_bind_port) ==
-                    (nconf.host_bind_ip, nconf.host_bind_port)):
-                raise RuntimeConfigError(desc='Given host_bind_ip and '
-                                         'host_bind_port already taken')
 
         # Add this neighbor to known configured neighbors and generate update
         # event

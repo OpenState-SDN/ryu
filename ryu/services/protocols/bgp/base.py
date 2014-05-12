@@ -16,14 +16,19 @@
   Defines some base class related to managing green threads.
 """
 import abc
-import eventlet
 import logging
+import socket
 import time
 import traceback
 import weakref
 
-from eventlet.timeout import Timeout
-from ryu.services.protocols.bgp.protocols.bgp import nlri
+from ryu.lib import hub
+from ryu.lib.hub import Timeout
+from ryu.lib.packet.bgp import RF_IPv4_UC
+from ryu.lib.packet.bgp import RF_IPv6_UC
+from ryu.lib.packet.bgp import RF_IPv4_VPN
+from ryu.lib.packet.bgp import RF_IPv6_VPN
+from ryu.lib.packet.bgp import RF_RTC_UC
 from ryu.services.protocols.bgp.utils.circlist import CircularListType
 from ryu.services.protocols.bgp.utils.evtlet import LoopingCall
 
@@ -42,10 +47,10 @@ OrderedDict = OrderedDict
 
 
 # Currently supported address families.
-SUPPORTED_GLOBAL_RF = set([nlri.RF_IPv4_UC,
-                           nlri.RF_IPv4_VPN,
-                           nlri.RF_RTC_UC,
-                           nlri.RF_IPv6_VPN
+SUPPORTED_GLOBAL_RF = set([RF_IPv4_UC,
+                           RF_IPv4_VPN,
+                           RF_RTC_UC,
+                           RF_IPv6_VPN
                            ])
 
 
@@ -167,7 +172,7 @@ class Activity(object):
         self._validate_activity(activity)
 
         # Spawn a new greenthread for given activity
-        greenthread = eventlet.spawn(activity.start, *args, **kwargs)
+        greenthread = hub.spawn(activity.start, *args, **kwargs)
         self._child_thread_map[activity.name] = greenthread
         self._child_activity_map[activity.name] = activity
         return greenthread
@@ -176,8 +181,8 @@ class Activity(object):
         self._validate_activity(activity)
 
         # Schedule to spawn a new greenthread after requested delay
-        greenthread = eventlet.spawn_after(seconds, activity.start, *args,
-                                           **kwargs)
+        greenthread = hub.spawn_after(seconds, activity.start, *args,
+                                      **kwargs)
         self._child_thread_map[activity.name] = greenthread
         self._child_activity_map[activity.name] = activity
         return greenthread
@@ -196,13 +201,13 @@ class Activity(object):
 
     def _spawn(self, name, callable_, *args, **kwargs):
         self._validate_callable(callable_)
-        greenthread = eventlet.spawn(callable_, *args, **kwargs)
+        greenthread = hub.spawn(callable_, *args, **kwargs)
         self._child_thread_map[name] = greenthread
         return greenthread
 
     def _spawn_after(self, name, seconds, callable_, *args, **kwargs):
         self._validate_callable(callable_)
-        greenthread = eventlet.spawn_after(seconds, callable_, *args, **kwargs)
+        greenthread = hub.spawn_after(seconds, callable_, *args, **kwargs)
         self._child_thread_map[name] = greenthread
         return greenthread
 
@@ -240,12 +245,12 @@ class Activity(object):
                 self.stop()
 
     def pause(self, seconds=0):
-        """Relinquishes eventlet hub for given number of seconds.
+        """Relinquishes hub for given number of seconds.
 
         In other words is puts to sleep to give other greeenthread a chance to
         run.
         """
-        eventlet.sleep(seconds)
+        hub.sleep(seconds)
 
     def _stop_child_activities(self):
         """Stop all child activities spawn by this activity.
@@ -313,7 +318,7 @@ class Activity(object):
 
         For each connection `server_factory` starts a new protocol.
         """
-        server = eventlet.listen(loc_addr)
+        server = hub.listen(loc_addr)
         server_name = self.name + '_server@' + str(loc_addr)
         self._asso_socket_map[server_name] = server
 
@@ -336,8 +341,8 @@ class Activity(object):
         """
         LOG.debug('Connect TCP called for %s:%s' % (peer_addr[0],
                                                     peer_addr[1]))
-        with Timeout(time_out, False):
-            sock = eventlet.connect(peer_addr, bind=bind_address)
+        with Timeout(time_out, socket.error):
+            sock = hub.connect(peer_addr, bind=bind_address)
             if sock:
                 # Connection name for pro-active connection is made up
                 # of local end address + remote end address
@@ -347,6 +352,7 @@ class Activity(object):
                 # If connection is established, we call connection handler
                 # in a new thread.
                 self._spawn(conn_name, conn_handler, sock)
+        return sock
 
 
 #

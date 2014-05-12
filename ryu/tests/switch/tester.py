@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import binascii
 import inspect
 import json
 import logging
@@ -388,7 +389,7 @@ class OfTester(app_manager.RyuApp):
                     self._test(STATE_FLOW_INSTALL, self.target_sw, flow)
                     self._test(STATE_FLOW_EXIST_CHK, self.target_sw, flow)
                 elif isinstance(flow, ofproto_v1_3_parser.OFPMeterMod):
-                    self._test(STATE_METER_INSTALL, flow)
+                    self._test(STATE_METER_INSTALL, self.target_sw, flow)
                     self._test(STATE_METER_EXIST_CHK, flow)
             # Do tests.
             for pkt in test.tests:
@@ -492,9 +493,9 @@ class OfTester(app_manager.RyuApp):
         test = {STATE_INIT_FLOW: self._test_initialize_flow,
                 STATE_INIT_THROUGHPUT_FLOW: self._test_initialize_flow_tester,
                 STATE_INIT_METER: self._test_initialize_meter,
-                STATE_FLOW_INSTALL: self._test_flow_install,
-                STATE_THROUGHPUT_FLOW_INSTALL: self._test_flow_install,
-                STATE_METER_INSTALL: self._test_meter_install,
+                STATE_FLOW_INSTALL: self._test_msg_install,
+                STATE_THROUGHPUT_FLOW_INSTALL: self._test_msg_install,
+                STATE_METER_INSTALL: self._test_msg_install,
                 STATE_FLOW_EXIST_CHK: self._test_flow_exist_check,
                 STATE_THROUGHPUT_FLOW_EXIST_CHK: self._test_flow_exist_check,
                 STATE_METER_EXIST_CHK: self._test_meter_exist_check,
@@ -541,23 +542,11 @@ class OfTester(app_manager.RyuApp):
     def _test_initialize_meter(self):
         self.target_sw.del_test_meter()
 
-    def _test_flow_install(self, datapath, flow):
-        xid = datapath.add_flow(flow_mod=flow)
+    def _test_msg_install(self, datapath, message):
+        xid = datapath.send_msg(message)
         self.send_msg_xids.append(xid)
 
         xid = datapath.send_barrier_request()
-        self.send_msg_xids.append(xid)
-
-        self._wait()
-        assert len(self.rcv_msgs) == 1
-        msg = self.rcv_msgs[0]
-        assert isinstance(msg, ofproto_v1_3_parser.OFPBarrierReply)
-
-    def _test_meter_install(self, meter):
-        xid = self.target_sw._send_msg(meter)
-        self.send_msg_xids.append(xid)
-
-        xid = self.target_sw.send_barrier_request()
         self.send_msg_xids.append(xid)
 
         self._wait()
@@ -782,6 +771,8 @@ class OfTester(app_manager.RyuApp):
 
         def __reasm_match(match):
             """ reassemble match_fields. """
+            mask_lengths = {'vlan_vid': 12 + 1,
+                            'ipv6_exthdr': 9}
             match_fields = list()
             for key, united_value in match.iteritems():
                 if isinstance(united_value, tuple):
@@ -789,12 +780,18 @@ class OfTester(app_manager.RyuApp):
                     # look up oxm_fields.TypeDescr to get mask length.
                     for ofb in ofproto_v1_3.oxm_types:
                         if ofb.name == key:
-                            mbytes = ofb.type.from_user(mask)
+                            # create all one bits mask
+                            mask_len = mask_lengths.get(
+                                key, ofb.type.size * 8)
+                            all_one_bits = 2 ** mask_len - 1
+                            # convert mask to integer
+                            mask_bytes = ofb.type.from_user(mask)
+                            oxm_mask = int(binascii.hexlify(mask_bytes), 16)
                             # when mask is all one bits, remove mask
-                            if mbytes == '\xff' * ofb.type.size:
+                            if oxm_mask & all_one_bits == all_one_bits:
                                 united_value = value
                             # when mask is all zero bits, remove field.
-                            elif mbytes == '\x00' * ofb.type.size:
+                            elif oxm_mask & all_one_bits == 0:
                                 united_value = None
                             break
                 if united_value is not None:
@@ -1043,7 +1040,7 @@ class OpenFlowSw(object):
         self.dp = dp
         self.logger = logger
 
-    def _send_msg(self, msg):
+    def send_msg(self, msg):
         if isinstance(self.dp, DummyDatapath):
             raise TestError(STATE_DISCONNECTED)
         msg.xid = None
@@ -1051,30 +1048,27 @@ class OpenFlowSw(object):
         self.dp.send_msg(msg)
         return msg.xid
 
-    def add_flow(self, flow_mod=None, in_port=None, out_port=None):
+    def add_flow(self, in_port=None, out_port=None):
         """ Add flow. """
         ofp = self.dp.ofproto
         parser = self.dp.ofproto_parser
 
-        if flow_mod:
-            mod = flow_mod
-        else:
-            match = parser.OFPMatch(in_port=in_port)
-            max_len = (0 if out_port != ofp.OFPP_CONTROLLER
-                       else ofp.OFPCML_MAX)
-            actions = [parser.OFPActionOutput(out_port, max_len)]
-            inst = [parser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS,
-                                                 actions)]
-            mod = parser.OFPFlowMod(self.dp, cookie=0,
-                                    command=ofp.OFPFC_ADD,
-                                    match=match, instructions=inst)
-        return self._send_msg(mod)
+        match = parser.OFPMatch(in_port=in_port)
+        max_len = (0 if out_port != ofp.OFPP_CONTROLLER
+                   else ofp.OFPCML_MAX)
+        actions = [parser.OFPActionOutput(out_port, max_len)]
+        inst = [parser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS,
+                                             actions)]
+        mod = parser.OFPFlowMod(self.dp, cookie=0,
+                                command=ofp.OFPFC_ADD,
+                                match=match, instructions=inst)
+        return self.send_msg(mod)
 
     def send_barrier_request(self):
         """ send a BARRIER_REQUEST message."""
         parser = self.dp.ofproto_parser
         req = parser.OFPBarrierRequest(self.dp)
-        return self._send_msg(req)
+        return self.send_msg(req)
 
     def send_port_stats(self):
         """ Get port stats."""
@@ -1082,7 +1076,7 @@ class OpenFlowSw(object):
         parser = self.dp.ofproto_parser
         flags = 0
         req = parser.OFPPortStatsRequest(self.dp, flags, ofp.OFPP_ANY)
-        return self._send_msg(req)
+        return self.send_msg(req)
 
     def send_flow_stats(self):
         """ Get all flow. """
@@ -1091,7 +1085,7 @@ class OpenFlowSw(object):
         req = parser.OFPFlowStatsRequest(self.dp, 0, ofp.OFPTT_ALL,
                                          ofp.OFPP_ANY, ofp.OFPG_ANY,
                                          0, 0, parser.OFPMatch())
-        return self._send_msg(req)
+        return self.send_msg(req)
 
 
 class TargetSw(OpenFlowSw):
@@ -1107,7 +1101,7 @@ class TargetSw(OpenFlowSw):
                                 command=ofp.OFPFC_DELETE,
                                 out_port=ofp.OFPP_ANY,
                                 out_group=ofp.OFPG_ANY)
-        return self._send_msg(mod)
+        return self.send_msg(mod)
 
     def del_test_meter(self):
         """ Delete all meter entries. """
@@ -1117,19 +1111,19 @@ class TargetSw(OpenFlowSw):
                                  command=ofp.OFPMC_DELETE,
                                  flags=0,
                                  meter_id=ofp.OFPM_ALL)
-        return self._send_msg(mod)
+        return self.send_msg(mod)
 
     def send_meter_config_stats(self):
         """ Get all meter. """
         parser = self.dp.ofproto_parser
         stats = parser.OFPMeterConfigStatsRequest(self.dp)
-        return self._send_msg(stats)
+        return self.send_msg(stats)
 
     def send_table_stats(self):
         """ Get table stats. """
         parser = self.dp.ofproto_parser
         req = parser.OFPTableStatsRequest(self.dp, 0)
-        return self._send_msg(req)
+        return self.send_msg(req)
 
 
 class TesterSw(OpenFlowSw):
@@ -1147,7 +1141,7 @@ class TesterSw(OpenFlowSw):
                                 command=ofp.OFPFC_DELETE,
                                 out_port=ofp.OFPP_ANY,
                                 out_group=ofp.OFPG_ANY)
-        return self._send_msg(mod)
+        return self.send_msg(mod)
 
     def send_packet_out(self, data):
         """ send a PacketOut message."""
@@ -1157,7 +1151,7 @@ class TesterSw(OpenFlowSw):
         out = parser.OFPPacketOut(
             datapath=self.dp, buffer_id=ofp.OFP_NO_BUFFER,
             data=data, in_port=ofp.OFPP_CONTROLLER, actions=actions)
-        return self._send_msg(out)
+        return self.send_msg(out)
 
 
 class TestPatterns(dict):

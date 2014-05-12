@@ -19,6 +19,7 @@
 from abc import ABCMeta
 from abc import abstractmethod
 import logging
+import uuid
 from types import BooleanType
 from types import IntType
 from types import LongType
@@ -28,8 +29,6 @@ from ryu.services.protocols.bgp.base import BGPSException
 from ryu.services.protocols.bgp.base import get_validator
 from ryu.services.protocols.bgp.base import RUNTIME_CONF_ERROR_CODE
 from ryu.services.protocols.bgp.base import validate
-
-from ryu.services.protocols.bgp.protocols.bgp.pathattr import ExtCommunity
 from ryu.services.protocols.bgp.utils import validation
 from ryu.services.protocols.bgp.utils.validation import is_valid_old_asn
 
@@ -73,9 +72,9 @@ MAX_NUM_EXPORT_RT = 250
 MAX_NUM_SOO = 10
 
 
-#==============================================================================
+# =============================================================================
 # Runtime configuration errors or exceptions.
-#==============================================================================
+# =============================================================================
 
 @add_bgp_error_metadata(code=RUNTIME_CONF_ERROR_CODE, sub_code=1,
                         def_desc='Error with runtime-configuration.')
@@ -139,9 +138,9 @@ class ConfigValueError(RuntimeConfigError):
             super(ConfigValueError, self).__init__(desc=kwargs.get('desc'))
 
 
-#==============================================================================
+# =============================================================================
 # Configuration base classes.
-#==============================================================================
+# =============================================================================
 
 class BaseConf(object):
     """Base class for a set of configuration values.
@@ -225,8 +224,8 @@ class BaseConf(object):
             self._settings[req_attr] = req_attr_value
 
     def add_listener(self, evt, callback):
-#         if (evt not in self.get_valid_evts()):
-#             raise RuntimeConfigError(desc=('Unknown event %s' % evt))
+        #   if (evt not in self.get_valid_evts()):
+        #       raise RuntimeConfigError(desc=('Unknown event %s' % evt))
 
         listeners = self._listeners.get(evt, None)
         if not listeners:
@@ -265,8 +264,7 @@ class ConfWithId(BaseConf):
     UPDATE_DESCRIPTION_EVT = 'update_description_evt'
 
     VALID_EVT = frozenset([UPDATE_NAME_EVT, UPDATE_DESCRIPTION_EVT])
-    REQUIRED_SETTINGS = frozenset([ID])
-    OPTIONAL_SETTINGS = frozenset([NAME, DESCRIPTION])
+    OPTIONAL_SETTINGS = frozenset([ID, NAME, DESCRIPTION])
 
     def __init__(self, **kwargs):
         super(ConfWithId, self).__init__(**kwargs)
@@ -280,7 +278,6 @@ class ConfWithId(BaseConf):
     @classmethod
     def get_req_settings(cls):
         self_confs = super(ConfWithId, cls).get_req_settings()
-        self_confs.update(ConfWithId.REQUIRED_SETTINGS)
         return self_confs
 
     @classmethod
@@ -291,6 +288,8 @@ class ConfWithId(BaseConf):
 
     def _init_opt_settings(self, **kwargs):
         super(ConfWithId, self)._init_opt_settings(**kwargs)
+        self._settings[ConfWithId.ID] = \
+            compute_optional_conf(ConfWithId.ID, str(uuid.uuid4()), **kwargs)
         self._settings[ConfWithId.NAME] = \
             compute_optional_conf(ConfWithId.NAME, str(self), **kwargs)
         self._settings[ConfWithId.DESCRIPTION] = \
@@ -523,9 +522,9 @@ class ConfEvent(object):
                    (self.src, self.name, self.value))
 
 
-#==============================================================================
+# =============================================================================
 # Runtime configuration setting validators and their registry.
-#==============================================================================
+# =============================================================================
 
 @validate(name=ConfWithId.ID)
 def validate_conf_id(identifier):
@@ -658,9 +657,7 @@ def validate_soo_list(soo_list):
     if not (len(soo_list) <= MAX_NUM_SOO):
         raise ConfigValueError(desc='Max. SOO is limited to %s' %
                                MAX_NUM_SOO)
-    try:
-        ExtCommunity.validate_supported_attributes(soo_list)
-    except ValueError:
+    if not all(validation.is_valid_ext_comm_attr(attr) for attr in soo_list):
         raise ConfigValueError(conf_name=SITE_OF_ORIGINS,
                                conf_value=soo_list)
     # Check if we have duplicates
@@ -691,9 +688,9 @@ def validate_advertise_peer_as(advertise_peer_as):
     return advertise_peer_as
 
 
-#==============================================================================
+# =============================================================================
 # Other utils.
-#==============================================================================
+# =============================================================================
 
 def compute_optional_conf(conf_name, default_value, **all_config):
     """Returns *conf_name* settings if provided in *all_config*, else returns
