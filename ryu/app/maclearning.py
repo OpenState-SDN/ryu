@@ -58,13 +58,13 @@ class SimpleSwitch12(app_manager.RyuApp):
 # install table-miss flow entry
        
  	self.send_features_request(datapath)
-        
  	self.send_table_mod(datapath)
        
 	actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,ofproto.OFPCML_NO_BUFFER)]
- #       self.add_flow(datapath, 0,0, actions,True)
+        self.add_flow(datapath, 0,0, actions,True)
        # self.add_state_entry(datapath)
         self.send_key_lookup(datapath)
+#	self.send_key_update(datapath)
 
 #port considere in_port and state=metadata
 
@@ -114,7 +114,7 @@ class SimpleSwitch12(app_manager.RyuApp):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
 	print ofp.OFPTC_TABLE_STATEFULL
-        req = ofp_parser.OFPTableMod(datapath,0, 16)
+        req = ofp_parser.OFPTableMod(datapath,0, ofp.OFPTC_TABLE_STATEFULL)
         datapath.send_msg(req)
 
     def add_state_entry(self,datapath):
@@ -137,5 +137,5 @@ class SimpleSwitch12(app_manager.RyuApp):
     def send_key_update(self,datapath):
         ofp=datapath.ofproto
 	
-	key_update_extractor=datapath.ofproto_parser.OFPKeyExtract(datapath,ofp.OFPSC_SET_U_EXTRACTOR,1,[ofp.OXM_OF_ETH_SRC,ofp.OXM_OF_ETH_DST])
+	key_update_extractor=datapath.ofproto_parser.OFPKeyExtract(datapath,ofp.OFPSC_SET_U_EXTRACTOR,1,[ofp.OXM_OF_ETH_SRC])
 	datapath.send_msg(key_update_extractor)
