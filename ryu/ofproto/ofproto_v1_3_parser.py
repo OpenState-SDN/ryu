@@ -2620,7 +2620,7 @@ class OFPInstructionState(OFPInstruction):
     """
 
     def __init__(self, state=0, type_=None, len_=None):
-        super(OFPInstructionMeter, self).__init__()
+        super(OFPInstructionState, self).__init__()
         self.type = ofproto.OFPIT_SET_STATE
         self.len = ofproto.OFP_INSTRUCTION_STATE_SIZE
         self.state= state
@@ -5950,9 +5950,9 @@ class OFPKeyExtract(MsgBase):
         self.command = command
 	self.field_count=field_count
 	self.fields=fields
-   	if self.field_count < ofproto.MAX_FIELD_COUNT:
-	    for i in range(field_count,ofproto.MAX_FIELD_COUNT):
-	        fields.append(0)  
+#   	if self.field_count < ofproto.MAX_FIELD_COUNT:
+#	    for i in range(field_count,ofproto.MAX_FIELD_COUNT):
+#	        fields.append(0)  
 
 
 	#self.buf=bytearray()
@@ -5968,11 +5968,15 @@ class OFPKeyExtract(MsgBase):
         field_extract_format='!I'
 	#msg_pack_into(field_extract_format, self.buf,offset,self.fields[0])
 	
-	#if self.field_count <= ofproto.MAX_FIELD_COUNT:
-	for f in range(ofproto.MAX_FIELD_COUNT):
-	    msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
-	    offset +=4
-        print "here is final offset",offset 
+	if self.field_count <= ofproto.MAX_FIELD_COUNT:
+	#for f in range(ofproto.MAX_FIELD_COUNT):
+	    for f in range(self.field_count):
+	        msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
+	        offset +=4
+            print "here is final offset",offset 
+	else:
+	    print "Number of fields given are more than allowed ones"
+
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
 class OFPStateEntry(MsgBase):
     def __init__(self, datapath, command,key_count,state,keys,cookie=0, cookie_mask=0, table_id=0
