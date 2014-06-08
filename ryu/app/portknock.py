@@ -80,7 +80,7 @@ class SimpleSwitch12(app_manager.RyuApp):
         else:
             print "here is flow mod install rules for port knock" 
             for state in range(number_of_state):
-                match = datapath.ofproto_parser.OFPMatch(metadata=state,eth_type=0x0800,ip_proto=6,tcp_dst=port_list[state])
+                match = datapath.ofproto_parser.OFPMatch(metadata=state,eth_type=0x0800,ip_proto=17,udp_dst=port_list[state])
                 if not state ==4:
 	            inst = [datapath.ofproto_parser.OFPInstructionState(state+1)]
                 else:
