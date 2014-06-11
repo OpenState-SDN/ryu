@@ -58,7 +58,6 @@ class SimpleSwitch12(app_manager.RyuApp):
     def add_flow(self, datapath,table_miss=False):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-        number_of_state=5
         port_list=[5123,6234,7345,8456,2000]
 
         print "here is my add flow\n"
@@ -79,7 +78,21 @@ class SimpleSwitch12(app_manager.RyuApp):
 
         else:
             print "here is flow mod install rules for port knock" 
-            for state in range(number_of_state):
+            match = datapath.ofproto_parser.OFPMatch(eth_type=0x0806)
+            actions = [datapath.ofproto_parser.OFPActionOutput(ofproto.OFPP_FLOOD)]
+            inst=[datapath.ofproto_parser.OFPInstructionActions(datapath.ofproto.OFPIT_APPLY_ACTIONS,actions)]
+
+	    mod = datapath.ofproto_parser.OFPFlowMod(
+            datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
+            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+            priority=32760, buffer_id=ofproto.OFP_NO_BUFFER,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            flags=0, match=match, instructions=inst)
+        
+	    datapath.send_msg(mod)
+            
+            for state in range(len(port_list)):
                 match = datapath.ofproto_parser.OFPMatch(metadata=state,eth_type=0x0800,ip_proto=17,udp_dst=port_list[state])
                 if not state ==4:
 	            inst = [datapath.ofproto_parser.OFPInstructionState(state+1)]
