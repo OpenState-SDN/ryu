@@ -8,3 +8,6 @@ install:
 
 script:
   - "./run_tests.sh -N"
+
+notifications:
+  slack: bebaproj:QOVWgAeMr7r6YebwBWwApXea
