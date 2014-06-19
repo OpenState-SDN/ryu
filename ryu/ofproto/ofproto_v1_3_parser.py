@@ -5973,9 +5973,8 @@ class OFPKeyExtract(MsgBase):
 	    for f in range(self.field_count):
 	        msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
 	        offset +=4
-            print "here is final offset",offset 
 	else:
-	    print "Number of fields given are more than allowed ones"
+	    LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
 
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
 class OFPStateEntry(MsgBase):
