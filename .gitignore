@@ -1,9 +1,9 @@
 *.py[co]
 *~
 *.egg-info/
+*.egg
 build/
 dist/
-
 GTAGS
 GRTAGS
 GPATH
