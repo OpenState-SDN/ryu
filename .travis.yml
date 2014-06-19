@@ -7,7 +7,7 @@ install:
   - "pip install -r tools/pip-requires -r tools/test-requires --use-mirrors"
 
 script:
-  - "./run_tests.sh -N"
+  - "./run_tests.sh -N --no-pep8"
 
 notifications:
   slack: bebaproj:QOVWgAeMr7r6YebwBWwApXea
