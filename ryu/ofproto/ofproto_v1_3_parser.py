@@ -2604,10 +2604,10 @@ class OFPInstructionMeter(OFPInstruction):
         msg_pack_into(ofproto.OFP_INSTRUCTION_METER_PACK_STR,
                       buf, offset, self.type, self.len, self.meter_id)
 
-
+"""
 @OFPInstruction.register_instruction_type([ofproto.OFPIT_SET_STATE])
 class OFPInstructionState(OFPInstruction):
-    """
+    
     Set state instruction
 
     This instruction applies the state. TO DO: look how deal with ofl msg instruction
@@ -2617,7 +2617,7 @@ class OFPInstructionState(OFPInstruction):
     ================ ======================================================
     state            State instance
     ================ ======================================================
-    """
+    
 
     def __init__(self, state=0, type_=None, len_=None):
         super(OFPInstructionState, self).__init__()
@@ -2635,7 +2635,7 @@ class OFPInstructionState(OFPInstruction):
     def serialize(self, buf, offset):
         msg_pack_into(ofproto.OFP_INSTRUCTION_STATE_PACK_STR,
                       buf, offset, self.type, self.len, self.state)
-
+"""
 
 class OFPActionHeader(StringifyMixin):
     def __init__(self, type_, len_):
@@ -3208,6 +3208,35 @@ class OFPActionExperimenter(OFPAction):
         if self.data:
             buf += self.data
 
+@OFPAction.register_action_type(ofproto.OFPAT_SET_STATE,ofproto.OFP_ACTION_SET_STATE_SIZE)
+class OFPActionSetState(OFPAction):
+    """ 
+    Set state action
+
+    This action applies the state. TO DO: look how deal with ofl msg instruction
+    and also cls
+    ================ ======================================================
+    Attribute        Description
+    ================ ======================================================
+    state            State instance
+    ================ ======================================================
+    """
+    def __init__(self, state=0, type_=None, len_=None):
+        super(OFPActionSetState, self).__init__()
+        self.type = ofproto.OFPAT_SET_STATE
+        self.len = ofproto.OFP_ACTION_SET_STATE_SIZE
+        self.state= state
+
+    @classmethod
+    def parser(cls, buf, offset):
+        (type_, len_, state) = struct.unpack_from(
+            ofproto.OFP_ACTION_SET_STATE_PACK_STR,
+            buf, offset)
+        return cls(state)
+
+    def serialize(self, buf, offset):
+        msg_pack_into(ofproto.OFP_ACTION_SET_STATE_PACK_STR,
+                      buf, offset, self.type, self.len, self.state)
 
 class OFPBucket(StringifyMixin):
     def __init__(self, weight=0, watch_port=ofproto.OFPP_ANY,

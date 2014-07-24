@@ -203,7 +203,7 @@ OFPIT_APPLY_ACTIONS = 4  # Applies the action(s) immediately
 OFPIT_CLEAR_ACTIONS = 5  # Clears all actions from the datapath action
                          # set
 OFPIT_METER = 6  # Apply meter (rate limiter)
-OFPIT_SET_STATE = 7 #Apply new state 
+#OFPIT_SET_STATE = 7 #Apply new state 
 OFPIT_EXPERIMENTER = 0xFFFF   # Experimenter instruction
 
 # struct ofp_instruction_goto_table
@@ -230,9 +230,9 @@ OFP_INSTRUCTION_METER_SIZE = 8
 assert calcsize(OFP_INSTRUCTION_METER_PACK_STR) == OFP_INSTRUCTION_METER_SIZE
 
 #struct ofp_instruction_set_state
-OFP_INSTRUCTION_STATE_PACK_STR = '!HHI'
-OFP_INSTRUCTION_STATE_SIZE = 8
-assert calcsize(OFP_INSTRUCTION_STATE_PACK_STR) == OFP_INSTRUCTION_STATE_SIZE
+#OFP_INSTRUCTION_STATE_PACK_STR = '!HHI'
+#OFP_INSTRUCTION_STATE_SIZE = 8
+#assert calcsize(OFP_INSTRUCTION_STATE_PACK_STR) == OFP_INSTRUCTION_STATE_SIZE
 
 # enum ofp_action_type
 OFPAT_OUTPUT = 0    # Output to switch port.
@@ -253,6 +253,7 @@ OFPAT_DEC_NW_TTL = 24  # Decrement IP TTL.
 OFPAT_SET_FIELD = 25  # Set a header field using OXM TLV format.
 OFPAT_PUSH_PBB = 26  # Push a new PBB service tag (I-TAG)
 OFPAT_POP_PBB = 27  # Pop the outer PBB service tag (I-TAG)
+OFPAT_SET_STATE = 28 #Apply new state 
 OFPAT_EXPERIMENTER = 0xffff
 
 # struct ofp_action_header
@@ -312,6 +313,11 @@ OFP_ACTION_EXPERIMENTER_HEADER_PACK_STR = '!HHI'
 OFP_ACTION_EXPERIMENTER_HEADER_SIZE = 8
 assert (calcsize(OFP_ACTION_EXPERIMENTER_HEADER_PACK_STR) ==
         OFP_ACTION_EXPERIMENTER_HEADER_SIZE)
+
+#struct ofp_action_set_state
+OFP_ACTION_SET_STATE_PACK_STR = '!HHI'
+OFP_ACTION_SET_STATE_SIZE = 8
+assert calcsize(OFP_ACTION_SET_STATE_PACK_STR) == OFP_ACTION_SET_STATE_SIZE
 
 # ofp_switch_features
 OFP_SWITCH_FEATURES_PACK_STR = '!QIBB2xII'
