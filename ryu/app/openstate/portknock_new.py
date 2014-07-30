@@ -1,3 +1,4 @@
+
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -97,12 +98,12 @@ class OSPortKnocking(app_manager.RyuApp):
             match = datapath.ofproto_parser.OFPMatch(
                 metadata=state, eth_type=0x0800, ip_proto=17, udp_dst=PORT_LIST[state])
             if not state == 4:
-                actions = [datapath.ofproto_parser.OFPActionSetState(state +1)]
+                actions = [datapath.ofproto_parser.OFPActionSetState(state +1,0)]
                 inst = [datapath.ofproto_parser.OFPInstructionActions(
                     datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
             else:
                 actions = [datapath.ofproto_parser.OFPActionOutput(2, 0),
-                            datapath.ofproto_parser.OFPActionSetState(state)]
+                            datapath.ofproto_parser.OFPActionSetState(state,0)]
                 inst = [ datapath.ofproto_parser.OFPInstructionActions(
                     datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
             mod = datapath.ofproto_parser.OFPFlowMod(
@@ -115,7 +116,7 @@ class OSPortKnocking(app_manager.RyuApp):
             datapath.send_msg(mod)
 
         # se sbaglio sequenza, torno allo stato DEFAULT
-        actions = [datapath.ofproto_parser.OFPActionSetState(0)]
+        actions = [datapath.ofproto_parser.OFPActionSetState(0,0)]
         match = datapath.ofproto_parser.OFPMatch()
         inst = [datapath.ofproto_parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]

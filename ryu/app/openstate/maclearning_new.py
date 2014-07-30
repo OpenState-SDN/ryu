@@ -101,7 +101,7 @@ class OSMacLearning(app_manager.RyuApp):
                     else:
                         actions = [
                            datapath.ofproto_parser.OFPActionOutput(state, 0),
-                           datapath.ofproto_parser.OFPActionSetState(in_port)]
+                           datapath.ofproto_parser.OFPActionSetState(in_port,0)]
                         match = datapath.ofproto_parser.OFPMatch(
                             in_port=in_port, metadata=state)
                     

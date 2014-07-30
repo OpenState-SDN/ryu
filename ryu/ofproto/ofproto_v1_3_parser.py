@@ -3187,24 +3187,26 @@ class OFPActionSetState(OFPAction):
     Attribute        Description
     ================ ======================================================
     state            State instance
+    stage_id         Stage ID
     ================ ======================================================
     """
-    def __init__(self, state=0, type_=None, len_=None):
+    def __init__(self, state=0,stage_id=0,type_=None, len_=None):
         super(OFPActionSetState, self).__init__()
         self.type = ofproto.OFPAT_SET_STATE
         self.len = ofproto.OFP_ACTION_SET_STATE_SIZE
         self.state= state
+        self.stage_id= stage_id
 
     @classmethod
     def parser(cls, buf, offset):
-        (type_, len_, state) = struct.unpack_from(
+        (type_, len_, state, stage_id) = struct.unpack_from(
             ofproto.OFP_ACTION_SET_STATE_PACK_STR,
             buf, offset)
-        return cls(state)
+        return cls(state, stage_id)
 
     def serialize(self, buf, offset):
         msg_pack_into(ofproto.OFP_ACTION_SET_STATE_PACK_STR,
-                      buf, offset, self.type, self.len, self.state)
+                      buf, offset, self.type, self.len, self.state, self.stage_id)
 
 class OFPBucket(StringifyMixin):
     def __init__(self, weight=0, watch_port=ofproto.OFPP_ANY,
