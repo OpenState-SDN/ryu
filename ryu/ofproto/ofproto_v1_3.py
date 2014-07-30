@@ -203,7 +203,7 @@ OFPIT_APPLY_ACTIONS = 4  # Applies the action(s) immediately
 OFPIT_CLEAR_ACTIONS = 5  # Clears all actions from the datapath action
                          # set
 OFPIT_METER = 6  # Apply meter (rate limiter)
-#OFPIT_SET_STATE = 7 #Apply new state 
+
 OFPIT_EXPERIMENTER = 0xFFFF   # Experimenter instruction
 
 # struct ofp_instruction_goto_table
@@ -228,11 +228,6 @@ assert (calcsize(OFP_INSTRUCTION_ACTIONS_PACK_STR) ==
 OFP_INSTRUCTION_METER_PACK_STR = '!HHI'
 OFP_INSTRUCTION_METER_SIZE = 8
 assert calcsize(OFP_INSTRUCTION_METER_PACK_STR) == OFP_INSTRUCTION_METER_SIZE
-
-#struct ofp_instruction_set_state
-#OFP_INSTRUCTION_STATE_PACK_STR = '!HHI'
-#OFP_INSTRUCTION_STATE_SIZE = 8
-#assert calcsize(OFP_INSTRUCTION_STATE_PACK_STR) == OFP_INSTRUCTION_STATE_SIZE
 
 # enum ofp_action_type
 OFPAT_OUTPUT = 0    # Output to switch port.

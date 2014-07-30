@@ -2604,38 +2604,6 @@ class OFPInstructionMeter(OFPInstruction):
         msg_pack_into(ofproto.OFP_INSTRUCTION_METER_PACK_STR,
                       buf, offset, self.type, self.len, self.meter_id)
 
-"""
-@OFPInstruction.register_instruction_type([ofproto.OFPIT_SET_STATE])
-class OFPInstructionState(OFPInstruction):
-    
-    Set state instruction
-
-    This instruction applies the state. TO DO: look how deal with ofl msg instruction
-	and also cls
-    ================ ======================================================
-    Attribute        Description
-    ================ ======================================================
-    state            State instance
-    ================ ======================================================
-    
-
-    def __init__(self, state=0, type_=None, len_=None):
-        super(OFPInstructionState, self).__init__()
-        self.type = ofproto.OFPIT_SET_STATE
-        self.len = ofproto.OFP_INSTRUCTION_STATE_SIZE
-        self.state= state
-
-    @classmethod
-    def parser(cls, buf, offset):
-        (type_, len_, state) = struct.unpack_from(
-            ofproto.OFP_INSTRUCTION_STATE_PACK_STR,
-            buf, offset)
-        return cls(state)
-
-    def serialize(self, buf, offset):
-        msg_pack_into(ofproto.OFP_INSTRUCTION_STATE_PACK_STR,
-                      buf, offset, self.type, self.len, self.state)
-"""
 
 class OFPActionHeader(StringifyMixin):
     def __init__(self, type_, len_):
