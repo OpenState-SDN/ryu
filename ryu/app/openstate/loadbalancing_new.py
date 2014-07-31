@@ -86,8 +86,11 @@ class OSLoadBalancing(app_manager.RyuApp):
         
         # Reverse path flow
         for in_port in range(2, SWITCH_PORTS + 1):
-            match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
-            actions = [
+            src_ip="10.0.0.2"
+            match = datapath.ofproto_parser.OFPMatch(in_port=in_port, eth_type=0x800, ip_proto=6)
+            actions = [parser.OFPActionSetField(ipv4_src=src_ip),
+                parser.OFPActionSetField(eth_src="00:00:00:00:00:02"),
+                parser.OFPActionSetField(tcp_src=80),
                 datapath.ofproto_parser.OFPActionOutput(1,0)]
             inst = [datapath.ofproto_parser.OFPInstructionActions(
                 datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
@@ -129,14 +132,20 @@ class OSLoadBalancing(app_manager.RyuApp):
                     actions = [
                             datapath.ofproto_parser.OFPActionGroup(1)]
                     match = datapath.ofproto_parser.OFPMatch(
-                            in_port=in_port, metadata=state)
+                            in_port=in_port, metadata=state, eth_type=0x800, ip_proto=6)
                 else:
                     #stato 0 = default, stato x = porta di uscita x+1
+                    dest_ip="10.0.0."+str(state+1)
+                    dest_eth="00:00:00:00:00:0"+str(state+1)
+                    dest_tcp=(state+1)*100
                     actions = [
-                        datapath.ofproto_parser.OFPActionOutput(state+1, 0),
-                        datapath.ofproto_parser.OFPActionSetState(state)]
+                        parser.OFPActionSetField(ipv4_dst=dest_ip),
+                        parser.OFPActionSetField(eth_dst=dest_eth),
+                        parser.OFPActionSetField(tcp_dst=dest_tcp),
+                        parser.OFPActionOutput(state+1, 0),
+                        parser.OFPActionSetState(state, 0)]
                     match = datapath.ofproto_parser.OFPMatch(
-                        in_port=in_port, metadata=state)
+                        in_port=in_port, metadata=state, eth_type=0x800, ip_proto=6)
                 inst = [
                     datapath.ofproto_parser.OFPInstructionActions(
                         datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
@@ -156,8 +165,14 @@ class OSLoadBalancing(app_manager.RyuApp):
             # Action Bucket: <PWD port_i , SetState(i-1)
             for port in range(2,SWITCH_PORTS+1):
                 max_len = 2000
-                actions = [ofp_parser.OFPActionOutput(port, max_len),
-                    ofp_parser.OFPActionSetState(port-1)]
+                dest_ip="10.0.0."+str(port)
+                dest_eth="00:00:00:00:00:0"+str(port)
+                dest_tcp=(port)*100
+                actions = [ofp_parser.OFPActionSetField(ipv4_dst=dest_ip),
+                    ofp_parser.OFPActionSetField(eth_dst=dest_eth),
+                    ofp_parser.OFPActionSetField(tcp_dst=dest_tcp),
+                    ofp_parser.OFPActionOutput(port, max_len),
+                    ofp_parser.OFPActionSetState(port-1, 0)]
                 weight = 100
                 watch_port = 0
                 watch_group = 0
@@ -189,13 +204,13 @@ class OSLoadBalancing(app_manager.RyuApp):
 
     def send_key_lookup(self, datapath):
         ofp = datapath.ofproto
-        key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(
-            datapath, ofp.OFPSC_SET_L_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_TCP_DST,ofp.OXM_OF_TCP_SRC])
+        key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_TCP_SRC])
+        #key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_SET_L_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_TCP_DST,ofp.OXM_OF_TCP_SRC])
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
 
-        key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(
-            datapath, ofp.OFPSC_SET_U_EXTRACTOR,  4, [ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_TCP_DST,ofp.OXM_OF_TCP_SRC])
+        key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_SET_U_EXTRACTOR,  1, [ofp.OXM_OF_TCP_SRC])
+        #key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_SET_U_EXTRACTOR,  4, [ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_TCP_DST,ofp.OXM_OF_TCP_SRC])
         datapath.send_msg(key_update_extractor)
