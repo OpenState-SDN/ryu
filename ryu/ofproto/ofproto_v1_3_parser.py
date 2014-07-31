@@ -3267,6 +3267,7 @@ class OFPGroupMod(MsgBase):
                      OFPGT_SELECT
                      OFPGT_INDIRECT
                      OFPGT_FF
+                     OFPGT_RANDOM
     group_id         Group identifier
     buckets          list of ``OFPBucket``
     ================ ======================================================

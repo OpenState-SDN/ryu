@@ -410,6 +410,7 @@ OFPGT_ALL = 0  # All (multicast/broadcast) group.
 OFPGT_SELECT = 1  # Select group.
 OFPGT_INDIRECT = 2  # Indirect group.
 OFPGT_FF = 3  # Fast failover group.
+OFPGT_RANDOM = 4  # Random group.
 
 # struct ofp_bucket
 OFP_BUCKET_PACK_STR = '!HHII4x'
