@@ -5948,8 +5948,8 @@ class OFPKeyExtract(MsgBase):
         self.cookie_mask = cookie_mask
         self.table_id = table_id
         self.command = command
-	self.field_count=field_count
-	self.fields=fields
+        self.field_count=field_count
+        self.fields=fields
 #   	if self.field_count < ofproto.MAX_FIELD_COUNT:
 #	    for i in range(field_count,ofproto.MAX_FIELD_COUNT):
 #	        fields.append(0)  
@@ -5957,24 +5957,24 @@ class OFPKeyExtract(MsgBase):
 
 	#self.buf=bytearray()
     def _serialize_body(self):
-	
-	msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie,self.cookie_mask              ,self.table_id,self.command)
 
-	offset=ofproto.OFP_STATE_MOD_SIZE
-	
-	msg_pack_into(ofproto.OFP_STATE_MOD_EXTRACT_PACK_STR,self.buf,offset,self.field_count)
-	
-	offset += ofproto.OFP_STATE_MOD_EXTRACT_SIZE
+        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie,self.cookie_mask              ,self.table_id,self.command)
+
+        offset=ofproto.OFP_STATE_MOD_SIZE
+
+        msg_pack_into(ofproto.OFP_STATE_MOD_EXTRACT_PACK_STR,self.buf,offset,self.field_count)
+
+        offset += ofproto.OFP_STATE_MOD_EXTRACT_SIZE
         field_extract_format='!I'
-	#msg_pack_into(field_extract_format, self.buf,offset,self.fields[0])
-	
-	if self.field_count <= ofproto.MAX_FIELD_COUNT:
-	#for f in range(ofproto.MAX_FIELD_COUNT):
-	    for f in range(self.field_count):
-	        msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
-	        offset +=4
-	else:
-	    LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
+        #msg_pack_into(field_extract_format, self.buf,offset,self.fields[0])
+
+        if self.field_count <= ofproto.MAX_FIELD_COUNT:
+        #for f in range(ofproto.MAX_FIELD_COUNT):
+            for f in range(self.field_count):
+                msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
+                offset +=4
+        else:
+            LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
 
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
 class OFPStateEntry(MsgBase):

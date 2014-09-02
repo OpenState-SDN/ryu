@@ -63,6 +63,10 @@ class OSLoadBalancing(app_manager.RyuApp):
         Lookup-scope=IPV4_DST,IPV4_SRC,TCP_DST,TCP_SRC
         Update-scope=IPV4_DST,IPV4_SRC,TCP_DST,TCP_SRC
 
+        inport  | metadata  ||  actions
+        --------------------------------------
+                |           ||
+
              _______ 
             |       |--h2
         h1--|   S1  |--h3
@@ -87,6 +91,8 @@ class OSLoadBalancing(app_manager.RyuApp):
         If we keep the connection open, the responding EchoServer is always the same.
         If we open another connection (from the 2nd terminal of h1) maybe we get connected to another replica.
         If we close it and re-connect, maybe we are connected to another replica.
+        
+        With respect to basic application, here we want to test if we can put many SetState() actions in the same Instruction.
         '''
         
     def add_flow(self, datapath, table_miss=False):
@@ -169,6 +175,8 @@ class OSLoadBalancing(app_manager.RyuApp):
                         parser.OFPActionSetField(eth_dst=dest_eth),
                         parser.OFPActionSetField(tcp_dst=dest_tcp),
                         parser.OFPActionOutput(state+1, 0),
+                        parser.OFPActionSetState(state, 0),
+                        parser.OFPActionSetState(0, 0),
                         parser.OFPActionSetState(state, 0)]
                     match = parser.OFPMatch(
                         in_port=1, metadata=state, eth_type=0x800, ip_proto=6)
@@ -198,12 +206,15 @@ class OSLoadBalancing(app_manager.RyuApp):
                     ofp_parser.OFPActionSetField(eth_dst=dest_eth),
                     ofp_parser.OFPActionSetField(tcp_dst=dest_tcp),
                     ofp_parser.OFPActionOutput(port, max_len),
+                    ofp_parser.OFPActionSetState(port-1, 0),
+                    ofp_parser.OFPActionSetState(0, 0),
                     ofp_parser.OFPActionSetState(port-1, 0)]
-
+                
                 weight = 0
                 watch_port = ofp.OFPP_ANY
                 watch_group = ofp.OFPG_ANY
                 buckets.append(ofp_parser.OFPBucket(weight, watch_port, watch_group,actions))
+                #buckets.append(ofp_parser.OFPBucket(actions))
 
             group_id = 1
             req = ofp_parser.OFPGroupMod(datapath, ofp.OFPGC_ADD,
@@ -218,7 +229,6 @@ class OSLoadBalancing(app_manager.RyuApp):
     
     def send_features_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
-
         req = ofp_parser.OFPFeaturesRequest(datapath)
         datapath.send_msg(req)
 
