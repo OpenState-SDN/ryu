@@ -45,32 +45,32 @@ class OSMacLearning(app_manager.RyuApp):
         datapath = msg.datapath
         ofproto = datapath.ofproto
 
-        # install table-miss flow entry (if no rule matching, send it to
-        # controller)
-
         self.send_features_request(datapath)
         self.send_table_mod(datapath)
 
         self.send_key_lookup(datapath)
         self.send_key_update(datapath)
 
+        # install table-miss flow entry (if no rule matching, send it to controller)
         # self.add_flow(datapath, True)
+
+        # install other flow entries
         self.add_flow(datapath, False)
 
-# port considere in_port and state=metadata: matching headers are in_port
-# + metadata
     def add_flow(self, datapath, table_miss=False):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
+
         LOG.info("Configuring flow table for switch %d" % datapath.id)
+
         if table_miss:
             LOG.debug("Installing table miss...")
             actions = [parser.OFPActionOutput(
                 ofproto.OFPP_CONTROLLER, ofproto.OFPCML_NO_BUFFER)]
-            match = datapath.ofproto_parser.OFPMatch()
-            inst = [datapath.ofproto_parser.OFPInstructionActions(
-                datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
-            mod = datapath.ofproto_parser.OFPFlowMod(
+            match = parser.OFPMatch()
+            inst = [parser.OFPInstructionActions(
+                ofproto.OFPIT_APPLY_ACTIONS, actions)]
+            mod = parser.OFPFlowMod(
                 datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
                 command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
                 priority=0, buffer_id=ofproto.OFP_NO_BUFFER,
@@ -81,25 +81,41 @@ class OSMacLearning(app_manager.RyuApp):
             datapath.send_msg(mod)
 
         else:
-            for in_port in range(1, SWITCH_PORTS + 1):
+
+            '''
+
+            Lookup-scope=ETH_DST
+            Update-scope=ETH_SRC
+
+            # the state of a flow is the port where a host can be reached
+
+            match: state=0 & in_port=i  =>  action: set_state(i) & flood()
+            match: state=j & in_port=i  =>  action: set_state(i) & output(j)
+
+            '''
+
+            for in_port in range(1, SWITCH_PORTS + 1):  # for each port (from 1 to #ports)
                 LOG.info("Installing flow rule for port %d..." % in_port)
-                for state in range(SWITCH_PORTS + 1):
-                    if state == 0:
+                LOG.info(ofproto)
+                for state in range(SWITCH_PORTS + 1):   # for each state (from 0 to #ports)
+
+                    if state == 0:  # DEFAULT state
                         actions = [
-                            datapath.ofproto_parser.OFPActionOutput(
+                            parser.OFPActionOutput(
                                 ofproto.OFPP_FLOOD)]
-                        match = datapath.ofproto_parser.OFPMatch(
+                        match = parser.OFPMatch(
                             in_port=in_port, metadata=state)
+                    
                     else:
                         actions = [
-                            datapath.ofproto_parser.OFPActionOutput(state, 0)]
-                        match = datapath.ofproto_parser.OFPMatch(
+                           parser.OFPActionOutput(state, 0),
+                           parser.OFPActionSetState(in_port,0)]
+                        match = parser.OFPMatch(
                             in_port=in_port, metadata=state)
-                    inst = [datapath.ofproto_parser.OFPInstructionState(
-                        in_port),
-                        datapath.ofproto_parser.OFPInstructionActions(
-                            datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
-                    mod = datapath.ofproto_parser.OFPFlowMod(
+                    
+                    inst = [parser.OFPInstructionActions(
+                            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+                    mod = parser.OFPFlowMod(
                         datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
                         command=ofproto.OFPFC_ADD, idle_timeout=0,
                         hard_timeout=0, priority=32768,
@@ -111,14 +127,9 @@ class OSMacLearning(app_manager.RyuApp):
     def send_table_mod(self, datapath):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
+
         req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFULL)
         datapath.send_msg(req)
-
-    def add_state_entry(self, datapath):
-        ofproto = datapath.ofproto
-        state = datapath.ofproto_parser.OFPStateEntry(
-            datapath, ofproto.OFPSC_ADD_FLOW_STATE, 3, 1, [1, 2, 3],
-            cookie=0, cookie_mask=0, table_id=0)
 
     def send_features_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
@@ -128,6 +139,7 @@ class OSMacLearning(app_manager.RyuApp):
 
     def send_key_lookup(self, datapath):
         ofp = datapath.ofproto
+
         key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(
             datapath, ofp.OFPSC_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_ETH_DST])
         datapath.send_msg(key_lookup_extractor)
