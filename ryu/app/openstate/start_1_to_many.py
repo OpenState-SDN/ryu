@@ -25,7 +25,7 @@ print("Type \"nc 10.0.0.2 80\" in all h1's xterms\n")
 print("In order to test new path selection, close and reopen netcat")
 print("\nTo exit type \"ctrl+D\" or exit")
 print("*************************************************************************************")
-net = Mininet(topo=mytopo,switch=UserSwitch,controller=RemoteController,cleanup=True,autoSetMacs=True)
+net = Mininet(topo=mytopo,switch=UserSwitch,controller=RemoteController,cleanup=True,autoSetMacs=True,listenPort=6634)
 net.start()
 h1,h2,h3,h4  = net.hosts[0], net.hosts[1], net.hosts[2], net.hosts[3]
 for i in range(3):
