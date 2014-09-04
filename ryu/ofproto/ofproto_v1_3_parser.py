@@ -2605,38 +2605,6 @@ class OFPInstructionMeter(OFPInstruction):
                       buf, offset, self.type, self.len, self.meter_id)
 
 
-@OFPInstruction.register_instruction_type([ofproto.OFPIT_SET_STATE])
-class OFPInstructionState(OFPInstruction):
-    """
-    Set state instruction
-
-    This instruction applies the state. TO DO: look how deal with ofl msg instruction
-	and also cls
-    ================ ======================================================
-    Attribute        Description
-    ================ ======================================================
-    state            State instance
-    ================ ======================================================
-    """
-
-    def __init__(self, state=0, type_=None, len_=None):
-        super(OFPInstructionState, self).__init__()
-        self.type = ofproto.OFPIT_SET_STATE
-        self.len = ofproto.OFP_INSTRUCTION_STATE_SIZE
-        self.state= state
-
-    @classmethod
-    def parser(cls, buf, offset):
-        (type_, len_, state) = struct.unpack_from(
-            ofproto.OFP_INSTRUCTION_STATE_PACK_STR,
-            buf, offset)
-        return cls(state)
-
-    def serialize(self, buf, offset):
-        msg_pack_into(ofproto.OFP_INSTRUCTION_STATE_PACK_STR,
-                      buf, offset, self.type, self.len, self.state)
-
-
 class OFPActionHeader(StringifyMixin):
     def __init__(self, type_, len_):
         self.type = type_
@@ -3208,6 +3176,37 @@ class OFPActionExperimenter(OFPAction):
         if self.data:
             buf += self.data
 
+@OFPAction.register_action_type(ofproto.OFPAT_SET_STATE,ofproto.OFP_ACTION_SET_STATE_SIZE)
+class OFPActionSetState(OFPAction):
+    """ 
+    Set state action
+
+    This action applies the state. TO DO: look how deal with ofl msg instruction
+    and also cls
+    ================ ======================================================
+    Attribute        Description
+    ================ ======================================================
+    state            State instance
+    stage_id         Stage ID
+    ================ ======================================================
+    """
+    def __init__(self, state=0,stage_id=0,type_=None, len_=None):
+        super(OFPActionSetState, self).__init__()
+        self.type = ofproto.OFPAT_SET_STATE
+        self.len = ofproto.OFP_ACTION_SET_STATE_SIZE
+        self.state= state
+        self.stage_id= stage_id
+
+    @classmethod
+    def parser(cls, buf, offset):
+        (type_, len_, state, stage_id) = struct.unpack_from(
+            ofproto.OFP_ACTION_SET_STATE_PACK_STR,
+            buf, offset)
+        return cls(state, stage_id)
+
+    def serialize(self, buf, offset):
+        msg_pack_into(ofproto.OFP_ACTION_SET_STATE_PACK_STR,
+                      buf, offset, self.type, self.len, self.state, self.stage_id)
 
 class OFPBucket(StringifyMixin):
     def __init__(self, weight=0, watch_port=ofproto.OFPP_ANY,
@@ -3268,6 +3267,7 @@ class OFPGroupMod(MsgBase):
                      OFPGT_SELECT
                      OFPGT_INDIRECT
                      OFPGT_FF
+                     OFPGT_RANDOM
     group_id         Group identifier
     buckets          list of ``OFPBucket``
     ================ ======================================================
@@ -5948,8 +5948,8 @@ class OFPKeyExtract(MsgBase):
         self.cookie_mask = cookie_mask
         self.table_id = table_id
         self.command = command
-	self.field_count=field_count
-	self.fields=fields
+        self.field_count=field_count
+        self.fields=fields
 #   	if self.field_count < ofproto.MAX_FIELD_COUNT:
 #	    for i in range(field_count,ofproto.MAX_FIELD_COUNT):
 #	        fields.append(0)  
@@ -5957,24 +5957,24 @@ class OFPKeyExtract(MsgBase):
 
 	#self.buf=bytearray()
     def _serialize_body(self):
-	
-	msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie,self.cookie_mask              ,self.table_id,self.command)
 
-	offset=ofproto.OFP_STATE_MOD_SIZE
-	
-	msg_pack_into(ofproto.OFP_STATE_MOD_EXTRACT_PACK_STR,self.buf,offset,self.field_count)
-	
-	offset += ofproto.OFP_STATE_MOD_EXTRACT_SIZE
+        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie,self.cookie_mask              ,self.table_id,self.command)
+
+        offset=ofproto.OFP_STATE_MOD_SIZE
+
+        msg_pack_into(ofproto.OFP_STATE_MOD_EXTRACT_PACK_STR,self.buf,offset,self.field_count)
+
+        offset += ofproto.OFP_STATE_MOD_EXTRACT_SIZE
         field_extract_format='!I'
-	#msg_pack_into(field_extract_format, self.buf,offset,self.fields[0])
-	
-	if self.field_count <= ofproto.MAX_FIELD_COUNT:
-	#for f in range(ofproto.MAX_FIELD_COUNT):
-	    for f in range(self.field_count):
-	        msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
-	        offset +=4
-	else:
-	    LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
+        #msg_pack_into(field_extract_format, self.buf,offset,self.fields[0])
+
+        if self.field_count <= ofproto.MAX_FIELD_COUNT:
+        #for f in range(ofproto.MAX_FIELD_COUNT):
+            for f in range(self.field_count):
+                msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
+                offset +=4
+        else:
+            LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
 
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
 class OFPStateEntry(MsgBase):
