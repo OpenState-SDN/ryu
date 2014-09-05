@@ -50,10 +50,8 @@ time.sleep(1)
 print("\n********************************** HELP *********************************************")
 print("Type \"python echo_server.py 200\" in h2's xterm")
 print("Type \"nc 10.0.0.2 200\" in h1's xterm")
-print("Watching the tcpdump results, it is possible to see that forwarding consistency is guaranteed IN EACH DIRECTION\n"
-      "Since random selection in the group table sets the seed at switch initialization, we need to 'misalign' rand() outputs.\n"
-      "From h2's xterm type \"arp -s 10.0.0.3 00:00:00:00:00:03\" and \"nc 10.0.0.3 80\" and finally setup a new nc connection.\n"
-      "In order to test new path selection, close and reopen netcat")
+print("Watching the tcpdump results, it is possible to see that forwarding consistency is guaranteed IN EACH DIRECTION.\n"
+      "In order to test new path selection, close and reopen netcat.")
 print("\nTo exit type \"ctrl+D\" or exit")
 print("*************************************************************************************")
 net = Mininet(topo=mytopo,switch=UserSwitch,controller=RemoteController,cleanup=True,autoSetMacs=True,autoStaticArp=True,listenPort=6634)
