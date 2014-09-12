@@ -249,6 +249,7 @@ OFPAT_SET_FIELD = 25  # Set a header field using OXM TLV format.
 OFPAT_PUSH_PBB = 26  # Push a new PBB service tag (I-TAG)
 OFPAT_POP_PBB = 27  # Pop the outer PBB service tag (I-TAG)
 OFPAT_SET_STATE = 28 #Apply new state 
+OFPAT_SET_FLAG = 29 #Apply new global state 
 OFPAT_EXPERIMENTER = 0xffff
 
 # struct ofp_action_header
@@ -314,6 +315,11 @@ OFP_ACTION_SET_STATE_PACK_STR = '!HHIB7x'
 OFP_ACTION_SET_STATE_SIZE = 16
 assert calcsize(OFP_ACTION_SET_STATE_PACK_STR) == OFP_ACTION_SET_STATE_SIZE
 
+#struct ofp_action_set_state
+OFP_ACTION_SET_FLAG_PACK_STR = '!HHBB2x'
+OFP_ACTION_SET_FLAG_SIZE = 8
+assert calcsize(OFP_ACTION_SET_FLAG_PACK_STR) == OFP_ACTION_SET_FLAG_SIZE
+
 # ofp_switch_features
 OFP_SWITCH_FEATURES_PACK_STR = '!QIBB2xII'
 OFP_SWITCH_FEATURES_SIZE = 32
@@ -329,6 +335,7 @@ OFPC_IP_REASM = 1 << 5        # Can reassemble IP fragments.
 OFPC_QUEUE_STATS = 1 << 6    # Queue statistics.
 OFPC_PORT_BLOCKED = 1 << 8    # Switch will block looping ports.
 OFPC_TABLE_STATEFULL = 1 << 9 #Switch will extend to support xfsm
+OFPC_DATAPATH_GLOBAL_STATE = 1 << 10 #Global states
 
 # struct ofp_switch_config
 OFP_SWITCH_CONFIG_PACK_STR = '!HH'
@@ -341,6 +348,8 @@ OFPC_FRAG_NORMAL = 0    # No special handling for fragments.
 OFPC_FRAG_DROP = 1      # Drop fragments.
 OFPC_FRAG_REASM = 2     # Reassemble (only if OFPC_IP_REASM set).
 OFPC_FRAG_MASK = 3
+OFPC_DATAPATH_GLOBAL_STATES = 4
+OFPC_DATAPATH_GLOBAL_STATES_MASK = 4
 
 # enum ofp_table
 OFPTT_MAX = 0xfe
@@ -1178,6 +1187,7 @@ oxm_types = [
     oxm_fields.OpenFlowBasic('in_port', 0, oxm_fields.Int4),
     oxm_fields.OpenFlowBasic('in_phy_port', 1, oxm_fields.Int4),
     oxm_fields.OpenFlowBasic('metadata', 2, oxm_fields.Int8),
+    oxm_fields.OpenFlowBasic('flags', 40, oxm_fields.Int4),
     oxm_fields.OpenFlowBasic('eth_dst', 3, oxm_fields.MacAddr),
     oxm_fields.OpenFlowBasic('eth_src', 4, oxm_fields.MacAddr),
     oxm_fields.OpenFlowBasic('eth_type', 5, oxm_fields.Int2),
