@@ -568,6 +568,7 @@ class OFPSetConfig(MsgBase):
                   OFPC_FRAG_NORMAL
                   OFPC_FRAG_DROP
                   OFPC_FRAG_REASM
+                  OFPC_DATAPATH_GLOBAL_STATES
     miss_send_len Max bytes of new flow that datapath should send to the
                   controller
     ============= =========================================================
@@ -604,6 +605,7 @@ class Flow(object):
         self.in_port = 0
         self.in_phy_port = 0
         self.metadata = 0
+        self.flags = 0
         self.dl_dst = mac.DONTCARE
         self.dl_src = mac.DONTCARE
         self.dl_type = 0
@@ -646,6 +648,7 @@ class Flow(object):
 class FlowWildcards(object):
     def __init__(self):
         self.metadata_mask = 0
+        self.flags_mask = 0
         self.dl_dst_mask = 0
         self.dl_src_mask = 0
         self.vlan_vid_mask = 0
@@ -688,6 +691,7 @@ class OFPMatch(StringifyMixin):
     in_port          Integer 32bit   Switch input port
     in_phy_port      Integer 32bit   Switch physical input port
     metadata         Integer 64bit   Metadata passed between tables
+    flags            Integer 32bit   Global States
     eth_dst          MAC address     Ethernet destination address
     eth_src          MAC address     Ethernet source address
     eth_type         Integer 16bit   Ethernet frame type
@@ -865,6 +869,7 @@ class OFPMatch(StringifyMixin):
         OXM_OF_IN_PORT         Switch input port
         OXM_OF_IN_PHY_PORT     Switch physical input port
         OXM_OF_METADATA        Metadata passed between tables
+        OXM_OF_FLAGS           Global States
         OXM_OF_ETH_DST         Ethernet destination address
         OXM_OF_ETH_SRC         Ethernet source address
         OXM_OF_ETH_TYPE        Ethernet frame type
@@ -960,6 +965,15 @@ class OFPMatch(StringifyMixin):
                 header = ofproto.OXM_OF_METADATA_W
             self.append_field(header, self._flow.metadata,
                               self._wc.metadata_mask)
+
+
+        if self._wc.ft_test(ofproto.OFPXMT_OFB_FLAGS):
+            if self._wc.flags_mask == UINT32_MAX:
+                header = ofproto.OXM_OF_FLAGS
+            else:
+                header = ofproto.OXM_OF_FLAGS_W
+            self.append_field(header, self._flow.flags,
+                              self._wc.flags_mask)
 
         if self._wc.ft_test(ofproto.OFPXMT_OFB_ETH_DST):
             if self._wc.dl_dst_mask:
@@ -1224,6 +1238,14 @@ class OFPMatch(StringifyMixin):
         self._wc.ft_set(ofproto.OFPXMT_OFB_METADATA)
         self._wc.metadata_mask = mask
         self._flow.metadata = metadata & mask
+
+    def set_flags(self, flags):
+        self.set_flags_masked(flags, UINT32_MAX)
+
+    def set_flags_masked(self, flags, mask):
+        self._wc.ft_set(ofproto.OFPXMT_OFB_FLAGS)
+        self._wc.flags_mask = mask
+        self._flow.flags = flags & mask
 
     def set_dl_dst(self, dl_dst):
         self._wc.ft_set(ofproto.OFPXMT_OFB_ETH_DST)
@@ -1576,6 +1598,17 @@ class MTMetadata(OFPMatchField):
 
     def __init__(self, header, value, mask=None):
         super(MTMetadata, self).__init__(header)
+        self.value = value
+        self.mask = mask
+
+
+@OFPMatchField.register_field_header([ofproto.OXM_OF_FLAGS,
+                                      ofproto.OXM_OF_FLAGS_W])
+class MTFlags(OFPMatchField):
+    pack_str = '!I'
+
+    def __init__(self, header, value, mask=None):
+        super(MTFlags, self).__init__(header)
         self.value = value
         self.mask = mask
 
@@ -3207,6 +3240,39 @@ class OFPActionSetState(OFPAction):
     def serialize(self, buf, offset):
         msg_pack_into(ofproto.OFP_ACTION_SET_STATE_PACK_STR,
                       buf, offset, self.type, self.len, self.state, self.stage_id)
+
+@OFPAction.register_action_type(ofproto.OFPAT_SET_FLAG,ofproto.OFP_ACTION_SET_FLAG_SIZE)
+class OFPActionSetFlag(OFPAction):
+    """ 
+    Set flag action
+
+    This action updates a flag in the switch global state.
+    
+    ================ ======================================================
+    Attribute        Description
+    ================ ======================================================
+    flag             Flag index
+    value            Flag value
+    ================ ======================================================
+    """
+    def __init__(self, flag=1,value=0,type_=None, len_=None):
+        super(OFPActionSetFlag, self).__init__()
+        self.type = ofproto.OFPAT_SET_FLAG
+        self.len = ofproto.OFP_ACTION_SET_FLAG_SIZE
+        self.flag= flag
+        self.value= value
+
+    @classmethod
+    def parser(cls, buf, offset):
+        (type_, len_, flag, value) = struct.unpack_from(
+            ofproto.OFP_ACTION_SET_FLAG_PACK_STR,
+            buf, offset)
+        return cls(flag, value)
+
+    def serialize(self, buf, offset):
+        msg_pack_into(ofproto.OFP_ACTION_SET_FLAG_PACK_STR,
+                      buf, offset, self.type, self.len, self.flag, self.value)
+
 
 class OFPBucket(StringifyMixin):
     def __init__(self, weight=0, watch_port=ofproto.OFPP_ANY,

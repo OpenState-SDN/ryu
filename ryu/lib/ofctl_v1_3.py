@@ -437,6 +437,8 @@ def match_to_str(ofmatch):
             ofproto_v1_3.OXM_OF_MPLS_BOS: 'mpls_bos',
             ofproto_v1_3.OXM_OF_METADATA: 'metadata',
             ofproto_v1_3.OXM_OF_METADATA_W: 'metadata',
+            ofproto_v1_3.OXM_OF_FLAGS: 'flags',
+            ofproto_v1_3.OXM_OF_FLAGS_W: 'flags',
             ofproto_v1_3.OXM_OF_ARP_OP: 'arp_op',
             ofproto_v1_3.OXM_OF_ARP_SPA: 'arp_spa',
             ofproto_v1_3.OXM_OF_ARP_TPA: 'arp_tpa',
