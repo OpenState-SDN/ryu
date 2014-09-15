@@ -334,8 +334,7 @@ OFPC_GROUP_STATS = 1 << 3    # Group statistics.
 OFPC_IP_REASM = 1 << 5        # Can reassemble IP fragments.
 OFPC_QUEUE_STATS = 1 << 6    # Queue statistics.
 OFPC_PORT_BLOCKED = 1 << 8    # Switch will block looping ports.
-OFPC_TABLE_STATEFULL = 1 << 9 #Switch will extend to support xfsm
-OFPC_DATAPATH_GLOBAL_STATE = 1 << 10 #Global states
+OFPC_OPENSTATE = 1 << 9 # Switch will extend to support OpenState features
 
 # struct ofp_switch_config
 OFP_SWITCH_CONFIG_PACK_STR = '!HH'
@@ -348,8 +347,6 @@ OFPC_FRAG_NORMAL = 0    # No special handling for fragments.
 OFPC_FRAG_DROP = 1      # Drop fragments.
 OFPC_FRAG_REASM = 2     # Reassemble (only if OFPC_IP_REASM set).
 OFPC_FRAG_MASK = 3
-OFPC_DATAPATH_GLOBAL_STATES = 4
-OFPC_DATAPATH_GLOBAL_STATES_MASK = 4
 
 # enum ofp_table
 OFPTT_MAX = 0xfe

@@ -568,7 +568,6 @@ class OFPSetConfig(MsgBase):
                   OFPC_FRAG_NORMAL
                   OFPC_FRAG_DROP
                   OFPC_FRAG_REASM
-                  OFPC_DATAPATH_GLOBAL_STATES
     miss_send_len Max bytes of new flow that datapath should send to the
                   controller
     ============= =========================================================

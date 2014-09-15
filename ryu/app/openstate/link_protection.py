@@ -29,11 +29,11 @@ from ryu.topology import event
 LOG = logging.getLogger('app.openstate.masked_match')
 
 
-class OSPortKnocking(app_manager.RyuApp):
+class OSLinkProtection(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(OSPortKnocking, self).__init__(*args, **kwargs)
+        super(OSLinkProtection, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -43,7 +43,6 @@ class OSPortKnocking(app_manager.RyuApp):
         ofproto = datapath.ofproto
 
         self.send_features_request(datapath)
-        self.send_set_config(datapath)
 
         self.add_flow(datapath)
 
@@ -134,12 +133,6 @@ class OSPortKnocking(app_manager.RyuApp):
             out_group=ofproto.OFPG_ANY,
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
-
-    def send_set_config(self, datapath):
-        ofp = datapath.ofproto
-        ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPSetConfig(datapath, ofp.OFPC_DATAPATH_GLOBAL_STATES)
-        datapath.send_msg(req)
 
     def send_features_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
