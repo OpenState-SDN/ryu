@@ -24,6 +24,7 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.topology import event
+import time
 
 
 LOG = logging.getLogger('app.openstate.masked_match')
@@ -41,16 +42,22 @@ class OSLinkProtection(app_manager.RyuApp):
         msg = ev.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto
-
         self.send_features_request(datapath)
-
         self.add_flow(datapath)
+
+        time.sleep(10)
+        self.send_reset_flag_mod(datapath)
+        time.sleep(10)
+        string="1*00*1101"
+        offset=1
+        self.send_modify_flag_mod(datapath,string,offset)
+
 
     def add_flow(self, datapath, table_miss=False):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
            
-        match = parser.OFPMatch(in_port=1,eth_type=0x800,flags=(int("0",2),int("1",2)))
+        match = parser.OFPMatch(in_port=1,eth_type=0x800,flags=parser.maskedflags("0",1))
         actions = [
             parser.OFPActionOutput(2,0)]
         inst = [parser.OFPInstructionActions(
@@ -64,7 +71,7 @@ class OSLinkProtection(app_manager.RyuApp):
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
         
-        match = parser.OFPMatch(in_port=1,eth_type=0x800,flags=(int("1",2),int("1",2)))
+        match = parser.OFPMatch(in_port=1,eth_type=0x800,flags=parser.maskedflags("1"))
         actions = [
             parser.OFPActionOutput(3,0)]
         inst = [parser.OFPInstructionActions(
@@ -80,7 +87,7 @@ class OSLinkProtection(app_manager.RyuApp):
         
         match = parser.OFPMatch(in_port=2,eth_type=0x0800,ip_proto=6, tcp_dst=33333)
         actions = [
-            parser.OFPActionSetFlag(1,1)]
+            parser.OFPActionSetFlag("1")]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
         mod = parser.OFPFlowMod(
@@ -94,7 +101,7 @@ class OSLinkProtection(app_manager.RyuApp):
 
         match = parser.OFPMatch(in_port=3,eth_type=0x0800,ip_proto=6, tcp_dst=22222)
         actions = [
-            parser.OFPActionSetFlag(1,0)]
+            parser.OFPActionSetFlag("0")]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
         mod = parser.OFPFlowMod(
@@ -138,3 +145,17 @@ class OSLinkProtection(app_manager.RyuApp):
         ofp_parser = datapath.ofproto_parser
         req = ofp_parser.OFPFeaturesRequest(datapath)
         datapath.send_msg(req)
+
+    def send_reset_flag_mod(self, datapath):
+        ofproto = datapath.ofproto
+        msg = datapath.ofproto_parser.OFPFlagMod(
+            datapath, ofproto.OFPSC_RESET_FLAGS)
+        datapath.send_msg(msg)
+
+    def send_modify_flag_mod(self, datapath, flag_string, offset_value=1):
+        ofproto = datapath.ofproto
+        ofp_parser = datapath.ofproto_parser
+        (flag, flag_mask) = ofp_parser.maskedflags(flag_string,offset_value)
+        msg = datapath.ofproto_parser.OFPFlagMod(
+            datapath, ofproto.OFPSC_MODIFY_FLAGS, flag, flag_mask)
+        datapath.send_msg(msg)

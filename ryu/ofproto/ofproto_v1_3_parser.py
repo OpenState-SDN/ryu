@@ -72,6 +72,37 @@ def _register_parser(cls):
     _MSG_PARSERS[cls.cls_msg_type] = cls.parser
     return cls
 
+'''
+Flags are 32, numbered from 1 to 32 from right to left
+
+maskedflags("0*1100")  -> **************************0*1100 -> (12,47)
+maskedflags("0*1100",12)   -> ***************0*1100*********** -> (24576, 96256)
+
+'''
+def maskedflags(string,offset=1):
+    import re
+    str_len=len(string)
+    if re.search(r'[^01*]', string) or str_len>32 or str_len<1:
+        print("ERROR: flags string can only contain 0,1 and * and must have at least 1 bit and at most 32 bits!")
+        return (0,0)
+    if offset>32 or offset<1:
+        print("ERROR: offset must be in range 1-32!")
+        return (0,0)
+    if str_len-1+offset>32:
+        print("ERROR: offset is too big")
+        return (0,0)
+
+    mask=['0']*32
+    value=['0']*32
+
+    for i in range(offset-1,str_len+offset-1):
+        if not string[str_len-1+offset-1-i]=="*":
+            mask[31-i]="1"
+            value[31-i]=string[str_len-1+offset-1-i]
+    mask=''.join(mask)
+    value=''.join(value)
+    return (int(value,2),int(mask,2))
+
 
 @ofproto_parser.register_msg_parser(ofproto.OFP_VERSION)
 def msg_parser(datapath, version, msg_type, msg_len, xid, buf):
@@ -3245,32 +3276,32 @@ class OFPActionSetFlag(OFPAction):
     """ 
     Set flag action
 
-    This action updates a flag in the switch global state.
+    This action updates flags in the switch global state.
     
     ================ ======================================================
     Attribute        Description
     ================ ======================================================
-    flag             Flag index
-    value            Flag value
+    value            Masked Flags value
+    offset           Offset value
     ================ ======================================================
     """
-    def __init__(self, flag=1,value=0,type_=None, len_=None):
+    def __init__(self, value, offset_value=1, type_=None, len_=None):
         super(OFPActionSetFlag, self).__init__()
         self.type = ofproto.OFPAT_SET_FLAG
         self.len = ofproto.OFP_ACTION_SET_FLAG_SIZE
-        self.flag= flag
-        self.value= value
+        (self.value, self.mask) = maskedflags(value,offset_value)
+        print((self.value, self.mask))
 
     @classmethod
     def parser(cls, buf, offset):
-        (type_, len_, flag, value) = struct.unpack_from(
+        (type_, len_, value, mask) = struct.unpack_from(
             ofproto.OFP_ACTION_SET_FLAG_PACK_STR,
             buf, offset)
-        return cls(flag, value)
+        return cls(value, mask)
 
     def serialize(self, buf, offset):
         msg_pack_into(ofproto.OFP_ACTION_SET_FLAG_PACK_STR,
-                      buf, offset, self.type, self.len, self.flag, self.value)
+                      buf, offset, self.type, self.len, self.value, self.mask)
 
 
 class OFPBucket(StringifyMixin):
@@ -6063,3 +6094,19 @@ class OFPStateEntry(MsgBase):
 	for element in self.keys:
 	    element.serialized(self.buf,offset)
 	    offset+=element.len
+
+
+@_set_msg_type(ofproto.OFPT_FLAG_MOD)
+class OFPFlagMod(MsgBase):
+    def __init__(self, datapath, command, flag=0, flag_mask=0,
+                 ):
+        super(OFPFlagMod, self).__init__(datapath)
+        self.flag = flag
+        self.flag_mask = flag_mask
+        self.command = command
+
+    
+    def _serialize_body(self):
+
+        msg_pack_into(ofproto.OFP_FLAG_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.flag,self.flag_mask,self.command)
+        offset=ofproto.OFP_FLAG_MOD_SIZE

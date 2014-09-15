@@ -63,6 +63,7 @@ OFPT_SET_ASYNC = 28    # Controller/switch message
 
 OFPT_METER_MOD = 29    # Controller/switch message
 OFPT_STATE_MOD = 30  #Controller/switch message
+OFPT_FLAG_MOD = 31  #Controller/switch message
  
 # struct ofp_port
 OFP_MAX_PORT_NAME_LEN = 16
@@ -316,8 +317,8 @@ OFP_ACTION_SET_STATE_SIZE = 16
 assert calcsize(OFP_ACTION_SET_STATE_PACK_STR) == OFP_ACTION_SET_STATE_SIZE
 
 #struct ofp_action_set_state
-OFP_ACTION_SET_FLAG_PACK_STR = '!HHBB2x'
-OFP_ACTION_SET_FLAG_SIZE = 8
+OFP_ACTION_SET_FLAG_PACK_STR = '!HHII4x'
+OFP_ACTION_SET_FLAG_SIZE = 16
 assert calcsize(OFP_ACTION_SET_FLAG_PACK_STR) == OFP_ACTION_SET_FLAG_SIZE
 
 # ofp_switch_features
@@ -480,6 +481,15 @@ OFP_METER_BAND_EXPERIMENTER_PACK_STR = '!HHIII'
 OFP_METER_BAND_EXPERIMENTER_SIZE = 16
 assert (calcsize(OFP_METER_BAND_EXPERIMENTER_PACK_STR) ==
         OFP_METER_BAND_EXPERIMENTER_SIZE)
+
+#state ofp_flag_mod
+OFP_FLAG_MOD_PACK_STR='!IIB7x'
+OFP_FLAG_MOD_SIZE =24
+assert (calcsize(OFP_FLAG_MOD_PACK_STR)) + OFP_HEADER_SIZE ==OFP_FLAG_MOD_SIZE
+
+#enum ofp_flag_mod_command 
+OFPSC_MODIFY_FLAGS = 0
+OFPSC_RESET_FLAGS = 1
 
 #state ofp_state_mod
 OFP_STATE_MOD_PACK_STR='!QQBB'
