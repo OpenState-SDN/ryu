@@ -96,7 +96,6 @@ class OSMacLearning(app_manager.RyuApp):
 
             for in_port in range(1, SWITCH_PORTS + 1):  # for each port (from 1 to #ports)
                 LOG.info("Installing flow rule for port %d..." % in_port)
-                LOG.info(ofproto)
                 for state in range(SWITCH_PORTS + 1):   # for each state (from 0 to #ports)
 
                     if state == 0:  # DEFAULT state
