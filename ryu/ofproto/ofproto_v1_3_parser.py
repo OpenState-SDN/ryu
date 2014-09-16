@@ -635,6 +635,7 @@ class Flow(object):
         self.in_port = 0
         self.in_phy_port = 0
         self.metadata = 0
+        self.state = 0
         self.flags = 0
         self.dl_dst = mac.DONTCARE
         self.dl_src = mac.DONTCARE
@@ -721,6 +722,7 @@ class OFPMatch(StringifyMixin):
     in_port          Integer 32bit   Switch input port
     in_phy_port      Integer 32bit   Switch physical input port
     metadata         Integer 64bit   Metadata passed between tables
+    state            Integer 32bit   Flow State
     flags            Integer 32bit   Global States
     eth_dst          MAC address     Ethernet destination address
     eth_src          MAC address     Ethernet source address
@@ -996,6 +998,9 @@ class OFPMatch(StringifyMixin):
             self.append_field(header, self._flow.metadata,
                               self._wc.metadata_mask)
 
+        if self._wc.ft_test(ofproto.OFPXMT_OFB_STATE):
+            self.append_field(ofproto.OXM_OF_STATE,
+                              self._flow.state)
 
         if self._wc.ft_test(ofproto.OFPXMT_OFB_FLAGS):
             if self._wc.flags_mask == UINT32_MAX:
@@ -1268,6 +1273,10 @@ class OFPMatch(StringifyMixin):
         self._wc.ft_set(ofproto.OFPXMT_OFB_METADATA)
         self._wc.metadata_mask = mask
         self._flow.metadata = metadata & mask
+
+    def set_state(self, state):
+        self._wc.ft_set(ofproto.OFPXMT_OFB_STATE)
+        self._flow.state = state
 
     def set_flags(self, flags):
         self.set_flags_masked(flags, UINT32_MAX)
@@ -1631,6 +1640,13 @@ class MTMetadata(OFPMatchField):
         self.value = value
         self.mask = mask
 
+@OFPMatchField.register_field_header([ofproto.OXM_OF_STATE])
+class MTState(OFPMatchField):
+    pack_str = '!I'
+
+    def __init__(self, header, value, mask=None):
+        super(MTState, self).__init__(header)
+        self.value = value
 
 @OFPMatchField.register_field_header([ofproto.OXM_OF_FLAGS,
                                       ofproto.OXM_OF_FLAGS_W])

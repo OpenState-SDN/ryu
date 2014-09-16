@@ -1194,7 +1194,6 @@ oxm_types = [
     oxm_fields.OpenFlowBasic('in_port', 0, oxm_fields.Int4),
     oxm_fields.OpenFlowBasic('in_phy_port', 1, oxm_fields.Int4),
     oxm_fields.OpenFlowBasic('metadata', 2, oxm_fields.Int8),
-    oxm_fields.OpenFlowBasic('flags', 40, oxm_fields.Int4),
     oxm_fields.OpenFlowBasic('eth_dst', 3, oxm_fields.MacAddr),
     oxm_fields.OpenFlowBasic('eth_src', 4, oxm_fields.MacAddr),
     oxm_fields.OpenFlowBasic('eth_type', 5, oxm_fields.Int2),
@@ -1232,6 +1231,8 @@ oxm_types = [
     oxm_fields.OpenFlowBasic('pbb_isid', 37, oxm_fields.Int3),
     oxm_fields.OpenFlowBasic('tunnel_id', 38, oxm_fields.Int8),
     oxm_fields.OpenFlowBasic('ipv6_exthdr', 39, oxm_fields.Int2),
+    oxm_fields.OpenFlowBasic('flags', 40, oxm_fields.Int4),
+    oxm_fields.OpenFlowBasic('state', 41, oxm_fields.Int4),
     oxm_fields.ONFExperimenter('pbb_uca', 2560, oxm_fields.Int1),
 ]
 
