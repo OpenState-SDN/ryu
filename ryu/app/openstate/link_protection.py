@@ -45,19 +45,21 @@ class OSLinkProtection(app_manager.RyuApp):
         self.send_features_request(datapath)
         self.add_flow(datapath)
 
+        '''
         time.sleep(10)
         self.send_reset_flag_mod(datapath)
         time.sleep(10)
         string="1*00*1101"
         offset=1
         self.send_modify_flag_mod(datapath,string,offset)
+        '''
 
 
     def add_flow(self, datapath, table_miss=False):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
            
-        match = parser.OFPMatch(in_port=1,eth_type=0x800,flags=parser.maskedflags("0",1))
+        match = parser.OFPMatch(in_port=1,eth_type=0x800,flags=parser.maskedflags("0"))
         actions = [
             parser.OFPActionOutput(2,0)]
         inst = [parser.OFPInstructionActions(

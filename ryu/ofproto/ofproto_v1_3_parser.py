@@ -3290,7 +3290,6 @@ class OFPActionSetFlag(OFPAction):
         self.type = ofproto.OFPAT_SET_FLAG
         self.len = ofproto.OFP_ACTION_SET_FLAG_SIZE
         (self.value, self.mask) = maskedflags(value,offset_value)
-        print((self.value, self.mask))
 
     @classmethod
     def parser(cls, buf, offset):
