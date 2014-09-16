@@ -151,14 +151,14 @@ class OSLoadBalancing(app_manager.RyuApp):
                     actions = [
                             parser.OFPActionGroup(1)]
                     match = parser.OFPMatch(
-                            in_port=1, metadata=state, eth_type=0x800)
+                            in_port=1, state=state, eth_type=0x800)
                 else:
                     # state x means output port x+1
                     actions = [
                         parser.OFPActionOutput(state+1, 0),
                         parser.OFPActionSetState(state, 0)]
                     match = parser.OFPMatch(
-                        in_port=1, metadata=state, eth_type=0x800)
+                        in_port=1, state=state, eth_type=0x800)
                 inst = [
                     parser.OFPInstructionActions(
                         ofproto.OFPIT_APPLY_ACTIONS, actions)]
@@ -287,14 +287,14 @@ class OSLoadBalancing(app_manager.RyuApp):
                     actions = [
                             parser.OFPActionGroup(1)]
                     match = parser.OFPMatch(
-                            in_port=4, metadata=state, eth_type=0x800)
+                            in_port=4, state=state, eth_type=0x800)
                 else:
                     # state x means output port x+1
                     actions = [
                         parser.OFPActionOutput(state, 0),
                         parser.OFPActionSetState(state, 0)]
                     match = parser.OFPMatch(
-                        in_port=4, metadata=state, eth_type=0x800)
+                        in_port=4, state=state, eth_type=0x800)
                 inst = [
                     parser.OFPInstructionActions(
                         ofproto.OFPIT_APPLY_ACTIONS, actions)]

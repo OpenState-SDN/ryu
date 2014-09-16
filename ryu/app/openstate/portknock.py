@@ -102,7 +102,7 @@ class OSPortKnocking(app_manager.RyuApp):
         '''
         for state in range(len(PORT_LIST)):
             match = parser.OFPMatch(
-                metadata=state, eth_type=0x0800, ip_proto=17, udp_dst=PORT_LIST[state])
+                state=state, eth_type=0x0800, ip_proto=17, udp_dst=PORT_LIST[state])
             if not state == 4:
                 actions = [parser.OFPActionSetState(state +1,0)]
                 inst = [parser.OFPInstructionActions(
