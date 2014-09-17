@@ -88,8 +88,9 @@ class OSLinkProtection(app_manager.RyuApp):
         datapath.send_msg(mod)
         
         match = parser.OFPMatch(in_port=2,eth_type=0x0800,ip_proto=6, tcp_dst=33333)
+        (flag, flag_mask) = ofp_parser.maskedflags("1")
         actions = [
-            parser.OFPActionSetFlag("1")]
+            parser.OFPActionSetFlag(flag, flag_mask)]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
         mod = parser.OFPFlowMod(
@@ -102,8 +103,9 @@ class OSLinkProtection(app_manager.RyuApp):
         datapath.send_msg(mod)
 
         match = parser.OFPMatch(in_port=3,eth_type=0x0800,ip_proto=6, tcp_dst=22222)
+        (flag, flag_mask) = ofp_parser.maskedflags("0")
         actions = [
-            parser.OFPActionSetFlag("0")]
+            parser.OFPActionSetFlag(flag, flag_mask)]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
         mod = parser.OFPFlowMod(

@@ -73,32 +73,32 @@ def _register_parser(cls):
     return cls
 
 '''
-Flags are 32, numbered from 1 to 32 from right to left
+Flags are 32, numbered from 0 to 31 from right to left
 
-maskedflags("0*1100")  -> **************************0*1100 -> (12,47)
-maskedflags("0*1100",12)   -> ***************0*1100*********** -> (24576, 96256)
+maskedflags("0*1100")       -> **************************0*1100 -> (12,47)
+maskedflags("0*1100",12)    -> ***************0*1100*********** -> (49152, 192512)
 
 '''
-def maskedflags(string,offset=1):
+def maskedflags(string,offset=0):
     import re
     str_len=len(string)
-    if re.search(r'[^01*]', string) or str_len>32 or str_len<1:
+    if re.search('r[^01*]', string) or str_len>32 or str_len<1:
         print("ERROR: flags string can only contain 0,1 and * and must have at least 1 bit and at most 32 bits!")
         return (0,0)
-    if offset>32 or offset<1:
-        print("ERROR: offset must be in range 1-32!")
+    if offset>31 or offset<0:
+        print("ERROR: offset must be in range 0-31!")
         return (0,0)
-    if str_len-1+offset>32:
+    if str_len+offset>32:
         print("ERROR: offset is too big")
         return (0,0)
 
     mask=['0']*32
     value=['0']*32
 
-    for i in range(offset-1,str_len+offset-1):
-        if not string[str_len-1+offset-1-i]=="*":
+    for i in range(offset,str_len+offset):
+        if not string[str_len-1+offset-i]=="*":
             mask[31-i]="1"
-            value[31-i]=string[str_len-1+offset-1-i]
+            value[31-i]=string[str_len-1+offset-i]
     mask=''.join(mask)
     value=''.join(value)
     return (int(value,2),int(mask,2))
@@ -3297,15 +3297,16 @@ class OFPActionSetFlag(OFPAction):
     ================ ======================================================
     Attribute        Description
     ================ ======================================================
-    value            Masked Flags value
-    offset           Offset value
+    value            Flags value
+    mask             Mask value
     ================ ======================================================
     """
-    def __init__(self, value, offset_value=1, type_=None, len_=None):
+    def __init__(self, value, mask=0xffffffff, type_=None, len_=None):
         super(OFPActionSetFlag, self).__init__()
         self.type = ofproto.OFPAT_SET_FLAG
         self.len = ofproto.OFP_ACTION_SET_FLAG_SIZE
-        (self.value, self.mask) = maskedflags(value,offset_value)
+        self.value = value
+        self.mask = mask
 
     @classmethod
     def parser(cls, buf, offset):
