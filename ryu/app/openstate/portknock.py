@@ -102,7 +102,7 @@ class OSPortKnocking(app_manager.RyuApp):
         '''
         for state in range(len(PORT_LIST)):
             match = parser.OFPMatch(
-                metadata=state, eth_type=0x0800, ip_proto=17, udp_dst=PORT_LIST[state])
+                state=state, eth_type=0x0800, ip_proto=17, udp_dst=PORT_LIST[state])
             if not state == 4:
                 actions = [parser.OFPActionSetState(state +1,0)]
                 inst = [parser.OFPInstructionActions(
@@ -139,7 +139,7 @@ class OSPortKnocking(app_manager.RyuApp):
     def send_table_mod(self, datapath):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFULL)
+        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
 
     def send_features_request(self, datapath):

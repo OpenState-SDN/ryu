@@ -63,6 +63,7 @@ OFPT_SET_ASYNC = 28    # Controller/switch message
 
 OFPT_METER_MOD = 29    # Controller/switch message
 OFPT_STATE_MOD = 30  #Controller/switch message
+OFPT_FLAG_MOD = 31  #Controller/switch message
  
 # struct ofp_port
 OFP_MAX_PORT_NAME_LEN = 16
@@ -315,9 +316,9 @@ OFP_ACTION_SET_STATE_PACK_STR = '!HHIB7x'
 OFP_ACTION_SET_STATE_SIZE = 16
 assert calcsize(OFP_ACTION_SET_STATE_PACK_STR) == OFP_ACTION_SET_STATE_SIZE
 
-#struct ofp_action_set_state
-OFP_ACTION_SET_FLAG_PACK_STR = '!HHBB2x'
-OFP_ACTION_SET_FLAG_SIZE = 8
+#struct ofp_action_set_flag
+OFP_ACTION_SET_FLAG_PACK_STR = '!HHII4x'
+OFP_ACTION_SET_FLAG_SIZE = 16
 assert calcsize(OFP_ACTION_SET_FLAG_PACK_STR) == OFP_ACTION_SET_FLAG_SIZE
 
 # ofp_switch_features
@@ -334,8 +335,7 @@ OFPC_GROUP_STATS = 1 << 3    # Group statistics.
 OFPC_IP_REASM = 1 << 5        # Can reassemble IP fragments.
 OFPC_QUEUE_STATS = 1 << 6    # Queue statistics.
 OFPC_PORT_BLOCKED = 1 << 8    # Switch will block looping ports.
-OFPC_TABLE_STATEFULL = 1 << 9 #Switch will extend to support xfsm
-OFPC_DATAPATH_GLOBAL_STATE = 1 << 10 #Global states
+OFPC_OPENSTATE = 1 << 9 # Switch will extend to support OpenState features
 
 # struct ofp_switch_config
 OFP_SWITCH_CONFIG_PACK_STR = '!HH'
@@ -348,8 +348,6 @@ OFPC_FRAG_NORMAL = 0    # No special handling for fragments.
 OFPC_FRAG_DROP = 1      # Drop fragments.
 OFPC_FRAG_REASM = 2     # Reassemble (only if OFPC_IP_REASM set).
 OFPC_FRAG_MASK = 3
-OFPC_DATAPATH_GLOBAL_STATES = 4
-OFPC_DATAPATH_GLOBAL_STATES_MASK = 4
 
 # enum ofp_table
 OFPTT_MAX = 0xfe
@@ -366,7 +364,7 @@ OFPTC_TABLE_MISS_CONTROLLER = 0
 OFPTC_TABLE_MISS_CONTINUE = 1 << 0
 OFPTC_TABLE_MISS_DROP = 1 << 1
 OFPTC_TABLE_MISS_MASK = 3
-OFPTC_TABLE_STATEFULL = 1 << 4
+OFPTC_TABLE_STATEFUL = 1 << 4
 
 # struct ofp_flow_mod
 _OFP_FLOW_MOD_PACK_STR0 = 'QQBBHHHIIIH2x'
@@ -483,6 +481,15 @@ OFP_METER_BAND_EXPERIMENTER_PACK_STR = '!HHIII'
 OFP_METER_BAND_EXPERIMENTER_SIZE = 16
 assert (calcsize(OFP_METER_BAND_EXPERIMENTER_PACK_STR) ==
         OFP_METER_BAND_EXPERIMENTER_SIZE)
+
+#state ofp_flag_mod
+OFP_FLAG_MOD_PACK_STR='!IIB7x'
+OFP_FLAG_MOD_SIZE =24
+assert (calcsize(OFP_FLAG_MOD_PACK_STR)) + OFP_HEADER_SIZE ==OFP_FLAG_MOD_SIZE
+
+#enum ofp_flag_mod_command 
+OFPSC_MODIFY_FLAGS = 0
+OFPSC_RESET_FLAGS = 1
 
 #state ofp_state_mod
 OFP_STATE_MOD_PACK_STR='!QQBB'
@@ -1187,7 +1194,6 @@ oxm_types = [
     oxm_fields.OpenFlowBasic('in_port', 0, oxm_fields.Int4),
     oxm_fields.OpenFlowBasic('in_phy_port', 1, oxm_fields.Int4),
     oxm_fields.OpenFlowBasic('metadata', 2, oxm_fields.Int8),
-    oxm_fields.OpenFlowBasic('flags', 40, oxm_fields.Int4),
     oxm_fields.OpenFlowBasic('eth_dst', 3, oxm_fields.MacAddr),
     oxm_fields.OpenFlowBasic('eth_src', 4, oxm_fields.MacAddr),
     oxm_fields.OpenFlowBasic('eth_type', 5, oxm_fields.Int2),
@@ -1225,6 +1231,8 @@ oxm_types = [
     oxm_fields.OpenFlowBasic('pbb_isid', 37, oxm_fields.Int3),
     oxm_fields.OpenFlowBasic('tunnel_id', 38, oxm_fields.Int8),
     oxm_fields.OpenFlowBasic('ipv6_exthdr', 39, oxm_fields.Int2),
+    oxm_fields.OpenFlowBasic('flags', 40, oxm_fields.Int4),
+    oxm_fields.OpenFlowBasic('state', 41, oxm_fields.Int4),
     oxm_fields.ONFExperimenter('pbb_uca', 2560, oxm_fields.Int1),
 ]
 
@@ -1237,3 +1245,4 @@ OFP_TCP_PORT = 6633
 MAX_XID = 0xffffffff
 
 OFP_NO_BUFFER = 0xffffffff
+

@@ -158,7 +158,7 @@ class OSLoadBalancing(app_manager.RyuApp):
                     actions = [
                             parser.OFPActionGroup(1)]
                     match = parser.OFPMatch(
-                            in_port=1, metadata=state, eth_type=0x800, ip_proto=6)
+                            in_port=1, state=state, eth_type=0x800, ip_proto=6)
                 else:
                     # state x means output port x+1
                     dest_ip="10.0.0."+str(state+1)
@@ -171,7 +171,7 @@ class OSLoadBalancing(app_manager.RyuApp):
                         parser.OFPActionOutput(state+1, 0),
                         parser.OFPActionSetState(state, 0)]
                     match = parser.OFPMatch(
-                        in_port=1, metadata=state, eth_type=0x800, ip_proto=6)
+                        in_port=1, state=state, eth_type=0x800, ip_proto=6)
                 inst = [
                     parser.OFPInstructionActions(
                         ofproto.OFPIT_APPLY_ACTIONS, actions)]
@@ -213,7 +213,7 @@ class OSLoadBalancing(app_manager.RyuApp):
     def send_table_mod(self, datapath):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFULL)
+        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
     
     def send_features_request(self, datapath):
