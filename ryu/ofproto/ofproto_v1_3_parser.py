@@ -6103,13 +6103,21 @@ class OFPStateEntry(MsgBase):
 
 
     def _serialize_body(self):
-        msg_pack_into(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,
-		      self.cookie, self.cookie_mask, self.table_id,self.command,self.key_list[0],
-			self.key_count,self.state)
-        offset=(ofproto.OFP_STATE_MOD_SIZE-key_count)
-	for element in self.keys:
-	    element.serialized(self.buf,offset)
-	    offset+=element.len
+        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie, self.cookie_mask, self.table_id,self.command)
+        offset=ofproto.OFP_STATE_MOD_SIZE
+
+        msg_pack_into(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,self.buf,offset,self.key_count,self.state)
+
+        offset += ofproto.OFP_STATE_MOD_ENTRY_SIZE
+
+        field_extract_format='!B'
+
+        if self.key_count <= ofproto.MAX_KEY_LEN:
+            for f in range(self.key_count):
+                msg_pack_into(field_extract_format,self.buf,offset,self.keys[f])
+                offset +=1
+        else:
+            LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
 
 
 @_set_msg_type(ofproto.OFPT_FLAG_MOD)
