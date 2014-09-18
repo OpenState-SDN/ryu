@@ -1,3 +1,10 @@
+OpenState
+=========
+
+This is an implementation of an OpenState controller based on the source code of RYU, an OpenFlow compatible controller available at https://github.com/osrg/ryu. For any information about OpenState please check the home page of the project at http://openstate-sdn.github.io/.
+
+
+
 What's Ryu
 ==========
 Ryu is a component-based software defined networking framework.
