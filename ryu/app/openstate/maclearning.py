@@ -51,11 +51,8 @@ class OSMacLearning(app_manager.RyuApp):
         self.send_key_lookup(datapath)
         self.send_key_update(datapath)
 
-        # install table-miss flow entry (if no rule matching, send it to controller)
-        # self.add_flow(datapath, True)
-
-        # install other flow entries
         self.add_flow(datapath, False)
+
 
     def add_flow(self, datapath, table_miss=False):
         ofproto = datapath.ofproto
@@ -101,7 +98,8 @@ class OSMacLearning(app_manager.RyuApp):
                     if state == 0:  # DEFAULT state
                         actions = [
                             parser.OFPActionOutput(
-                                ofproto.OFPP_FLOOD)]
+                                ofproto.OFPP_FLOOD),
+                            parser.OFPActionSetState(in_port,0)]
                         match = parser.OFPMatch(
                             in_port=in_port, state=state)
                     
@@ -127,14 +125,15 @@ class OSMacLearning(app_manager.RyuApp):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
 
-        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFULL)
+        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
 
     def add_state_entry(self, datapath):
         ofproto = datapath.ofproto
         state = datapath.ofproto_parser.OFPStateEntry(
-            datapath, ofproto.OFPSC_ADD_FLOW_STATE, 3, 1, [1, 2, 3],
+            datapath, ofproto.OFPSC_ADD_FLOW_STATE, 6, 4, [0,0,0,0,0,2],
             cookie=0, cookie_mask=0, table_id=0)
+        datapath.send_msg(state)
 
     def send_features_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
@@ -155,3 +154,4 @@ class OSMacLearning(app_manager.RyuApp):
         key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(
             datapath, ofp.OFPSC_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_ETH_SRC])
         datapath.send_msg(key_update_extractor)
+
