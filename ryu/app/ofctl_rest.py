@@ -433,10 +433,12 @@ class RestStatsApi(app_manager.RyuApp):
                        controller=StatsController, action='get_desc_stats',
                        conditions=dict(method=['GET']))
 
+        '''
         uri = path + '/flow/{dpid}'
         mapper.connect('stats', uri,
                        controller=StatsController, action='get_flow_stats',
                        conditions=dict(method=['GET']))
+        '''
 
         uri = path + '/port/{dpid}'
         mapper.connect('stats', uri,
@@ -472,7 +474,7 @@ class RestStatsApi(app_manager.RyuApp):
         mapper.connect('stats', uri,
                        controller=StatsController, action='get_group_stats',
                        conditions=dict(method=['GET']))
-
+        
         uri = path + '/flowentry/{cmd}'
         mapper.connect('stats', uri,
                        controller=StatsController, action='mod_flow_entry',
