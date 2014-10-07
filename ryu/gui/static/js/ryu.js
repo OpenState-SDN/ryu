@@ -18,7 +18,7 @@
 var conf = {
   URL_GET_FLOWS: 'stats/flow',
   LABEL_FONT_SIZE: 10,
-  EVENT_LOOP_INTERVAL: 500,
+  EVENT_LOOP_INTERVAL: 10,
   REPLACE_FLOW_INTERVAL: 5000,
   CONNECTION_REPAINT_INTERVAL: 500,
   IMG_SW: {"x": 50, "y": 30, "img": "static/img/switch.png"},
@@ -237,6 +237,22 @@ var topo = {
                 y: $("#topology").height() / 2}
     var radii = {x: $("#topology").width() / 4,
                  y: $("#topology").height() / 4}
+
+    var max_w,max_h;
+    max_w=$("#topology").width();
+    max_h=$("#topology").height()
+
+    for (var i in _DATA.switches) {
+      var sw = _DATA.switches[i];
+      var p = {};
+      p['x'] = _DATA.switches[sw.dpid].pos['x'];
+      p['y'] = _DATA.switches[sw.dpid].pos['y'];
+      if (p['x']>max_w) max_w=p['x']+60;
+      if (p['y']>max_h) max_h=p['y']+10;
+    }
+    $("#topology").width(max_w);
+    $("#topology").height(max_h);
+
     var cnt = 0;
     var len = 0;
     for (var i in _DATA.switches) len ++;
@@ -244,7 +260,14 @@ var topo = {
     for (var i in _DATA.switches) {
       var sw = _DATA.switches[i];
       var position = utils._calTh(cnt, len, base, radii);
-      utils.addSwitch(sw, position)
+      var p = {};
+      p['x'] = _DATA.switches[sw.dpid].pos['x'];
+      p['y'] = $("#topology").height() -_DATA.switches[sw.dpid].pos['y'];
+      if (p['x']==-1 && _DATA.switches[sw.dpid].pos['y']==-1){
+        utils.addSwitch(sw, position)
+      } else{
+        utils.addSwitch(sw, p)
+      }
       cnt ++;
     }
   },
@@ -354,7 +377,7 @@ var utils = {
 
   _moveNode: function(id, position) {
     // move position
-    $("#" + id).animate({left: position.x, top: position.y}, 300, 'swing');
+    $("#" + id).animate({left: position.x, top: position.y}, 100, 'swing');
   },
 
   _delNode: function(id) {
@@ -463,6 +486,11 @@ var utils = {
     }
     peer_port_span.innerHTML = peer_port;
     utils._repainteRows('link-list-table');
+
+    // wireshark
+    var wireshark_td = tr.insertCell(-1);
+    wireshark_td.className = 'wireshark';
+    wireshark_td.innerHTML = "<img onClick='javascript:websocket.sendOpenWireshark(\""+link.name+"\");' title='Start Wireshark on "+link.name+"' style='cursor: pointer;' src='static/img/wireshark-logo.png' width=16 height=16 />";
   },
 
   refreshLinkList: function() {
@@ -702,6 +730,14 @@ var websocket = {
     msg.message = "watching_switch_update";
     msg.body = {};
     msg.body.dpid = dpid;
+    websocket._sendMessage(msg);
+  },
+
+  sendOpenWireshark: function(interface){
+    msg = {};
+    msg.message = "open_wireshark";
+    msg.body = {};
+    msg.body.interface = interface;
     websocket._sendMessage(msg);
   },
 

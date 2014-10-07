@@ -18,6 +18,7 @@ import json
 
 import view_base
 from models.topology import TopologyWatcher
+from xml.dom import minidom
 
 LOG = logging.getLogger('ryu.gui')
 
@@ -66,6 +67,8 @@ class WebsocketView(view_base.ViewBase):
             self._watcher_start(body)
         elif message == 'watching_switch_update':
             self._watching_switch_update(body)
+        elif message == 'open_wireshark':
+            self._open_wireshark(body)
         else:
             return
 
@@ -82,6 +85,11 @@ class WebsocketView(view_base.ViewBase):
 
     def _watching_switch_update(self, body):
         pass
+
+    def _open_wireshark(self, body):
+        interface = '%s' % (body['interface'])
+        import os
+        os.system("sudo wireshark -i "+interface+" -k &")
 
     # called by watcher when topology update
     def update_handler(self, address, delta):
@@ -110,13 +118,35 @@ class WebsocketView(view_base.ViewBase):
 
     def _build_switches_message(self, topo):
         body = []
+        
+        # Read switch positions from network.xml
+        from xml.dom import minidom
+        position={}
+        xmldoc = None
+        try:
+            xmldoc = minidom.parse('network.xml')
+            itemlist = xmldoc.getElementsByTagName('node')
+            for s in itemlist:
+                n = s.attributes['id'].value
+                # Remove the N char at the beginning
+                n = int(n[1:])
+                x = s.getElementsByTagName('x')[0].firstChild.data
+                y = s.getElementsByTagName('y')[0].firstChild.data
+                position[n]=(int(float(x)), int(float(y)))
+        except Exception, detail:
+            print("Failure to parse network.xml: %s" % str(detail))
+            for s in topo['switches']:
+                position[int(float(s.dpid))]=(-1,-1)
+        
+        # Nodes creation
         for s in topo['switches']:
-            S = {'dpid': s.dpid, 'ports': {}}
+            pos = {}
+            pos['x']=position[int(float(s.dpid))][0]
+            pos['y']=position[int(float(s.dpid))][1]
+            S = {'dpid': s.dpid, 'ports': {}, 'pos': pos}
             for p in s.ports:
                 S['ports'][p.port_no] = p.to_dict()
-
             body.append(S)
-
         return body
 
     def _send_add_ports(self, address, topo):

@@ -254,8 +254,8 @@ body a {
 #topology {
   top: 60px;
   left: 230px;
-  width: 600px;
-  height: 450px;
+  width: 800px;
+  height: 600px;
 }
 #topology .rest-status {
   position: relative;
