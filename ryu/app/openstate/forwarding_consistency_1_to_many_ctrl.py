@@ -76,23 +76,23 @@ class OSLoadBalancing(app_manager.RyuApp):
                 tcp_src = header_list[TCP].src_port
                 tcp_dst = header_list[TCP].dst_port
             
-            self.add_flow(datapath, in_port, out_port, ip_src, ip_dst, tcp_src, tcp_dst)
+                self.add_flow(datapath, in_port, out_port, ip_src, ip_dst, tcp_src, tcp_dst)
 
-            dest_ip="10.0.0."+str(out_port)
-            dest_eth="00:00:00:00:00:0"+str(out_port)
-            dest_tcp=out_port*100
-            actions = [
-                parser.OFPActionSetField(ipv4_dst=dest_ip),
-                parser.OFPActionSetField(eth_dst=dest_eth),
-                parser.OFPActionSetField(tcp_dst=dest_tcp),
-                parser.OFPActionOutput(out_port, 0)]
+                dest_ip="10.0.0."+str(out_port)
+                dest_eth="00:00:00:00:00:0"+str(out_port)
+                dest_tcp=out_port*100
+                actions = [
+                    parser.OFPActionSetField(ipv4_dst=dest_ip),
+                    parser.OFPActionSetField(eth_dst=dest_eth),
+                    parser.OFPActionSetField(tcp_dst=dest_tcp),
+                    parser.OFPActionOutput(out_port, 0)]
 
-            if msg.buffer_id == ofproto.OFP_NO_BUFFER:
-                data = msg.data
-            
-            out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
-                                      in_port=in_port, actions=actions, data=data)
-            datapath.send_msg(out)
+                if msg.buffer_id == ofproto.OFP_NO_BUFFER:
+                    data = msg.data
+                
+                out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
+                                          in_port=in_port, actions=actions, data=data)
+                datapath.send_msg(out)
                  
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -150,20 +150,20 @@ class OSLoadBalancing(app_manager.RyuApp):
                 flags=0, match=match, instructions=inst)
             datapath.send_msg(mod)
 
-            # ARP packets flooding
-            match = parser.OFPMatch(eth_type=0x0806)
-            actions = [
-                parser.OFPActionOutput(ofproto.OFPP_FLOOD)]
-            inst = [parser.OFPInstructionActions(
-                ofproto.OFPIT_APPLY_ACTIONS, actions)]
-            mod = parser.OFPFlowMod(
-                datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-                command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
-                priority=32768, buffer_id=ofproto.OFP_NO_BUFFER,
-                out_port=ofproto.OFPP_ANY,
-                out_group=ofproto.OFPG_ANY,
-                flags=0, match=match, instructions=inst)
-            datapath.send_msg(mod)
+        # ARP packets flooding
+        match = parser.OFPMatch(eth_type=0x0806)
+        actions = [
+            parser.OFPActionOutput(ofproto.OFPP_FLOOD)]
+        inst = [parser.OFPInstructionActions(
+            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        mod = parser.OFPFlowMod(
+            datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
+            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+            priority=32768, buffer_id=ofproto.OFP_NO_BUFFER,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            flags=0, match=match, instructions=inst)
+        datapath.send_msg(mod)
 
     
     def add_flow(self, datapath, in_port, out_port, ip_src, ip_dst, tcp_src, tcp_dst):        
