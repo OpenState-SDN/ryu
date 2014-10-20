@@ -472,24 +472,6 @@ class OSLoadBalancing(app_manager.RyuApp):
             req = ofp_parser.OFPGroupMod(datapath, ofp.OFPGC_ADD,
                                          ofp.OFPGT_RANDOM, group_id, buckets)
             datapath.send_msg(req)
-            # second entry
-            buckets = []
-            # Action Bucket: <PWD port_i , SetState(i-1)
-            for port in range(1,4):
-                max_len = 2000
-                actions = [
-                    ofp_parser.OFPActionOutput(port, max_len),
-                    ofp_parser.OFPActionSetState(port, 1)]
-
-                weight = 0
-                watch_port = ofp.OFPP_ANY
-                watch_group = ofp.OFPG_ANY
-                buckets.append(ofp_parser.OFPBucket(weight, watch_port, watch_group,actions))
-
-            group_id = 2
-            req = ofp_parser.OFPGroupMod(datapath, ofp.OFPGC_ADD,
-                                         ofp.OFPGT_RANDOM, group_id, buckets)
-            datapath.send_msg(req)
 
     def send_table_mod(self, datapath):
         ofp = datapath.ofproto
