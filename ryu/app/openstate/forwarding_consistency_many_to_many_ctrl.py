@@ -34,7 +34,7 @@ from ryu.topology import event
 
 LOG = logging.getLogger('app.openstate.forwarding_consistency_many_to_many_ctrl')
 
-SWITCH_PORTS = 4
+SWITCH_PORTS = 6
 IPV4 = ipv4.ipv4.__name__
 TCP = tcp.tcp.__name__
 
@@ -66,7 +66,6 @@ class OSLoadBalancing(app_manager.RyuApp):
         header_list = dict((p.protocol_name, p)
                            for p in pkt.protocols if type(p) != str)
 
-        out_port= random.randint(2,SWITCH_PORTS)
         out_port_m_to_m = random.randint(4,6)
 
         if IPV4 in header_list:
@@ -77,19 +76,10 @@ class OSLoadBalancing(app_manager.RyuApp):
                 tcp_src = header_list[TCP].src_port
                 tcp_dst = header_list[TCP].dst_port
             
-                if datapath.id==1:
-                    self.add_flow_1_to_many(datapath, in_port, out_port, ip_src, ip_dst, tcp_src, tcp_dst)
-                    actions = [parser.OFPActionOutput(out_port, 0)]
 
-                elif datapath.id==4:
-                    #the rule entries are the same as many to 1 case
-                    self.add_flow_many_to_1(datapath, in_port, out_port_m_to_m, ip_src, ip_dst, tcp_src, tcp_dst)
+                if datapath.id == 4:
+                    self.add_flow_many_to_many(datapath, in_port, out_port_m_to_m, ip_src, ip_dst, tcp_src, tcp_dst)
                     actions = [parser.OFPActionOutput(out_port_m_to_m, 0)]
-               
-                elif datapath.id==7:
-                    out_port = 4
-                    self.add_flow_many_to_1(datapath, in_port, out_port, ip_src, ip_dst, tcp_src, tcp_dst)
-                    actions = [parser.OFPActionOutput(out_port, 0)]
             
                 if msg.buffer_id == ofproto.OFP_NO_BUFFER:
                         data = msg.data
@@ -118,22 +108,117 @@ class OSLoadBalancing(app_manager.RyuApp):
 
     def one_to_many_switch(self, datapath):
         self.send_features_request(datapath)
-        self.add_flow_default_1_to_many(datapath)
+        self.send_group_mod(datapath)
+        self.send_table_mod(datapath)
+
+        self.send_key_lookup_1(datapath)
+        self.send_key_update_1(datapath)
+      
+        self.add_flow_1_to_many(datapath)
         
     def middleswitch(self, datapath):
         self.send_features_request(datapath)
         self.add_middleswitch_default(datapath)
 
+    #STATELESS
     def many_to_many_switch(self, datapath):
         self.send_features_request(datapath)
-        #we use the same default many to one rules
-        self.add_flow_default_many_to_1(datapath)
+        self.add_flow_default_many_to_many(datapath)
 
     def many_to_one_switch(self, datapath):
         self.send_features_request(datapath)
-        self.add_flow_default_many_to_1(datapath)
+        self.send_table_mod(datapath)
+        
+        self.send_key_lookup_2(datapath)
+        self.send_key_update_2(datapath)
 
-    def add_flow_default_1_to_many(self, datapath):
+        self.add_flow_many_to_1(datapath)
+
+
+    def add_flow_1_to_many(self, datapath, table_miss=False):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        LOG.info("Configuring flow table for switch %d" % datapath.id)     
+
+        if table_miss:
+            LOG.debug("Installing table miss...")
+            actions = [parser.OFPActionOutput(
+                ofproto.OFPP_CONTROLLER, ofproto.OFPCML_NO_BUFFER)]
+            match = parser.OFPMatch()
+            inst = [parser.OFPInstructionActions(
+                ofproto.OFPIT_APPLY_ACTIONS, actions)]
+            mod = parser.OFPFlowMod(
+                datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
+                command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+                priority=0, buffer_id=ofproto.OFP_NO_BUFFER,
+                out_port=ofproto.OFPP_ANY,
+                out_group=ofproto.OFPG_ANY,
+                flags=0, match=match, instructions=inst)
+
+            datapath.send_msg(mod)
+
+        else:
+
+            # ARP packets flooding
+            match = parser.OFPMatch(eth_type=0x0806)
+            actions = [
+                parser.OFPActionOutput(ofproto.OFPP_FLOOD)]
+            inst = [parser.OFPInstructionActions(
+                ofproto.OFPIT_APPLY_ACTIONS, actions)]
+            mod = parser.OFPFlowMod(
+                datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
+                command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+                priority=32768, buffer_id=ofproto.OFP_NO_BUFFER,
+                out_port=ofproto.OFPP_ANY,
+                out_group=ofproto.OFPG_ANY,
+                flags=0, match=match, instructions=inst)
+            datapath.send_msg(mod)
+
+            
+            # Reverse path flow
+            for in_port in range(2, 5):
+                match = parser.OFPMatch(in_port=in_port)
+                actions = [
+                    parser.OFPActionOutput(1,0)]
+                inst = [parser.OFPInstructionActions(
+                    ofproto.OFPIT_APPLY_ACTIONS, actions)]
+                mod = parser.OFPFlowMod(
+                    datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
+                    command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+                    priority=32767, buffer_id=ofproto.OFP_NO_BUFFER,
+                    out_port=ofproto.OFPP_ANY,
+                    out_group=ofproto.OFPG_ANY,
+                    flags=0, match=match, instructions=inst)
+                datapath.send_msg(mod)
+
+            # the state of a flow is the selected output port for that flow
+            for state in range(4):
+                if state == 0:
+                    # if state=DEFAULT => send it to the first group entry in the group table
+                    actions = [
+                            parser.OFPActionGroup(1)]
+                    match = parser.OFPMatch(
+                            in_port=1, state=state, eth_type=0x800)
+                else:
+                    # state x means output port x+1
+                    actions = [
+                        parser.OFPActionOutput(state+1, 0)]
+                    match = parser.OFPMatch(
+                        in_port=1, state=state, eth_type=0x800)
+                inst = [
+                    parser.OFPInstructionActions(
+                        ofproto.OFPIT_APPLY_ACTIONS, actions)]
+                mod = parser.OFPFlowMod(
+                    datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
+                    command=ofproto.OFPFC_ADD, idle_timeout=0,
+                    hard_timeout=0, priority=32767,
+                    buffer_id=ofproto.OFP_NO_BUFFER,
+                    out_port=ofproto.OFPP_ANY, out_group=ofproto.OFPG_ANY,
+                    flags=0, match=match, instructions=inst)
+                datapath.send_msg(mod)
+
+    # MANY TO MANY RULES
+    def add_flow_default_many_to_many(self, datapath):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         LOG.info("Configuring default flow entries for switch %d" % datapath.id)      
@@ -154,22 +239,6 @@ class OSLoadBalancing(app_manager.RyuApp):
 
         datapath.send_msg(mod)
 
-        # Reverse path flow
-        for in_port in range(2, SWITCH_PORTS + 1):
-            # we need to match an IPv4 (0x800) TCP (6) packet to do SetField()
-            match = parser.OFPMatch(in_port=in_port, eth_type=0x800)
-            actions = [parser.OFPActionOutput(1,0)]
-            inst = [parser.OFPInstructionActions(
-                ofproto.OFPIT_APPLY_ACTIONS, actions)]
-            mod = parser.OFPFlowMod(
-                datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-                command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
-                priority=32767, buffer_id=ofproto.OFP_NO_BUFFER,
-                out_port=ofproto.OFPP_ANY,
-                out_group=ofproto.OFPG_ANY,
-                flags=0, match=match, instructions=inst)
-            datapath.send_msg(mod)
-
         # ARP packets flooding
         match = parser.OFPMatch(eth_type=0x0806)
         actions = [
@@ -185,29 +254,10 @@ class OSLoadBalancing(app_manager.RyuApp):
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
 
-    def add_flow_1_to_many(self, datapath, in_port, out_port, ip_src, ip_dst, tcp_src, tcp_dst):        
+    
 
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-        self.counter+=1
-        LOG.info('Installing new forward rule for switch %d (rule # %d)' % (datapath.id, self.counter)) 
-        actions = [parser.OFPActionOutput(out_port, 0)]
-        match = parser.OFPMatch(
-            in_port=in_port, eth_type=0x800, ip_proto=6, ipv4_src=ip_src, ipv4_dst=ip_dst, tcp_src=tcp_src, tcp_dst=tcp_dst)
-        inst = [
-            parser.OFPInstructionActions(
-                ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        mod = parser.OFPFlowMod(
-            datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-            command=ofproto.OFPFC_ADD, idle_timeout=0,
-            hard_timeout=0, priority=32767,
-            buffer_id=ofproto.OFP_NO_BUFFER,
-            out_port=ofproto.OFPP_ANY, out_group=ofproto.OFPG_ANY,
-            flags=0, match=match, instructions=inst)
-        datapath.send_msg(mod)
-
-
-    def add_flow_many_to_1(self, datapath, in_port, out_port, ip_src, ip_dst, tcp_src, tcp_dst):        
+    #   MANY TO MANY
+    def add_flow_many_to_many(self, datapath, in_port, out_port, ip_src, ip_dst, tcp_src, tcp_dst):        
 
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -246,42 +296,81 @@ class OSLoadBalancing(app_manager.RyuApp):
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
 
-    def add_flow_default_many_to_1(self, datapath):
+    def add_flow_many_to_1(self, datapath, table_miss=False):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-        LOG.info("Configuring default flow entries for switch %d" % datapath.id)     
+        LOG.info("Configuring flow table for switch %d" % datapath.id)     
 
-        #table miss
-        actions = [parser.OFPActionOutput(
-            ofproto.OFPP_CONTROLLER, ofproto.OFPCML_NO_BUFFER)]
-        match = parser.OFPMatch()
-        inst = [parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        mod = parser.OFPFlowMod(
-            datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
-            priority=0, buffer_id=ofproto.OFP_NO_BUFFER,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
-            flags=0, match=match, instructions=inst)
+        if table_miss:
+            LOG.debug("Installing table miss...")
+            actions = [parser.OFPActionOutput(
+                ofproto.OFPP_CONTROLLER, ofproto.OFPCML_NO_BUFFER)]
+            match = parser.OFPMatch()
+            inst = [parser.OFPInstructionActions(
+                ofproto.OFPIT_APPLY_ACTIONS, actions)]
+            mod = parser.OFPFlowMod(
+                datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
+                command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+                priority=0, buffer_id=ofproto.OFP_NO_BUFFER,
+                out_port=ofproto.OFPP_ANY,
+                out_group=ofproto.OFPG_ANY,
+                flags=0, match=match, instructions=inst)
 
-        datapath.send_msg(mod)
+            datapath.send_msg(mod)
 
-        # ARP packets flooding
-        match = parser.OFPMatch(eth_type=0x0806)
-        actions = [
-            parser.OFPActionOutput(ofproto.OFPP_FLOOD)]
-        inst = [parser.OFPInstructionActions(
-            ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        mod = parser.OFPFlowMod(
-            datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
-            priority=32768, buffer_id=ofproto.OFP_NO_BUFFER,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
-            flags=0, match=match, instructions=inst)
-        datapath.send_msg(mod)
+        else:
 
+            # ARP packets flooding
+            match = parser.OFPMatch(eth_type=0x0806)
+            actions = [
+                parser.OFPActionOutput(ofproto.OFPP_FLOOD)]
+            inst = [parser.OFPInstructionActions(
+                ofproto.OFPIT_APPLY_ACTIONS, actions)]
+            mod = parser.OFPFlowMod(
+                datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
+                command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+                priority=32768, buffer_id=ofproto.OFP_NO_BUFFER,
+                out_port=ofproto.OFPP_ANY,
+                out_group=ofproto.OFPG_ANY,
+                flags=0, match=match, instructions=inst)
+            datapath.send_msg(mod)
+
+            
+            # Reverse path flow
+            for state in range(1,4):
+                match = parser.OFPMatch(in_port=4, state=state, eth_type=0x800)
+                actions = [
+                    parser.OFPActionOutput(state,0)]
+                inst = [parser.OFPInstructionActions(
+                    ofproto.OFPIT_APPLY_ACTIONS, actions)]
+                mod = parser.OFPFlowMod(
+                    datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
+                    command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+                    priority=32767, buffer_id=ofproto.OFP_NO_BUFFER,
+                    out_port=ofproto.OFPP_ANY,
+                    out_group=ofproto.OFPG_ANY,
+                    flags=0, match=match, instructions=inst)
+                datapath.send_msg(mod)
+
+            # the state of a flow is the selected output port for that flow
+            for in_port in range(1,4):  
+                # state x means output port x+1
+                actions = [
+                    parser.OFPActionOutput(4, 0),
+                    parser.OFPActionSetState(in_port, 0)]
+                match = parser.OFPMatch(
+                    in_port=in_port, eth_type=0x800)
+                inst = [
+                    parser.OFPInstructionActions(
+                        ofproto.OFPIT_APPLY_ACTIONS, actions)]
+                mod = parser.OFPFlowMod(
+                    datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
+                    command=ofproto.OFPFC_ADD, idle_timeout=0,
+                    hard_timeout=0, priority=32767,
+                    buffer_id=ofproto.OFP_NO_BUFFER,
+                    out_port=ofproto.OFPP_ANY, out_group=ofproto.OFPG_ANY,
+                    flags=0, match=match, instructions=inst)
+                datapath.send_msg(mod)
 
     def add_middleswitch_default(self, datapath):
         ofproto = datapath.ofproto
@@ -324,4 +413,52 @@ class OSLoadBalancing(app_manager.RyuApp):
 
     def ip_addr_ntoa(self,ip):
         return socket.inet_ntoa(addrconv.ipv4.text_to_bin(ip))
+
+    def send_key_lookup_1(self, datapath):
+        ofp = datapath.ofproto
+        key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_SET_L_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST])
+        datapath.send_msg(key_lookup_extractor)
+
+    def send_key_update_1(self, datapath):
+        ofp = datapath.ofproto
+        key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_SET_U_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST])
+        datapath.send_msg(key_update_extractor)
+
+    def send_key_lookup_2(self, datapath):
+        ofp = datapath.ofproto
+        key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_SET_L_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST])
+        datapath.send_msg(key_lookup_extractor)
+
+    def send_key_update_2(self, datapath):
+        ofp = datapath.ofproto
+        key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_SET_U_EXTRACTOR,  4, [ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_TCP_DST,ofp.OXM_OF_TCP_SRC])
+        datapath.send_msg(key_update_extractor)
+
+    def send_table_mod(self, datapath):
+        ofp = datapath.ofproto
+        ofp_parser = datapath.ofproto_parser
+        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFUL)
+        datapath.send_msg(req)
+
+    def send_group_mod(self, datapath):
+        ofp = datapath.ofproto
+        ofp_parser = datapath.ofproto_parser
+        buckets = []
+        # Action Bucket: <PWD port_i , SetState(i-1)
+        for port in range(2,5):
+            max_len = 2000
+            actions = [
+                ofp_parser.OFPActionOutput(port, max_len),
+                ofp_parser.OFPActionSetState(port-1, 0)]
+
+            weight = 0
+            watch_port = ofp.OFPP_ANY
+            watch_group = ofp.OFPG_ANY
+            buckets.append(ofp_parser.OFPBucket(weight, watch_port, watch_group,actions))
+
+        group_id = 1
+        req = ofp_parser.OFPGroupMod(datapath, ofp.OFPGC_ADD,
+                                     ofp.OFPGT_RANDOM, group_id, buckets)
+        datapath.send_msg(req)
+
     
