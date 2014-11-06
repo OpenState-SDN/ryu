@@ -171,7 +171,7 @@ class OSLoadBalancing(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         self.counter+=1
-        LOG.info('Installing new forward rule for switch %d (rule # %d)' % (datapath.id, self.counter)) 
+        #LOG.info('Installing new forward rule for switch %d (rule # %d)' % (datapath.id, self.counter)) 
         dest_ip="10.0.0."+str(out_port)
         dest_eth="00:00:00:00:00:0"+str(out_port)
         dest_tcp=out_port*100

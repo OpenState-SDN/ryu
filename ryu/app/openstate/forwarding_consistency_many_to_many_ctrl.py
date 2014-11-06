@@ -262,7 +262,7 @@ class OSLoadBalancing(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         self.counter+=1
-        LOG.info('Installing new forward rule for switch %d (rule # %d)' % (datapath.id, self.counter)) 
+        #LOG.info('Installing new forward rule for switch %d (rule # %d)' % (datapath.id, self.counter)) 
         
         # reverse path rule
         actions = [parser.OFPActionOutput(in_port, 0)]
