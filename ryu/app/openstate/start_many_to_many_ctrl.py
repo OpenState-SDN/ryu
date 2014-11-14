@@ -45,7 +45,7 @@ class MyTopo( Topo ):
 ######Starting controller
 
 
-os.system("xterm -e 'ryu-manager ~/ryu/ryu/app/openstate/forwarding_consistency_many_to_many.py'&")
+os.system("xterm -e 'ryu-manager ~/ryu/ryu/app/openstate/forwarding_consistency_many_to_many_ctrl.py'&")
 
 
 

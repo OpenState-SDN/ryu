@@ -46,12 +46,11 @@ class OSLinkProtection(app_manager.RyuApp):
         self.add_flow(datapath)
 
         '''
-        time.sleep(10)
+        #After 10 seconds h1 will be able to ping h3
         self.send_reset_flag_mod(datapath)
         time.sleep(10)
-        string="1*00*1101"
-        offset=1
-        self.send_modify_flag_mod(datapath,string,offset)
+        flags_string="1*00*1101"
+        self.send_modify_flag_mod(datapath,flags_string)
         '''
 
 
@@ -88,7 +87,7 @@ class OSLinkProtection(app_manager.RyuApp):
         datapath.send_msg(mod)
         
         match = parser.OFPMatch(in_port=2,eth_type=0x0800,ip_proto=6, tcp_dst=33333)
-        (flag, flag_mask) = ofp_parser.maskedflags("1")
+        (flag, flag_mask) = parser.maskedflags("1")
         actions = [
             parser.OFPActionSetFlag(flag, flag_mask)]
         inst = [parser.OFPInstructionActions(
@@ -103,7 +102,7 @@ class OSLinkProtection(app_manager.RyuApp):
         datapath.send_msg(mod)
 
         match = parser.OFPMatch(in_port=3,eth_type=0x0800,ip_proto=6, tcp_dst=22222)
-        (flag, flag_mask) = ofp_parser.maskedflags("0")
+        (flag, flag_mask) = parser.maskedflags("0")
         actions = [
             parser.OFPActionSetFlag(flag, flag_mask)]
         inst = [parser.OFPInstructionActions(
@@ -156,10 +155,10 @@ class OSLinkProtection(app_manager.RyuApp):
             datapath, ofproto.OFPSC_RESET_FLAGS)
         datapath.send_msg(msg)
 
-    def send_modify_flag_mod(self, datapath, flag_string, offset_value=1):
+    def send_modify_flag_mod(self, datapath, flags_string, offset_value=0):
         ofproto = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
-        (flag, flag_mask) = ofp_parser.maskedflags(flag_string,offset_value)
+        (flag, flag_mask) = ofp_parser.maskedflags(flags_string,offset_value)
         msg = datapath.ofproto_parser.OFPFlagMod(
             datapath, ofproto.OFPSC_MODIFY_FLAGS, flag, flag_mask)
         datapath.send_msg(msg)

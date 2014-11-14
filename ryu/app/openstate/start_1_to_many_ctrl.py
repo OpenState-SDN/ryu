@@ -9,7 +9,7 @@ import os, time
 ######Starting controller
 
 
-os.system("xterm -e 'ryu-manager ~/ryu/ryu/app/openstate/forwarding_consistency_1_to_many.py'&")
+os.system("xterm -e 'ryu-manager ~/ryu/ryu/app/openstate/forwarding_consistency_1_to_many_ctrl.py'&")
 
 
 

@@ -17,7 +17,7 @@ class MyTopo( Topo ):
       Topo.__init__(self)
 
       # Add nodes
-        
+      
       Host1=self.addHost('h1', ip='10.0.0.1/24')
       Host2=self.addHost('h2', ip='10.0.0.2/24')
       switch1=self.addSwitch('s1')
@@ -25,27 +25,21 @@ class MyTopo( Topo ):
       switch3=self.addSwitch('s3')
       switch4=self.addSwitch('s4')
       switch5=self.addSwitch('s5')
-      switch6=self.addSwitch('s6')
-      switch7=self.addSwitch('s7')
 
       # Add edges
       self.addLink( Host1, switch1, 1, 1)
       self.addLink( switch1, switch2, 2, 1)
-      self.addLink( switch1, switch3, 4, 1)
-      self.addLink( switch1, switch4, 3, 2)
-      self.addLink( switch2, switch4, 2, 1)
-      self.addLink( switch3, switch4, 2, 3)
-      self.addLink( switch4, switch5, 4, 1)
-      self.addLink( switch4, switch7, 5, 2)
-      self.addLink( switch4, switch6, 6, 1)
-      self.addLink( switch5, switch7, 2, 1)
-      self.addLink( switch6, switch7, 2, 3)
-      self.addLink( switch7, Host2, 4, 1)
+      self.addLink( switch1, switch3, 3, 1)
+      self.addLink( switch1, switch4, 4, 1)
+      self.addLink( switch2, switch5, 2, 1)
+      self.addLink( switch3, switch5, 2, 2)
+      self.addLink( switch4, switch5, 2, 3)
+      self.addLink( switch5, Host2, 4, 1)
 
 ######Starting controller
 
 
-os.system("xterm -e 'ryu-manager ~/ryu/ryu/app/openstate/forwarding_consistency_many_to_many.py'&")
+os.system("xterm -e 'ryu-manager ~/ryu/ryu/app/openstate/forwarding_consistency_many_to_1_ctrl.py'&")
 
 
 
@@ -62,12 +56,9 @@ print("\nTo exit type \"ctrl+D\" or exit")
 print("*************************************************************************************")
 net = Mininet(topo=mytopo,switch=UserSwitch,controller=RemoteController,cleanup=True,autoSetMacs=True,autoStaticArp=True,listenPort=6634)
 net.start()
+os.system("xterm -e 'tcpdump -i s2-eth1'&")
+os.system("xterm -e 'tcpdump -i s3-eth1'&")
 os.system("xterm -e 'tcpdump -i s4-eth1'&")
-os.system("xterm -e 'tcpdump -i s4-eth2'&")
-os.system("xterm -e 'tcpdump -i s4-eth3'&")
-os.system("xterm -e 'tcpdump -i s4-eth4'&")
-os.system("xterm -e 'tcpdump -i s4-eth5'&")
-os.system("xterm -e 'tcpdump -i s4-eth6'&")
 h1,h2  = net.hosts[0], net.hosts[1]
 makeTerm(h1)
 makeTerm(h2)
