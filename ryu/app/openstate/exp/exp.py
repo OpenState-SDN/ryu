@@ -35,28 +35,51 @@ class SimpleSwitch13(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
 
-        self.send_table_mod(datapath)
-
-        self.send_key_lookup(datapath)
-        self.send_key_update(datapath)
-
-        # install table-miss flow entry
-        #
-        # We specify NO BUFFER to max_len of the output action due to
-        # OVS bug. At this moment, if we specify a lesser number, e.g.,
-        # 128, OVS will send Packet-In with invalid buffer_id and
-        # truncated packet data. In that case, we cannot output packets
-        # correctly.
-        
-        #openstate action
-        
-        #data = bytearray([0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02,0x00,0x00,0x00,0x00])
-        #actions = [parser.OFPActionExperimenter(experimenter=0x000026e1,data=data)]
+        # mininet> h1 ping -c5 h2
+        # si dovrebbe perdere solo il primo ping
         (flag, flag_mask) = parser.maskedflags("1*1*1*1*1*1*1")
         actions = [parser.OFPExpActionSetState(state=2,stage_id=0),parser.OFPExpActionSetFlag(flag, flag_mask)]
-        #actions = [parser.OFPExpActionSetState(state=2,stage_id=0),parser.OFPExpActionSetFlag(flag, flag_mask)]
         match = parser.OFPMatch(eth_type=0x800,ip_proto=1,in_port=1)
         self.add_flow(datapath, 0, match, actions)
+
+        actions = [parser.OFPActionOutput(2,0)]
+        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,state=2,in_port=1,flags=parser.maskedflags("1*1*1*1*1*1*1"))
+        self.add_flow(datapath, 100, match, actions)
+
+        actions = [parser.OFPActionOutput(1,0)]
+        match = parser.OFPMatch(in_port=2)
+        self.add_flow(datapath, 200, match, actions)
+
+        # mininet> h3 ping -c5 h4
+        # si dovrebbe poter pingare al 100%
+
+        self.send_table_mod(datapath)
+        
+        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
+                datapath, ofproto.OFPSC_SET_L_EXTRACTOR, 2, [ofproto.OXM_OF_ETH_SRC,ofproto.OXM_OF_ETH_DST])
+        datapath.send_msg(key_lookup_extractor)
+
+        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
+                datapath, ofproto.OFPSC_SET_U_EXTRACTOR, 2, [ofproto.OXM_OF_ETH_SRC,ofproto.OXM_OF_ETH_DST])
+        datapath.send_msg(key_update_extractor)
+
+        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(
+                datapath, ofproto.OFPSC_ADD_FLOW_STATE, 12, 88, [0,0,0,0,0,3,0,0,0,0,0,4],
+                cookie=0, cookie_mask=0, table_id=0)
+        datapath.send_msg(state)
+
+
+        actions = [parser.OFPActionOutput(4,0)]
+        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,state=88,in_port=3)
+        self.add_flow(datapath, 100, match, actions)
+
+        actions = [parser.OFPActionOutput(3,0)]
+        match = parser.OFPMatch(in_port=4)
+        self.add_flow(datapath, 200, match, actions)
+
+
+
+        # regole per testare l'output di DPCTL
 
         actions = [parser.OFPExpActionSetFlag(value=3640)]
         match = parser.OFPMatch(eth_type=0x800,ip_proto=1,in_port=4)
@@ -64,20 +87,13 @@ class SimpleSwitch13(app_manager.RyuApp):
 
         actions = [parser.OFPExpActionSetFlag(flag, flag_mask)]
         match = parser.OFPMatch(eth_type=0x800,ip_proto=1,in_port=3)
-        self.add_flow(datapath, 300, match, actions)
-
-        
-        actions = [parser.OFPActionOutput(2,0)]
-        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,state=2,in_port=1,flags=parser.maskedflags("1*1*1*1*1*1*1"))
-        self.add_flow(datapath, 100, match, actions)
+        self.add_flow(datapath, 300, match, actions)    
 
         actions = [parser.OFPActionOutput(2,0)]
         match = parser.OFPMatch(eth_type=0x800,ip_proto=1,state=2,in_port=1,flags=50)
         self.add_flow(datapath, 100, match, actions)
 
-        actions = [parser.OFPActionOutput(1,0)]
-        match = parser.OFPMatch(in_port=2)
-        self.add_flow(datapath, 200, match, actions)
+
         
         '''
         messaggio sperimentale
@@ -111,13 +127,3 @@ class SimpleSwitch13(app_manager.RyuApp):
         ofp_parser = datapath.ofproto_parser
         req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
-
-    def send_key_lookup(self, datapath):
-        ofp = datapath.ofproto
-        key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_ETH_SRC])
-        datapath.send_msg(key_lookup_extractor)
-
-    def send_key_update(self, datapath):
-        ofp = datapath.ofproto
-        key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_SET_U_EXTRACTOR,  1, [ofp.OXM_OF_ETH_SRC])
-        datapath.send_msg(key_update_extractor)

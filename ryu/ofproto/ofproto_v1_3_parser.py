@@ -137,6 +137,34 @@ def OFPExpActionSetFlag(value, mask=0xffffffff):
     data=struct.pack(ofproto.OFP_EXP_ACTION_SET_FLAG_PACK_STR, act_type, value, mask)
     return OFPActionExperimenter(experimenter=0x000026e1, data=data)
 
+def OFPExpMsgSetStateEntry(datapath, command,key_count,state,keys,cookie=0, cookie_mask=0, table_id=0):
+    data=struct.pack(ofproto.OFP_STATE_MOD_PACK_STR,cookie, cookie_mask, table_id,command)
+    data+=struct.pack(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,key_count,state)
+    field_extract_format='!B'
+
+    if key_count <= ofproto.MAX_KEY_LEN:
+        for f in range(key_count):
+            data+=struct.pack(field_extract_format,keys[f])
+    else:
+        LOG.error("OFPExpMsgSetStateEntry: Number of keys given > MAX_KEY_LEN")
+    
+    exp_type=4 # see enum ofp_extension_commands in openflow-ext.h
+    return OFPExperimenter(datapath=datapath, experimenter=0x000026e1, exp_type=exp_type, data=data)
+
+def OFPExpMsgKeyExtract(datapath, command, field_count, fields, cookie=0, cookie_mask=0, table_id=0):
+    data=struct.pack(ofproto.OFP_STATE_MOD_PACK_STR,cookie, cookie_mask, table_id,command)
+    data+=struct.pack(ofproto.OFP_STATE_MOD_EXTRACT_PACK_STR,field_count)
+    field_extract_format='!I'
+
+    if field_count <= ofproto.MAX_FIELD_COUNT:
+        for f in range(field_count):
+            data+=struct.pack(field_extract_format,fields[f])
+    else:
+        LOG.error("OFPExpMsgKeyExtract: Number of fields given > MAX_FIELD_COUNT")
+    
+    exp_type=4 # see enum ofp_extension_commands in openflow-ext.h
+    return OFPExperimenter(datapath=datapath, experimenter=0x000026e1, exp_type=exp_type, data=data)
+
 @ofproto_parser.register_msg_parser(ofproto.OFP_VERSION)
 def msg_parser(datapath, version, msg_type, msg_len, xid, buf):
     parser = _MSG_PARSERS.get(msg_type)
@@ -6019,73 +6047,6 @@ class OFPSetAsync(MsgBase):
                       self.flow_removed_mask[0], self.flow_removed_mask[1])
 
 
-@_set_msg_type(ofproto.OFPT_STATE_MOD)
-class OFPKeyExtract(MsgBase):
-    def __init__(self, datapath, command,field_count,fields,cookie=0, cookie_mask=0, table_id=0
-                 ):
-        super(OFPKeyExtract, self).__init__(datapath)
-        self.cookie = cookie
-        self.cookie_mask = cookie_mask
-        self.table_id = table_id
-        self.command = command
-        self.field_count=field_count
-        self.fields=fields
-#   	if self.field_count < ofproto.MAX_FIELD_COUNT:
-#	    for i in range(field_count,ofproto.MAX_FIELD_COUNT):
-#	        fields.append(0)  
-
-
-	#self.buf=bytearray()
-    def _serialize_body(self):
-
-        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie,self.cookie_mask              ,self.table_id,self.command)
-
-        offset=ofproto.OFP_STATE_MOD_SIZE
-
-        msg_pack_into(ofproto.OFP_STATE_MOD_EXTRACT_PACK_STR,self.buf,offset,self.field_count)
-
-        offset += ofproto.OFP_STATE_MOD_EXTRACT_SIZE
-        field_extract_format='!I'
-        #msg_pack_into(field_extract_format, self.buf,offset,self.fields[0])
-
-        if self.field_count <= ofproto.MAX_FIELD_COUNT:
-        #for f in range(ofproto.MAX_FIELD_COUNT):
-            for f in range(self.field_count):
-                msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
-                offset +=4
-        else:
-            LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
-
-@_set_msg_type(ofproto.OFPT_STATE_MOD)
-class OFPStateEntry(MsgBase):
-    def __init__(self, datapath, command,key_count,state,keys,cookie=0, cookie_mask=0, table_id=0
-                 ):
-        super(OFPStateEntry, self).__init__(datapath)
-        self.cookie = cookie
-        self.cookie_mask = cookie_mask
-        self.table_id = table_id
-        self.command = command
-	self.key_count=key_count
-	self.state=state
-	self.keys=keys
-
-
-    def _serialize_body(self):
-        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie, self.cookie_mask, self.table_id,self.command)
-        offset=ofproto.OFP_STATE_MOD_SIZE
-
-        msg_pack_into(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,self.buf,offset,self.key_count,self.state)
-
-        offset += ofproto.OFP_STATE_MOD_ENTRY_SIZE
-
-        field_extract_format='!B'
-
-        if self.key_count <= ofproto.MAX_KEY_LEN:
-            for f in range(self.key_count):
-                msg_pack_into(field_extract_format,self.buf,offset,self.keys[f])
-                offset +=1
-        else:
-            LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
 
 
 @_set_msg_type(ofproto.OFPT_FLAG_MOD)
