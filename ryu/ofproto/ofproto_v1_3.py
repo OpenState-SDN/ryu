@@ -249,8 +249,7 @@ OFPAT_DEC_NW_TTL = 24  # Decrement IP TTL.
 OFPAT_SET_FIELD = 25  # Set a header field using OXM TLV format.
 OFPAT_PUSH_PBB = 26  # Push a new PBB service tag (I-TAG)
 OFPAT_POP_PBB = 27  # Pop the outer PBB service tag (I-TAG)
-OFPAT_SET_STATE = 28 #Apply new state 
-OFPAT_SET_FLAG = 29 #Apply new global state 
+OFPAT_SET_FLAG = 28 #Apply new global state 
 OFPAT_EXPERIMENTER = 0xffff
 
 # struct ofp_action_header
@@ -311,10 +310,10 @@ OFP_ACTION_EXPERIMENTER_HEADER_SIZE = 8
 assert (calcsize(OFP_ACTION_EXPERIMENTER_HEADER_PACK_STR) ==
         OFP_ACTION_EXPERIMENTER_HEADER_SIZE)
 
-#struct ofp_action_set_state
-OFP_ACTION_SET_STATE_PACK_STR = '!HHIB7x'
-OFP_ACTION_SET_STATE_SIZE = 16
-assert calcsize(OFP_ACTION_SET_STATE_PACK_STR) == OFP_ACTION_SET_STATE_SIZE
+#struct ofp_exp_action_set_state
+OFP_EXP_ACTION_SET_STATE_PACK_STR = '!I4xIB3x'
+OFP_EXP_ACTION_SET_STATE_SIZE = 16
+assert calcsize(OFP_EXP_ACTION_SET_STATE_PACK_STR) == OFP_EXP_ACTION_SET_STATE_SIZE
 
 #struct ofp_action_set_flag
 OFP_ACTION_SET_FLAG_PACK_STR = '!HHII4x'
