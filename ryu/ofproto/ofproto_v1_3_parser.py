@@ -116,9 +116,26 @@ def OFPExpActionSetState(state=0,stage_id=0):
     stage_id         Stage ID
     ================ ======================================================
     """
-    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR,0, state, stage_id)
+    act_type=0
+    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, stage_id)
     return OFPActionExperimenter(experimenter=0x000026e1, data=data)
 
+def OFPExpActionSetFlag(value, mask=0xffffffff):
+    """ 
+    Returns a Set Flag experimenter action
+
+    This action updates flags in the switch global state.
+    
+    ================ ======================================================
+    Attribute        Description
+    ================ ======================================================
+    value            Flags value
+    mask             Mask value
+    ================ ======================================================
+    """
+    act_type=1
+    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_FLAG_PACK_STR, act_type, value, mask)
+    return OFPActionExperimenter(experimenter=0x000026e1, data=data)
 
 @ofproto_parser.register_msg_parser(ofproto.OFP_VERSION)
 def msg_parser(datapath, version, msg_type, msg_len, xid, buf):
@@ -3270,39 +3287,6 @@ class OFPActionExperimenter(OFPAction):
                       buf, offset, self.type, self.len, self.experimenter)
         if self.data:
             buf += self.data
-
-@OFPAction.register_action_type(ofproto.OFPAT_SET_FLAG,ofproto.OFP_ACTION_SET_FLAG_SIZE)
-class OFPActionSetFlag(OFPAction):
-    """ 
-    Set flag action
-
-    This action updates flags in the switch global state.
-    
-    ================ ======================================================
-    Attribute        Description
-    ================ ======================================================
-    value            Flags value
-    mask             Mask value
-    ================ ======================================================
-    """
-    def __init__(self, value, mask=0xffffffff, type_=None, len_=None):
-        super(OFPActionSetFlag, self).__init__()
-        self.type = ofproto.OFPAT_SET_FLAG
-        self.len = ofproto.OFP_ACTION_SET_FLAG_SIZE
-        self.value = value
-        self.mask = mask
-
-    @classmethod
-    def parser(cls, buf, offset):
-        (type_, len_, value, mask) = struct.unpack_from(
-            ofproto.OFP_ACTION_SET_FLAG_PACK_STR,
-            buf, offset)
-        return cls(value, mask)
-
-    def serialize(self, buf, offset):
-        msg_pack_into(ofproto.OFP_ACTION_SET_FLAG_PACK_STR,
-                      buf, offset, self.type, self.len, self.value, self.mask)
-
 
 class OFPBucket(StringifyMixin):
     def __init__(self, weight=0, watch_port=ofproto.OFPP_ANY,
