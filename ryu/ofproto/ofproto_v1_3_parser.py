@@ -137,6 +137,12 @@ def OFPExpActionSetFlag(value, mask=0xffffffff):
     data=struct.pack(ofproto.OFP_EXP_ACTION_SET_FLAG_PACK_STR, act_type, value, mask)
     return OFPActionExperimenter(experimenter=0x000026e1, data=data)
 
+def OFPExpMsgFlagMod(datapath, command, flag=0, flag_mask=0):
+    data=struct.pack(ofproto.OFP_FLAG_MOD_PACK_STR,flag,flag_mask,command)
+    
+    exp_type=5 # see enum ofp_extension_commands in openflow-ext.h
+    return OFPExperimenter(datapath=datapath, experimenter=0x000026e1, exp_type=exp_type, data=data)
+
 def OFPExpMsgSetStateEntry(datapath, command,key_count,state,keys,cookie=0, cookie_mask=0, table_id=0):
     data=struct.pack(ofproto.OFP_STATE_MOD_PACK_STR,cookie, cookie_mask, table_id,command)
     data+=struct.pack(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,key_count,state)
@@ -6045,21 +6051,3 @@ class OFPSetAsync(MsgBase):
                       self.packet_in_mask[0], self.packet_in_mask[1],
                       self.port_status_mask[0], self.port_status_mask[1],
                       self.flow_removed_mask[0], self.flow_removed_mask[1])
-
-
-
-
-@_set_msg_type(ofproto.OFPT_FLAG_MOD)
-class OFPFlagMod(MsgBase):
-    def __init__(self, datapath, command, flag=0, flag_mask=0,
-                 ):
-        super(OFPFlagMod, self).__init__(datapath)
-        self.flag = flag
-        self.flag_mask = flag_mask
-        self.command = command
-
-    
-    def _serialize_body(self):
-
-        msg_pack_into(ofproto.OFP_FLAG_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.flag,self.flag_mask,self.command)
-        offset=ofproto.OFP_FLAG_MOD_SIZE

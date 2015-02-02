@@ -54,14 +54,28 @@ class SimpleSwitch13(app_manager.RyuApp):
         match = parser.OFPMatch(in_port=2)
         self.add_flow(datapath, 200, match, actions)
 
-        # mininet> h3 ping -c5 h4
+        # mininet> h5 ping -c5 h6
+        # si dovrebbe poter pingare al 100%
+        (flag, flag_mask) = parser.maskedflags("1**1")
+        msg = datapath.ofproto_parser.OFPExpMsgFlagMod(datapath, ofproto.OFPSC_MODIFY_FLAGS, flag, flag_mask)
+        datapath.send_msg(msg)
+
+        actions = [parser.OFPActionOutput(6,0)]
+        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,flags=parser.maskedflags("1**1"),in_port=5)
+        self.add_flow(datapath, 100, match, actions)
+
+        actions = [parser.OFPActionOutput(5,0)]
+        match = parser.OFPMatch(in_port=6)
+        self.add_flow(datapath, 200, match, actions)
+
+        # mininet> h2 ping -c5 h4
         # si dovrebbe poter pingare al 100%
 
         state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_ADD_FLOW_STATE, 12, 88, [0,0,0,0,0,3,0,0,0,0,0,4],cookie=0, cookie_mask=0, table_id=0)
         datapath.send_msg(state)
 
         actions = [parser.OFPActionOutput(4,0)]
-        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,state=88,in_port=3)
+        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,state=88,in_port=2)
         self.add_flow(datapath, 100, match, actions)
 
         actions = [parser.OFPActionOutput(3,0)]
@@ -71,11 +85,11 @@ class SimpleSwitch13(app_manager.RyuApp):
         # regole per testare l'output di DPCTL
 
         actions = [parser.OFPExpActionSetFlag(value=3640)]
-        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,in_port=5)
+        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,in_port=7)
         self.add_flow(datapath, 350, match, actions)
 
         actions = [parser.OFPExpActionSetFlag(flag, flag_mask)]
-        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,in_port=5)
+        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,in_port=7)
         self.add_flow(datapath, 300, match, actions)    
 
         actions = [parser.OFPActionOutput(2,0)]
