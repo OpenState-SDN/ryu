@@ -138,14 +138,14 @@ def OFPExpActionSetFlag(value, mask=0xffffffff):
     return OFPActionExperimenter(experimenter=0x000026e1, data=data)
 
 def OFPExpMsgFlagMod(datapath, command, flag=0, flag_mask=0):
-    data=struct.pack(ofproto.OFP_FLAG_MOD_PACK_STR,flag,flag_mask,command)
+    data=struct.pack(ofproto.OFP_EXP_FLAG_MOD_PACK_STR,flag,flag_mask,command)
     
     exp_type=5 # see enum ofp_extension_commands in openflow-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0x000026e1, exp_type=exp_type, data=data)
 
 def OFPExpMsgSetStateEntry(datapath, command,key_count,state,keys,cookie=0, cookie_mask=0, table_id=0):
-    data=struct.pack(ofproto.OFP_STATE_MOD_PACK_STR,cookie, cookie_mask, table_id,command)
-    data+=struct.pack(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,key_count,state)
+    data=struct.pack(ofproto.OFP_EXP_STATE_MOD_PACK_STR,cookie, cookie_mask, table_id,command)
+    data+=struct.pack(ofproto.OFP_EXP_STATE_MOD_ENTRY_PACK_STR,key_count,state)
     field_extract_format='!B'
 
     if key_count <= ofproto.MAX_KEY_LEN:
@@ -158,8 +158,8 @@ def OFPExpMsgSetStateEntry(datapath, command,key_count,state,keys,cookie=0, cook
     return OFPExperimenter(datapath=datapath, experimenter=0x000026e1, exp_type=exp_type, data=data)
 
 def OFPExpMsgKeyExtract(datapath, command, field_count, fields, cookie=0, cookie_mask=0, table_id=0):
-    data=struct.pack(ofproto.OFP_STATE_MOD_PACK_STR,cookie, cookie_mask, table_id,command)
-    data+=struct.pack(ofproto.OFP_STATE_MOD_EXTRACT_PACK_STR,field_count)
+    data=struct.pack(ofproto.OFP_EXP_STATE_MOD_PACK_STR,cookie, cookie_mask, table_id,command)
+    data+=struct.pack(ofproto.OFP_EXP_STATE_MOD_EXTRACT_PACK_STR,field_count)
     field_extract_format='!I'
 
     if field_count <= ofproto.MAX_FIELD_COUNT:

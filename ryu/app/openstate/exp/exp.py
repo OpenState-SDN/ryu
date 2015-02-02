@@ -57,7 +57,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         # mininet> h5 ping -c5 h6
         # si dovrebbe poter pingare al 100%
         (flag, flag_mask) = parser.maskedflags("1**1")
-        msg = datapath.ofproto_parser.OFPExpMsgFlagMod(datapath, ofproto.OFPSC_MODIFY_FLAGS, flag, flag_mask)
+        msg = datapath.ofproto_parser.OFPExpMsgFlagMod(datapath, ofproto.OFPSC_EXP_MODIFY_FLAGS, flag, flag_mask)
         datapath.send_msg(msg)
 
         actions = [parser.OFPActionOutput(6,0)]
@@ -71,14 +71,14 @@ class SimpleSwitch13(app_manager.RyuApp):
         # mininet> h2 ping -c5 h4
         # si dovrebbe poter pingare al 100%
 
-        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_ADD_FLOW_STATE, 12, 88, [0,0,0,0,0,3,0,0,0,0,0,4],cookie=0, cookie_mask=0, table_id=0)
+        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_EXP_ADD_FLOW_STATE, 12, 88, [0,0,0,0,0,2,0,0,0,0,0,4],cookie=0, cookie_mask=0, table_id=0)
         datapath.send_msg(state)
 
         actions = [parser.OFPActionOutput(4,0)]
         match = parser.OFPMatch(eth_type=0x800,ip_proto=1,state=88,in_port=2)
         self.add_flow(datapath, 100, match, actions)
 
-        actions = [parser.OFPActionOutput(3,0)]
+        actions = [parser.OFPActionOutput(2,0)]
         match = parser.OFPMatch(in_port=4)
         self.add_flow(datapath, 200, match, actions)
 
@@ -121,10 +121,10 @@ class SimpleSwitch13(app_manager.RyuApp):
 
     def send_key_lookup(self, datapath):
         ofp = datapath.ofproto
-        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_SET_L_EXTRACTOR, 2, [ofp.OXM_OF_ETH_SRC,ofp.OXM_OF_ETH_DST])
+        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 2, [ofp.OXM_OF_ETH_SRC,ofp.OXM_OF_ETH_DST])
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
-        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_SET_U_EXTRACTOR, 2, [ofp.OXM_OF_ETH_SRC,ofp.OXM_OF_ETH_DST])
+        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR, 2, [ofp.OXM_OF_ETH_SRC,ofp.OXM_OF_ETH_DST])
         datapath.send_msg(key_update_extractor)
