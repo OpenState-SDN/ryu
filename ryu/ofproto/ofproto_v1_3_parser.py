@@ -149,8 +149,11 @@ def OFPExpMsgSetStateEntry(datapath, command,key_count,state,keys,cookie=0, cook
     field_extract_format='!B'
 
     if key_count <= ofproto.MAX_KEY_LEN:
-        for f in range(key_count):
-            data+=struct.pack(field_extract_format,keys[f])
+        if len(keys)==key_count:
+            for f in range(key_count):
+                data+=struct.pack(field_extract_format,keys[f])
+        else:
+            LOG.error("OFPExpMsgSetStateEntry: Number of keys given != key_count")
     else:
         LOG.error("OFPExpMsgSetStateEntry: Number of keys given > MAX_KEY_LEN")
     
@@ -163,8 +166,11 @@ def OFPExpMsgKeyExtract(datapath, command, field_count, fields, cookie=0, cookie
     field_extract_format='!I'
 
     if field_count <= ofproto.MAX_FIELD_COUNT:
-        for f in range(field_count):
-            data+=struct.pack(field_extract_format,fields[f])
+        if len(fields)==field_count:
+            for f in range(field_count):
+                data+=struct.pack(field_extract_format,fields[f])
+        else:
+            LOG.error("OFPExpMsgKeyExtract: Number of fields given != field_count")    
     else:
         LOG.error("OFPExpMsgKeyExtract: Number of fields given > MAX_FIELD_COUNT")
     
