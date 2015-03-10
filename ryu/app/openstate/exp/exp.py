@@ -97,140 +97,37 @@ class SimpleSwitch13(app_manager.RyuApp):
         '''
         [FLAGS]
 
-        1) ping con match su exact flags
-        2) ping con match su flags con maschera
-        3) Set flags action con flags
-        4) Set flags action con flags con maschera
-        5) Flag mod msg con flags
-        6) Flag mod msg con flags con maschera
-
-        '''
-        
-        '''
-        # mininet> h1 ping -c5 h2
-        # si dovrebbe perdere solo il primo ping
-        (flag, flag_mask) = parser.maskedflags("1*1*1*1*1*1*1")
-        actions = [parser.OFPExpActionSetState(state=2,stage_id=0),parser.OFPExpActionSetFlag(flag, flag_mask)]
-        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,in_port=1)
-        self.add_flow(datapath, 0, match, actions)
-
-        actions = [parser.OFPActionOutput(2,0)]
-        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,state=2,in_port=1,flags=parser.maskedflags("1*1*1*1*1*1*1"))
-        self.add_flow(datapath, 100, match, actions)
-
-        actions = [parser.OFPActionOutput(1,0)]
-        match = parser.OFPMatch(in_port=2)
-        self.add_flow(datapath, 200, match, actions)
-        
-        # mininet> h5 ping -c5 h6
-        # si dovrebbe poter pingare al 100%
-        (flag, flag_mask) = parser.maskedflags("1001")
-        msg = datapath.ofproto_parser.OFPExpMsgFlagMod(datapath, ofproto.OFPSC_EXP_MODIFY_FLAGS, flag, flag_mask)
-        datapath.send_msg(msg)
-
-        actions = [parser.OFPActionOutput(6,0)]
-        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,flags=parser.maskedflags("1001"),in_port=5)
-        self.add_flow(datapath, 100, match, actions)
-
-        actions = [parser.OFPActionOutput(5,0)]
-        match = parser.OFPMatch(in_port=6)
-        self.add_flow(datapath, 200, match, actions)
-        '''
-
-
-        '''
-        # Azione SetFlag esatta
-        # mininet> h5 ping -c5 h6
-        # si dovrebbe poter pingare al 2o
-        actions = [parser.OFPActionOutput(6,0)]
-        match = parser.OFPMatch(in_port=5,flags=32)
-        self.add_flow(datapath, 150, match, actions)
-
-        actions = [parser.OFPExpActionSetFlag(value=32)]
-        match = parser.OFPMatch(in_port=5,eth_type=0x800,ip_proto=1)
-        self.add_flow(datapath, 100, match, actions)
-
-        actions = [parser.OFPActionOutput(5,0)]
-        match = parser.OFPMatch(in_port=6)
-        self.add_flow(datapath, 200, match, actions)
-        '''
-
-
-        
-        # Azione SetFlag con mask
-        # mininet> h5 ping -c5 h6
-        # si dovrebbe poter pingare al 2o
-
-        (flag, flag_mask) = parser.maskedflags("1*1*1*1*1*1*1*1*0*0*1*1*1*1*1*1*")
-        actions = [parser.OFPActionOutput(6,0)]
-        match = parser.OFPMatch(in_port=5,eth_type=0x800,ip_proto=1,flags=parser.maskedflags("1*1*1*1*1*1*1*1*0*0*1*1*1*1*1*1*"))
-        #match = parser.OFPMatch(in_port=5,flags=2863311530)
-        self.add_flow(datapath, 150, match, actions)
-
-        msg = datapath.ofproto_parser.OFPExpMsgFlagMod(datapath, ofproto.OFPSC_EXP_MODIFY_FLAGS, flag, flag_mask)
-        datapath.send_msg(msg)
-
-        actions = [parser.OFPExpActionSetFlag(flag, flag_mask)]
-        actions = [parser.OFPExpActionSetFlag(2863311530)]
-        match = parser.OFPMatch(in_port=5,eth_type=0x800,ip_proto=1)
-        #self.add_flow(datapath, 100, match, actions)
-
-        actions = [parser.OFPActionOutput(5,0)]
-        match = parser.OFPMatch(in_port=6)
-        self.add_flow(datapath, 200, match, actions)
-        
-        # mininet> h2 ping -c5 h4
-        # si dovrebbe poter pingare al 100%
+        9) ping con match su exact flags [Flag mod msg con flags]
+        10) ping con match su flags con maschera [Flag mod msg con flags con maschera]
+        11) Set flags action con flags
+        12) Set flags action con flags con maschera
+       
 
         '''
 
-
-        actions = [parser.OFPActionOutput(4,0)]
-        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,state=88,in_port=2)
-        self.add_flow(datapath, 100, match, actions)
-
-        actions = [parser.OFPActionOutput(2,0)]
-        match = parser.OFPMatch(in_port=4)
-        self.add_flow(datapath, 200, match, actions)
+        ''' [TEST 9]
+        mininet> h5 ping -c5 h6
+        si dovrebbero pingare'''
+        #self.test9(datapath)  
         
 
-        # regole per testare l'output di DPCTL
-
-        actions = [parser.OFPExpActionSetFlag(value=3640)]
-        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,in_port=7)
-        self.add_flow(datapath, 350, match, actions)
-
-        actions = [parser.OFPExpActionSetFlag(flag, flag_mask)]
-        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,in_port=7)
-        self.add_flow(datapath, 300, match, actions)    
-
-        actions = [parser.OFPActionOutput(2,0)]
-        match = parser.OFPMatch(eth_type=0x800,ip_proto=1,state=2,in_port=1,flags=50)
-        self.add_flow(datapath, 100, match, actions)      
+        ''' [TEST 10]
+        mininet> h5 ping -c5 h6
+        si dovrebbero pingare'''
+        #self.test10(datapath)  
         
-        # experimenter_id=0x000026e1
-        actions = [parser.OFPActionOutput(2,0)]
-        match = parser.OFPMatch(in_port=1,state=6)
-        self.add_flow(datapath, 150, match, actions)
 
-        actions = [parser.OFPExpActionSetState(state=6,stage_id=0)]
-        match = parser.OFPMatch(in_port=1)
-        self.add_flow(datapath, 100, match, actions)
-
-        actions = [parser.OFPActionOutput(1,0)]
-        match = parser.OFPMatch(in_port=2)
-        self.add_flow(datapath, 200, match, actions)
-
-        # h1 ping h2
+        ''' [TEST 11]
+        mininet> h5 ping -c5 h6
+        Dovrebbe perdersi solo il primo ping'''
+        #self.test11(datapath)  
         
-        actions = [parser.OFPActionOutput(1,0)]
-        match = parser.OFPMatch(in_port=2)
-        self.add_flow(datapath, 200, match, actions)
-        
-        actions = [parser.OFPActionOutput(2,0)]
-        match = parser.OFPMatch(in_port=1)
-        self.add_flow(datapath, 200, match, actions)
-        '''
+
+        ''' [TEST 12]
+        mininet> h5 ping -c5 h6
+        Dovrebbe perdersi solo il primo ping'''
+        self.test12(datapath)  
+
 
     def add_flow(self, datapath, priority, match, actions):
         ofproto = datapath.ofproto
@@ -352,3 +249,65 @@ class SimpleSwitch13(app_manager.RyuApp):
         parser=datapath.ofproto_parser
         state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_EXP_ADD_FLOW_STATE, 12, 88, [0,0,0,0,0,2,0,0,0,0,0,4],cookie=0, cookie_mask=0, table_id=1000)
         datapath.send_msg(state)
+
+    def test9(self,datapath):
+        ofproto=datapath.ofproto
+        parser=datapath.ofproto_parser
+        actions = [parser.OFPActionOutput(6,0)]
+        match = parser.OFPMatch(in_port=5,ip_proto=1,eth_type=0x800,flags=2863311530)
+        self.add_flow(datapath, 150, match, actions)
+
+        msg = datapath.ofproto_parser.OFPExpMsgFlagMod(datapath, ofproto.OFPSC_EXP_MODIFY_FLAGS, 2863311530, 0xffffffff)
+        datapath.send_msg(msg)
+
+        actions = [parser.OFPActionOutput(5,0)]
+        match = parser.OFPMatch(in_port=6,ip_proto=1,eth_type=0x800)
+        self.add_flow(datapath, 150, match, actions)
+
+    def test10(self,datapath):
+        ofproto=datapath.ofproto
+        parser=datapath.ofproto_parser
+        (flag, flag_mask) = parser.maskedflags("1*1*1*1*1*1*1*1*0*0*1*1*1*1*1*1*")
+        actions = [parser.OFPActionOutput(6,0)]
+        match = parser.OFPMatch(in_port=5,eth_type=0x800,ip_proto=1,flags=parser.maskedflags("1*1*1*1*1*1*1*1*0*0*1*1*1*1*1*1*"))
+        self.add_flow(datapath, 150, match, actions)
+
+        msg = datapath.ofproto_parser.OFPExpMsgFlagMod(datapath, ofproto.OFPSC_EXP_MODIFY_FLAGS, flag, flag_mask)
+        datapath.send_msg(msg)
+
+        actions = [parser.OFPActionOutput(5,0)]
+        match = parser.OFPMatch(in_port=6,ip_proto=1,eth_type=0x800)
+        self.add_flow(datapath, 200, match, actions)
+
+    def test11(self,datapath):
+        ofproto=datapath.ofproto
+        parser=datapath.ofproto_parser
+        actions = [parser.OFPActionOutput(6,0)]
+        match = parser.OFPMatch(in_port=5,ip_proto=1,eth_type=0x800,flags=1492)
+        self.add_flow(datapath, 200, match, actions)
+
+        actions = [parser.OFPExpActionSetFlag(1492)]
+        match = parser.OFPMatch(in_port=5,eth_type=0x800,ip_proto=1)
+        self.add_flow(datapath, 100, match, actions)
+
+        actions = [parser.OFPActionOutput(5,0)]
+        match = parser.OFPMatch(in_port=6,eth_type=0x800,ip_proto=1)
+        self.add_flow(datapath, 200, match, actions)
+
+    def test12(self,datapath):
+        ofproto=datapath.ofproto
+        parser=datapath.ofproto_parser
+        (flag, flag_mask) = parser.maskedflags("*1*1*1*1*0*0*1*1*1*1*1*1*")
+        actions = [parser.OFPActionOutput(6,0)]
+        match = parser.OFPMatch(in_port=5,eth_type=0x800,ip_proto=1,flags=parser.maskedflags("*1*1*1*1*0*0*1*1*1*1*1*1*"))
+        self.add_flow(datapath, 200, match, actions)
+
+        actions = [parser.OFPExpActionSetFlag(flag, flag_mask)]
+        match = parser.OFPMatch(in_port=5,eth_type=0x800,ip_proto=1)
+        self.add_flow(datapath, 100, match, actions)
+
+        actions = [parser.OFPActionOutput(5,0)]
+        match = parser.OFPMatch(in_port=6,eth_type=0x800,ip_proto=1)
+        self.add_flow(datapath, 200, match, actions)
+    
+
