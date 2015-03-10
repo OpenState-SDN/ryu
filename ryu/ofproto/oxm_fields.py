@@ -118,6 +118,13 @@ class ONFExperimenter(_Experimenter):
         self.num = (ONFExperimenter, num)
         self.exp_type = num
 
+class ExperimenterMatch(_Experimenter):
+    experimenter_id = 0x000026e1
+
+    def __init__(self, name, num, type_):
+        super(ExperimenterMatch, self).__init__(name, num, type_)
+        self.num = (ExperimenterMatch, num)
+
 
 def generate(modname):
     import sys
@@ -236,6 +243,15 @@ def parse(mod, buf, offset):
                                               offset + hdr_len + exp_hdr_len)
             exp_hdr_len += struct.calcsize(onf_exp_type_pack_str)
             num = (ONFExperimenter, exp_type)
+        '''
+        TODO?!?
+        elif exp_id == 0x000026e1:
+            of_exp_type_pack_str = '!I'
+            (exp_type, ) = struct.unpack_from(of_exp_type_pack_str, buf,
+                                              offset + hdr_len + exp_hdr_len)
+            exp_hdr_len += struct.calcsize(of_exp_type_pack_str)
+            num = (ONFExperimenter, exp_type)
+        '''
     else:
         num = oxm_type
         exp_hdr_len = 0
@@ -260,11 +276,16 @@ def serialize(mod, n, value, mask, buf, offset):
         desc = mod._oxm_field_desc(n)
         assert issubclass(cls, _Experimenter)
         assert isinstance(desc, cls)
-        assert cls is ONFExperimenter
-        onf_exp_hdr_pack_str = '!IH'  # experimenter_id, exp_type
-        msg_pack_into(onf_exp_hdr_pack_str, exp_hdr, 0,
-                      cls.experimenter_id, exp_type)
-        assert len(exp_hdr) == struct.calcsize(onf_exp_hdr_pack_str)
+        if issubclass(cls,ONFExperimenter):
+            onf_exp_hdr_pack_str = '!IH'  # experimenter_id, exp_type
+            msg_pack_into(onf_exp_hdr_pack_str, exp_hdr, 0,
+                          cls.experimenter_id, exp_type)
+            assert len(exp_hdr) == struct.calcsize(onf_exp_hdr_pack_str)
+        elif issubclass(cls,ExperimenterMatch):
+            of_exp_hdr_pack_str = '!I'  # experimenter_id
+            msg_pack_into(of_exp_hdr_pack_str, exp_hdr, 0,
+                          cls.experimenter_id)
+            assert len(exp_hdr) == struct.calcsize(of_exp_hdr_pack_str)
         n = desc.oxm_type
         assert (n >> 7) == OFPXMC_EXPERIMENTER
     exp_hdr_len = len(exp_hdr)

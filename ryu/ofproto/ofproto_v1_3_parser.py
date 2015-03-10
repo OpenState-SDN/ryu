@@ -1070,7 +1070,7 @@ class OFPMatch(StringifyMixin):
                 header = ofproto.OXM_OF_METADATA_W
             self.append_field(header, self._flow.metadata,
                               self._wc.metadata_mask)
-
+        '''
         if self._wc.ft_test(ofproto.OFPXMT_OFB_STATE):
             self.append_field(ofproto.OXM_OF_STATE,
                               self._flow.state)
@@ -1082,7 +1082,7 @@ class OFPMatch(StringifyMixin):
                 header = ofproto.OXM_OF_FLAGS_W
             self.append_field(header, self._flow.flags,
                               self._wc.flags_mask)
-
+        '''
         if self._wc.ft_test(ofproto.OFPXMT_OFB_ETH_DST):
             if self._wc.dl_dst_mask:
                 header = ofproto.OXM_OF_ETH_DST_W
@@ -1712,7 +1712,7 @@ class MTMetadata(OFPMatchField):
         super(MTMetadata, self).__init__(header)
         self.value = value
         self.mask = mask
-
+'''
 @OFPMatchField.register_field_header([ofproto.OXM_OF_STATE])
 class MTState(OFPMatchField):
     pack_str = '!I'
@@ -1730,7 +1730,7 @@ class MTFlags(OFPMatchField):
         super(MTFlags, self).__init__(header)
         self.value = value
         self.mask = mask
-
+'''
 
 @OFPMatchField.register_field_header([ofproto.OXM_OF_IN_PHY_PORT])
 class MTInPhyPort(OFPMatchField):
