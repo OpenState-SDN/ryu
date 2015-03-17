@@ -6081,10 +6081,12 @@ class OFPKeyExtract(MsgBase):
         #msg_pack_into(field_extract_format, self.buf,offset,self.fields[0])
 
         if self.field_count <= ofproto.MAX_FIELD_COUNT:
-        #for f in range(ofproto.MAX_FIELD_COUNT):
-            for f in range(self.field_count):
-                msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
-                offset +=4
+            if len(fields)==field_count:
+                for f in range(self.field_count):
+                    msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
+                    offset +=4
+            else:
+                LOG.error("OFPKeyExtract: Number of fields given != field_count") 
         else:
             LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
 
@@ -6113,11 +6115,14 @@ class OFPStateEntry(MsgBase):
         field_extract_format='!B'
 
         if self.key_count <= ofproto.MAX_KEY_LEN:
-            for f in range(self.key_count):
-                msg_pack_into(field_extract_format,self.buf,offset,self.keys[f])
-                offset +=1
+            if len(keys)==key_count:
+                for f in range(self.key_count):
+                    msg_pack_into(field_extract_format,self.buf,offset,self.keys[f])
+                    offset +=1
+            else:
+                LOG.error("OFPStateEntry: Number of keys given != key_count")
         else:
-            LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
+            LOG.error("OFPStateEntry: Number of keys given > MAX_FIELD_COUNT")
 
 
 @_set_msg_type(ofproto.OFPT_FLAG_MOD)
