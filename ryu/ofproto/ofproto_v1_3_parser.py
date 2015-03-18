@@ -6069,8 +6069,8 @@ class OFPKeyExtract(MsgBase):
 
 	#self.buf=bytearray()
     def _serialize_body(self):
-
-        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie,self.cookie_mask              ,self.table_id,self.command)
+        
+        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie,self.cookie_mask,self.table_id,self.command)
 
         offset=ofproto.OFP_STATE_MOD_SIZE
 
@@ -6081,15 +6081,15 @@ class OFPKeyExtract(MsgBase):
         #msg_pack_into(field_extract_format, self.buf,offset,self.fields[0])
 
         if self.field_count <= ofproto.MAX_FIELD_COUNT:
-            if len(fields)==field_count:
+            if len(self.fields)==self.field_count:
                 for f in range(self.field_count):
                     msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
                     offset +=4
             else:
-                LOG.error("OFPKeyExtract: Number of fields given != field_count") 
+                LOG.error("OFPKeyExtract: Number of fields given != field_count")
         else:
             LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
-
+        
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
 class OFPStateEntry(MsgBase):
     def __init__(self, datapath, command,key_count,state,keys,cookie=0, cookie_mask=0, table_id=0
@@ -6099,9 +6099,9 @@ class OFPStateEntry(MsgBase):
         self.cookie_mask = cookie_mask
         self.table_id = table_id
         self.command = command
-	self.key_count=key_count
-	self.state=state
-	self.keys=keys
+        self.key_count=key_count
+        self.state=state
+        self.keys=keys
 
 
     def _serialize_body(self):
@@ -6115,7 +6115,7 @@ class OFPStateEntry(MsgBase):
         field_extract_format='!B'
 
         if self.key_count <= ofproto.MAX_KEY_LEN:
-            if len(keys)==key_count:
+            if len(self.keys)==self.key_count:
                 for f in range(self.key_count):
                     msg_pack_into(field_extract_format,self.buf,offset,self.keys[f])
                     offset +=1
@@ -6134,7 +6134,6 @@ class OFPFlagMod(MsgBase):
         self.flag_mask = flag_mask
         self.command = command
 
-    
     def _serialize_body(self):
 
         msg_pack_into(ofproto.OFP_FLAG_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.flag,self.flag_mask,self.command)
