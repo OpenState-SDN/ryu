@@ -103,7 +103,7 @@ def maskedflags(string,offset=0):
     value=''.join(value)
     return (int(value,2),int(mask,2))
 
-def OFPExpActionSetState(state=0,stage_id=0):
+def OFPExpActionSetState(state=0,table_id=0):
     """ 
     Returns a Set state experimenter action
 
@@ -113,11 +113,11 @@ def OFPExpActionSetState(state=0,stage_id=0):
     Attribute        Description
     ================ ======================================================
     state            State instance
-    stage_id         Stage ID
+    table_id         Stage ID
     ================ ======================================================
     """
     act_type=0
-    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, stage_id)
+    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, table_id)
     return OFPActionExperimenter(experimenter=0x000026e1, data=data)
 
 def OFPExpActionSetFlag(value, mask=0xffffffff):

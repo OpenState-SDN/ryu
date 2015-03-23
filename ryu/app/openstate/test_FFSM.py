@@ -35,7 +35,7 @@ h3 e h4 si pingano per 5 secondi, poi non riescono per altri 5 e infine riescono
 
 TABLE 0 (stateless)
 
-ipv4_src=10.0.0.1, in_port=1    --->    SetState(state=0xfffffffa,stage_id=1), SetFlag("1*01********"), WriteMetadata(64954), GotoTable(1)
+ipv4_src=10.0.0.1, in_port=1    --->    SetState(state=0xfffffffa,table_id=1), SetFlag("1*01********"), WriteMetadata(64954), GotoTable(1)
 ipv4_src=10.0.0.2, in_port=2    --->    forward(1)
 ipv4_src=10.0.0.3, in_port=3    --->    GotoTable(1)
 ipv4_src=10.0.0.4, in_port=4    --->    forward(3)
@@ -95,7 +95,7 @@ class OSTestFFSM(app_manager.RyuApp):
         match = parser.OFPMatch(
             ipv4_src="10.0.0.1", in_port=1, eth_type=0x0800)
         (flag, flag_mask) = parser.maskedflags("1*01",8)
-        actions = [parser.OFPActionSetState(state=0xfffffffa,stage_id=1),
+        actions = [parser.OFPActionSetState(state=0xfffffffa,table_id=1),
             parser.OFPActionSetFlag(flag, flag_mask)]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions),

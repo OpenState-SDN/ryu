@@ -47,11 +47,11 @@ class SimpleSwitch13(app_manager.RyuApp):
         1) ping con match su state settato con azione OFPExpMsgSetStateEntry
         2) ping con match su state settato con messaggio SET_STATE
         3) Set state action must be performed onto a stateful stage (run-time check)
-        4) Set state action must be performed onto a stage with stage_id less or equal than the number of pipeline's tables (install-time check, TODO!)
+        4) Set state action must be performed onto a stage with table_id less or equal than the number of pipeline's tables (install-time check, TODO!)
         5) State mod msg extractor: field_count must be consistent with the number of fields provided in fields
         6) State mod msg extractor: "lookup-scope and update-scope must provide same length keys"
         7) State mod add flow: key_count must be consistent with the number of fields provided in key
-        8) State mod add flow: must be executed onto a stage with stage_id less or equal than the number of pipeline's tables
+        8) State mod add flow: must be executed onto a stage with table_id less or equal than the number of pipeline's tables
         13)State mod add flow: key count must be consistent with the number of fields of the update-scope
         14)State mod del flow: key count must be consistent with the number of fields of the update-scope
 
@@ -176,7 +176,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         match = parser.OFPMatch(in_port=1,state=6)
         self.add_flow(datapath, 150, match, actions)
 
-        actions = [parser.OFPExpActionSetState(state=6,stage_id=0)]
+        actions = [parser.OFPExpActionSetState(state=6,table_id=0)]
         match = parser.OFPMatch(in_port=1)
         self.add_flow(datapath, 100, match, actions)
 
@@ -206,7 +206,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         match = parser.OFPMatch(in_port=1,state=6)
         self.add_flow(datapath, 150, match, actions)
 
-        actions = [parser.OFPExpActionSetState(state=6,stage_id=10)]
+        actions = [parser.OFPExpActionSetState(state=6,table_id=10)]
         match = parser.OFPMatch(in_port=1)
         self.add_flow(datapath, 100, match, actions)
 
@@ -221,7 +221,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         match = parser.OFPMatch(in_port=1,state=6)
         self.add_flow(datapath, 150, match, actions)
 
-        actions = [parser.OFPExpActionSetState(state=6,stage_id=200)]
+        actions = [parser.OFPExpActionSetState(state=6,table_id=200)]
         match = parser.OFPMatch(in_port=1)
         self.add_flow(datapath, 100, match, actions)
 
