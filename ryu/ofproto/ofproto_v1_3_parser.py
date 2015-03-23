@@ -129,12 +129,12 @@ def OFPExpActionSetFlag(value, mask=0xffffffff):
     ================ ======================================================
     Attribute        Description
     ================ ======================================================
-    value            Flags value
-    mask             Mask value
+    flag             Flags value
+    flag_mask        Mask value
     ================ ======================================================
     """
     act_type=1
-    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_FLAG_PACK_STR, act_type, value, mask)
+    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_FLAG_PACK_STR, act_type, flag, flag_mask)
     return OFPActionExperimenter(experimenter=0x000026e1, data=data)
 
 def OFPExpMsgFlagMod(datapath, command, flag=0, flag_mask=0):
