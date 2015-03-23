@@ -175,9 +175,9 @@ class OSLoadBalancing(app_manager.RyuApp):
                         parser.OFPActionSetField(eth_dst=dest_eth),
                         parser.OFPActionSetField(tcp_dst=dest_tcp),
                         parser.OFPActionOutput(state+1, 0),
-                        parser.OFPActionSetState(state, 0),
-                        parser.OFPActionSetState(0, 0),
-                        parser.OFPActionSetState(state, 0)]
+                        parser.OFPExpActionSetState(state, 0),
+                        parser.OFPExpActionSetState(0, 0),
+                        parser.OFPExpActionSetState(state, 0)]
                     match = parser.OFPMatch(
                         in_port=1, state=state, eth_type=0x800, ip_proto=6)
                 inst = [
@@ -206,9 +206,9 @@ class OSLoadBalancing(app_manager.RyuApp):
                     ofp_parser.OFPActionSetField(eth_dst=dest_eth),
                     ofp_parser.OFPActionSetField(tcp_dst=dest_tcp),
                     ofp_parser.OFPActionOutput(port, max_len),
-                    ofp_parser.OFPActionSetState(port-1, 0),
-                    ofp_parser.OFPActionSetState(0, 0),
-                    ofp_parser.OFPActionSetState(port-1, 0)]
+                    ofp_parser.OFPExpActionSetState(port-1, 0),
+                    ofp_parser.OFPExpActionSetState(0, 0),
+                    ofp_parser.OFPExpActionSetState(port-1, 0)]
                 
                 weight = 0
                 watch_port = ofp.OFPP_ANY
@@ -234,10 +234,10 @@ class OSLoadBalancing(app_manager.RyuApp):
 
     def send_key_lookup(self, datapath):
         ofp = datapath.ofproto
-        key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST])
+        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST])
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
-        key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR,  4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST])
+        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR,  4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST])
         datapath.send_msg(key_update_extractor)

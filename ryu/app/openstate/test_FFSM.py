@@ -65,11 +65,11 @@ class OSTestFFSM(app_manager.RyuApp):
         self.send_key_update(datapath)
 
         self.add_flow(datapath)
-        self.add_state_entry(datapath)
+        self.set_state_entry(datapath)
         time.sleep(5)
         self.del_state_entry(datapath)
         time.sleep(5)
-        self.add_state_entry(datapath)
+        self.set_state_entry(datapath)
         
 
     def add_flow(self, datapath, table_miss=False):
@@ -95,8 +95,8 @@ class OSTestFFSM(app_manager.RyuApp):
         match = parser.OFPMatch(
             ipv4_src="10.0.0.1", in_port=1, eth_type=0x0800)
         (flag, flag_mask) = parser.maskedflags("1*01",8)
-        actions = [parser.OFPActionSetState(state=0xfffffffa,table_id=1),
-            parser.OFPActionSetFlag(flag, flag_mask)]
+        actions = [parser.OFPExpActionSetState(state=0xfffffffa,table_id=1),
+            parser.OFPExpActionSetFlag(flag, flag_mask)]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions),
             parser.OFPInstructionGotoTable(1),
@@ -192,7 +192,7 @@ class OSTestFFSM(app_manager.RyuApp):
         req = ofp_parser.OFPFeaturesRequest(datapath)
         datapath.send_msg(req)
 
-    def add_state_entry(self, datapath):
+    def set_state_entry(self, datapath):
         ofproto = datapath.ofproto
         state = datapath.ofproto_parser.OFPStateEntry(
             datapath, ofproto.OFPSC_SET_FLOW_STATE, 4, 2, [10,0,0,3],
@@ -208,12 +208,12 @@ class OSTestFFSM(app_manager.RyuApp):
 
     def send_key_lookup(self, datapath):
         ofp = datapath.ofproto
-        key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(
+        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
             datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_IPV4_SRC],table_id=1)
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
-        key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(
+        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
             datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_IPV4_SRC],table_id=1)
         datapath.send_msg(key_update_extractor)

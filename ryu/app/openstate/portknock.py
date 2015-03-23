@@ -104,12 +104,12 @@ class OSPortKnocking(app_manager.RyuApp):
             match = parser.OFPMatch(
                 state=state, eth_type=0x0800, ip_proto=17, udp_dst=PORT_LIST[state])
             if not state == 4:
-                actions = [parser.OFPActionSetState(state +1,0)]
+                actions = [parser.OFPExpActionSetState(state +1,0)]
                 inst = [parser.OFPInstructionActions(
                     datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
             else:
                 actions = [parser.OFPActionOutput(2, 0),
-                            parser.OFPActionSetState(state,0)]
+                            parser.OFPExpActionSetState(state,0)]
                 inst = [ parser.OFPInstructionActions(
                     datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
             mod = parser.OFPFlowMod(
@@ -122,7 +122,7 @@ class OSPortKnocking(app_manager.RyuApp):
             datapath.send_msg(mod)
 
         # se sbaglio sequenza, torno allo stato DEFAULT
-        actions = [parser.OFPActionSetState(0,0)]
+        actions = [parser.OFPExpActionSetState(0,0)]
         match = parser.OFPMatch()
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
@@ -149,12 +149,12 @@ class OSPortKnocking(app_manager.RyuApp):
 
     def send_key_lookup(self, datapath):
         ofp = datapath.ofproto
-        key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(
+        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
             datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_IPV4_SRC])
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
-        key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(
+        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
             datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_IPV4_SRC])
         datapath.send_msg(key_update_extractor)

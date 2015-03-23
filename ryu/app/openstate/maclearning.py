@@ -99,14 +99,14 @@ class OSMacLearning(app_manager.RyuApp):
                         actions = [
                             parser.OFPActionOutput(
                                 ofproto.OFPP_FLOOD),
-                            parser.OFPActionSetState(in_port,0)]
+                            parser.OFPExpActionSetState(in_port,0)]
                         match = parser.OFPMatch(
                             in_port=in_port, state=state)
                     
                     else:
                         actions = [
                            parser.OFPActionOutput(state, 0),
-                           parser.OFPActionSetState(in_port,0)]
+                           parser.OFPExpActionSetState(in_port,0)]
                         match = parser.OFPMatch(
                             in_port=in_port, state=state)
                     
@@ -144,14 +144,14 @@ class OSMacLearning(app_manager.RyuApp):
     def send_key_lookup(self, datapath):
         ofp = datapath.ofproto
 
-        key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(
+        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
             datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_ETH_DST])
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
 
-        key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(
+        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
             datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_ETH_SRC])
         datapath.send_msg(key_update_extractor)
 
