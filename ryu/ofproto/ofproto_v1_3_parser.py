@@ -3297,27 +3297,27 @@ class OFPActionSetFlag(OFPAction):
     ================ ======================================================
     Attribute        Description
     ================ ======================================================
-    value            Flags value
-    mask             Mask value
+    flag             Flags value
+    flag_mask        Mask value
     ================ ======================================================
     """
-    def __init__(self, value, mask=0xffffffff, type_=None, len_=None):
+    def __init__(self, flag, flag_mask=0xffffffff, type_=None, len_=None):
         super(OFPActionSetFlag, self).__init__()
         self.type = ofproto.OFPAT_SET_FLAG
         self.len = ofproto.OFP_ACTION_SET_FLAG_SIZE
-        self.value = value
-        self.mask = mask
+        self.flag = flag
+        self.flag_mask = flag_mask
 
     @classmethod
     def parser(cls, buf, offset):
-        (type_, len_, value, mask) = struct.unpack_from(
+        (type_, len_, flag, flag_mask) = struct.unpack_from(
             ofproto.OFP_ACTION_SET_FLAG_PACK_STR,
             buf, offset)
-        return cls(value, mask)
+        return cls(flag, flag_mask)
 
     def serialize(self, buf, offset):
         msg_pack_into(ofproto.OFP_ACTION_SET_FLAG_PACK_STR,
-                      buf, offset, self.type, self.len, self.value, self.mask)
+                      buf, offset, self.type, self.len, self.flag, self.flag_mask)
 
 
 class OFPBucket(StringifyMixin):
