@@ -131,7 +131,7 @@ class OSMacLearning(app_manager.RyuApp):
     def add_state_entry(self, datapath):
         ofproto = datapath.ofproto
         state = datapath.ofproto_parser.OFPStateEntry(
-            datapath, ofproto.OFPSC_ADD_FLOW_STATE, 6, 4, [0,0,0,0,0,2],
+            datapath, ofproto.OFPSC_SET_FLOW_STATE, 6, 4, [0,0,0,0,0,2],
             cookie=0, cookie_mask=0, table_id=0)
         datapath.send_msg(state)
 
@@ -145,13 +145,13 @@ class OSMacLearning(app_manager.RyuApp):
         ofp = datapath.ofproto
 
         key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(
-            datapath, ofp.OFPSC_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_ETH_DST])
+            datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_ETH_DST])
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
 
         key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(
-            datapath, ofp.OFPSC_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_ETH_SRC])
+            datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_ETH_SRC])
         datapath.send_msg(key_update_extractor)
 
