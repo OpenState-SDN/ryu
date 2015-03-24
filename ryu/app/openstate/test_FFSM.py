@@ -27,7 +27,7 @@ from ryu.topology import event
 import time
 
 '''
-Applicazione di test che fa uso di Global States (flags), Flow States e Metadata contemporaneamente e dei comandi OFPSC_SET_FLOW_STATE e OFPSC_EXP_DEL_FLOW_STATE
+Applicazione di test che fa uso di Global States (flags), Flow States e Metadata contemporaneamente e dei comandi OFPSC_EXP_SET_FLOW_STATE e OFPSC_EXP_DEL_FLOW_STATE
 
 Ci sono 4 host:
 h1 e h2 si pingano sempre
@@ -194,14 +194,14 @@ class OSTestFFSM(app_manager.RyuApp):
 
     def set_state_entry(self, datapath):
         ofproto = datapath.ofproto
-        state = datapath.ofproto_parser.OFPStateEntry(
-            datapath, ofproto.OFPSC_SET_FLOW_STATE, 4, 2, [10,0,0,3],
+        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(
+            datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, 4, 2, [10,0,0,3],
             cookie=0, cookie_mask=0, table_id=1)
         datapath.send_msg(state)
 
     def del_state_entry(self, datapath):
         ofproto = datapath.ofproto
-        state = datapath.ofproto_parser.OFPStateEntry(
+        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(
             datapath, ofproto.OFPSC_EXP_DEL_FLOW_STATE, 4, 2, [10,0,0,3],
             cookie=0, cookie_mask=0, table_id=1)
         datapath.send_msg(state)

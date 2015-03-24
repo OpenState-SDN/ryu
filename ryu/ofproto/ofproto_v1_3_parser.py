@@ -120,7 +120,7 @@ def OFPExpActionSetState(state=0,table_id=0):
     data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, table_id)
     return OFPActionExperimenter(experimenter=0x000026e1, data=data)
 
-def OFPExpActionSetFlag(value, mask=0xffffffff):
+def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
     """ 
     Returns a Set Flag experimenter action
 
