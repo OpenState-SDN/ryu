@@ -6108,24 +6108,17 @@ class OFPSetAsync(MsgBase):
 
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
 class OFPKeyExtract(MsgBase):
-    def __init__(self, datapath, command,field_count,fields,cookie=0, cookie_mask=0, table_id=0
+    def __init__(self, datapath, command,field_count,fields,table_id=0
                  ):
         super(OFPKeyExtract, self).__init__(datapath)
-        self.cookie = cookie
-        self.cookie_mask = cookie_mask
         self.table_id = table_id
         self.command = command
         self.field_count=field_count
         self.fields=fields
-#   	if self.field_count < ofproto.MAX_FIELD_COUNT:
-#	    for i in range(field_count,ofproto.MAX_FIELD_COUNT):
-#	        fields.append(0)  
 
-
-	#self.buf=bytearray()
     def _serialize_body(self):
         
-        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie,self.cookie_mask,self.table_id,self.command)
+        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.table_id,self.command)
 
         offset=ofproto.OFP_STATE_MOD_SIZE
 
@@ -6147,11 +6140,9 @@ class OFPKeyExtract(MsgBase):
         
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
 class OFPStateEntry(MsgBase):
-    def __init__(self, datapath, command,state,state_mask,key_count,keys,cookie=0, cookie_mask=0, table_id=0
+    def __init__(self, datapath, command,state,state_mask,key_count,keys,table_id=0
                  ):
         super(OFPStateEntry, self).__init__(datapath)
-        self.cookie = cookie
-        self.cookie_mask = cookie_mask
         self.table_id = table_id
         self.command = command
         self.key_count=key_count
@@ -6161,7 +6152,7 @@ class OFPStateEntry(MsgBase):
 
 
     def _serialize_body(self):
-        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie, self.cookie_mask, self.table_id,self.command)
+        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.table_id,self.command)
         offset=ofproto.OFP_STATE_MOD_SIZE
 
         msg_pack_into(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,self.buf,offset,self.key_count,self.state,self.state_mask)
