@@ -103,6 +103,59 @@ def maskedflags(string,offset=0):
     value=''.join(value)
     return (int(value,2),int(mask,2))
 
+'''
+state field is 32bit long
+Thanks to the mask we can divide the field in multiple substate matchable with masks.
+
+substate(state,section,sec_count)
+state = state to match
+section = number of the selected subsection (starts from 0 from the right)
+sec_count = number of how many subsection the state field has been divided
+
+substate(5,1,4)   -> |********|********|00000101|********|-> (1280,16711680)
+
+'''
+def substate(state,section,sec_count):
+    
+    if not isinstance(state, int) or not isinstance(section, int) or not isinstance(sec_count, int):
+        print("ERROR: parameters must be integers!")
+        return(0,0)
+    if state < 0 or section < 0 or sec_count < 0:
+        print("ERROR: parameters must be positive!")
+        return(0,0)
+    if 32%sec_count != 0:
+        print("ERROR: the number of sections must be a divisor of 32")
+        return(0,0)
+    section_len = 32/sec_count
+    if state >= pow(2,section_len):
+        print("ERROR: state exceed the section's length")
+        return(0,0)
+    if section not in range (1,sec_count+1):
+        print("ERROR: section not exist. It must be between 1 and sec_count")
+        return(0,0)
+
+    sec_count = sec_count -1
+    count = 1
+    starting_point = section*section_len
+    
+    mask=['0']*32
+    value=['0']*32
+    bin_state=['0']*section_len
+    
+    state = bin(state)
+    state = ''.join(state[2:])
+    
+    for i in range(0,len(state)):
+        bin_state [section_len-1-i]= state[len(state)-1-i]
+    
+    for i in range(starting_point,starting_point+section_len):
+        value[31-i]=bin_state[section_len - count]
+        count = count + 1 
+        mask[31-i]="1"
+    
+    mask=''.join(mask)
+    value=''.join(value)
+    return (int(value,2),int(mask,2))
 
 @ofproto_parser.register_msg_parser(ofproto.OFP_VERSION)
 def msg_parser(datapath, version, msg_type, msg_len, xid, buf):
@@ -3266,26 +3319,28 @@ class OFPActionSetState(OFPAction):
     Attribute        Description
     ================ ======================================================
     state            State instance
+    state_mask       State mask
     table_id         Stage ID
     ================ ======================================================
     """
-    def __init__(self, state=0,table_id=0,type_=None, len_=None):
+    def __init__(self, state=0,state_mask=0,table_id=0,type_=None, len_=None):
         super(OFPActionSetState, self).__init__()
         self.type = ofproto.OFPAT_SET_STATE
         self.len = ofproto.OFP_ACTION_SET_STATE_SIZE
-        self.state= state
-        self.table_id= table_id
+        self.state = state
+        self.state_mask = state_mask
+        self.table_id = table_id
 
     @classmethod
     def parser(cls, buf, offset):
-        (type_, len_, state, table_id) = struct.unpack_from(
+        (type_, len_, state, state_mask, table_id) = struct.unpack_from(
             ofproto.OFP_ACTION_SET_STATE_PACK_STR,
             buf, offset)
-        return cls(state, table_id)
+        return cls(state, state_mask, table_id)
 
     def serialize(self, buf, offset):
         msg_pack_into(ofproto.OFP_ACTION_SET_STATE_PACK_STR,
-                      buf, offset, self.type, self.len, self.state, self.table_id)
+                      buf, offset, self.type, self.len, self.state, self.state_mask, self.table_id)
 
 @OFPAction.register_action_type(ofproto.OFPAT_SET_FLAG,ofproto.OFP_ACTION_SET_FLAG_SIZE)
 class OFPActionSetFlag(OFPAction):
@@ -6092,7 +6147,7 @@ class OFPKeyExtract(MsgBase):
         
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
 class OFPStateEntry(MsgBase):
-    def __init__(self, datapath, command,key_count,state,keys,cookie=0, cookie_mask=0, table_id=0
+    def __init__(self, datapath, command,state,state_mask,key_count,keys,cookie=0, cookie_mask=0, table_id=0
                  ):
         super(OFPStateEntry, self).__init__(datapath)
         self.cookie = cookie
@@ -6100,15 +6155,16 @@ class OFPStateEntry(MsgBase):
         self.table_id = table_id
         self.command = command
         self.key_count=key_count
-        self.state=state
-        self.keys=keys
+        self.state = state
+        self.state_mask = state_mask
+        self.keys = keys
 
 
     def _serialize_body(self):
         msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.cookie, self.cookie_mask, self.table_id,self.command)
         offset=ofproto.OFP_STATE_MOD_SIZE
 
-        msg_pack_into(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,self.buf,offset,self.key_count,self.state)
+        msg_pack_into(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,self.buf,offset,self.key_count,self.state,self.state_mask)
 
         offset += ofproto.OFP_STATE_MOD_ENTRY_SIZE
 

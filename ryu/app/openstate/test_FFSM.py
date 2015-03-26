@@ -29,9 +29,10 @@ import time
 '''
 Applicazione di test che fa uso di Global States (flags), Flow States e Metadata contemporaneamente e dei comandi OFPSC_SET_FLOW_STATE e OFPSC_DEL_FLOW_STATE
 
-Ci sono 4 host:
+Ci sono 6 host:
 h1 e h2 si pingano sempre
 h3 e h4 si pingano per 5 secondi, poi non riescono per altri 5 e infine riescono sempre
+h5 e h6 si pingano sempre
 
 TABLE 0 (stateless)
 
@@ -39,11 +40,14 @@ ipv4_src=10.0.0.1, in_port=1    --->    SetState(state=0xfffffffa,table_id=1), S
 ipv4_src=10.0.0.2, in_port=2    --->    forward(1)
 ipv4_src=10.0.0.3, in_port=3    --->    GotoTable(1)
 ipv4_src=10.0.0.4, in_port=4    --->    forward(3)
+ipv4_src=10.0.0.5, in_port=5    --->    SetState(state = 3, state_mask = 255, table_id=1), GotoTable(1)
+ipv4_src=10.0.0.6, in_port=6    --->    forward(5)
 
 TABLE 1 (stateful) Lookup-scope=Update-scope=OXM_OF_IPV4_SRC)
 
 ipv4_src=10.0.0.1, metadata=64954, flags="1*01********", state=0xfffffffa   --->    forward(2)
 ipv4_src=10.0.0.3, state=2                                                  --->    forward(4)
+ipv4_src=10.0.0.5, state=3, state_mask = 255                                --->    forward(6)
 '''
 
 class OSTestFFSM(app_manager.RyuApp):
@@ -65,11 +69,15 @@ class OSTestFFSM(app_manager.RyuApp):
         self.send_key_update(datapath)
 
         self.add_flow(datapath)
-        self.add_state_entry(datapath)
+        self.set_substate_entry(datapath)
+        time.sleep(5)
+        self.set_substate_entry2(datapath)
+        
+        self.set_state_entry(datapath)
         time.sleep(5)
         self.del_state_entry(datapath)
         time.sleep(5)
-        self.add_state_entry(datapath)
+        self.set_state_entry(datapath)
         
 
     def add_flow(self, datapath, table_miss=False):
@@ -95,8 +103,9 @@ class OSTestFFSM(app_manager.RyuApp):
         match = parser.OFPMatch(
             ipv4_src="10.0.0.1", in_port=1, eth_type=0x0800)
         (flag, flag_mask) = parser.maskedflags("1*01",8)
-        actions = [parser.OFPActionSetState(state=0xfffffffa,table_id=1),
-            parser.OFPActionSetFlag(flag, flag_mask)]
+        (state, state_mask) = parser.substate(state=4294967290,section=1,sec_count=1)
+        actions = [parser.OFPActionSetState(state,state_mask,table_id=1),
+            parser.OFPActionSetFlag(flag,flag_mask)]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions),
             parser.OFPInstructionGotoTable(1),
@@ -112,8 +121,38 @@ class OSTestFFSM(app_manager.RyuApp):
         datapath.send_msg(mod)
 
         match = parser.OFPMatch(
-            ipv4_src="10.0.0.1", eth_type=0x0800, metadata=64954, state=0xfffffffa, flags=parser.maskedflags("1*01",8))
+            ipv4_src="10.0.0.1", in_port=1, eth_type=0x0800, metadata=64954, state=parser.substate(state=4294967290,section=1,sec_count=1), flags=parser.maskedflags("1*01",8))
         actions = [parser.OFPActionOutput(2)]
+        inst = [parser.OFPInstructionActions(
+            datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        mod = parser.OFPFlowMod(
+            datapath=datapath, cookie=0, cookie_mask=0, table_id=1,
+            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+            priority=32768, buffer_id=ofproto.OFP_NO_BUFFER,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            flags=0, match=match, instructions=inst)
+        datapath.send_msg(mod)
+
+        match = parser.OFPMatch(
+            ipv4_src="10.0.0.5", in_port=5, eth_type=0x0800)
+        (state, state_mask) = parser.substate(state=3,section=1,sec_count=4)
+        actions = [parser.OFPActionSetState(state,state_mask,table_id=1)]
+        inst = [parser.OFPInstructionActions(
+            datapath.ofproto.OFPIT_APPLY_ACTIONS, actions),
+            parser.OFPInstructionGotoTable(1)]
+        mod = parser.OFPFlowMod(
+            datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
+            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+            priority=32768, buffer_id=ofproto.OFP_NO_BUFFER,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            flags=0, match=match, instructions=inst)
+        datapath.send_msg(mod)
+
+        match = parser.OFPMatch(
+            ipv4_src="10.0.0.5", in_port=5, eth_type=0x0800, state=parser.substate(state=3,section=1,sec_count=4))
+        actions = [parser.OFPActionOutput(6)]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
         mod = parser.OFPFlowMod(
@@ -153,7 +192,21 @@ class OSTestFFSM(app_manager.RyuApp):
         datapath.send_msg(mod)
 
         match = parser.OFPMatch(
-            ipv4_src="10.0.0.3", eth_type=0x0800, state=2)
+            ipv4_src="10.0.0.6", in_port=6, eth_type=0x0800)
+        actions = [parser.OFPActionOutput(5)]
+        inst = [parser.OFPInstructionActions(
+            datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        mod = parser.OFPFlowMod(
+            datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
+            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+            priority=32768, buffer_id=ofproto.OFP_NO_BUFFER,
+            out_port=ofproto.OFPP_ANY,
+            out_group=ofproto.OFPG_ANY,
+            flags=0, match=match, instructions=inst)
+        datapath.send_msg(mod)
+
+        match = parser.OFPMatch(
+            ipv4_src="10.0.0.3", in_port=3, eth_type=0x0800, state=parser.substate(state=2,section=1,sec_count=1))
         actions = [parser.OFPActionOutput(4)]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
@@ -192,19 +245,41 @@ class OSTestFFSM(app_manager.RyuApp):
         req = ofp_parser.OFPFeaturesRequest(datapath)
         datapath.send_msg(req)
 
-    def add_state_entry(self, datapath):
+    def set_substate_entry(self, datapath):
         ofproto = datapath.ofproto
-        state = datapath.ofproto_parser.OFPStateEntry(
-            datapath, ofproto.OFPSC_SET_FLOW_STATE, 4, 2, [10,0,0,3],
+        parser = datapath.ofproto_parser
+        (state, state_mask) = parser.substate(state=2,section=4,sec_count=4)
+        msg = datapath.ofproto_parser.OFPStateEntry(
+            datapath, ofproto.OFPSC_SET_FLOW_STATE, state, state_mask, key_count=4, keys=[10,0,0,5],
             cookie=0, cookie_mask=0, table_id=1)
-        datapath.send_msg(state)
+        datapath.send_msg(msg)
+
+    def set_substate_entry2(self, datapath):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        (state, state_mask) = parser.substate(state=6,section=3,sec_count=4)
+        msg = datapath.ofproto_parser.OFPStateEntry(
+            datapath, ofproto.OFPSC_SET_FLOW_STATE, state, state_mask, key_count=4, keys=[10,0,0,5],
+            cookie=0, cookie_mask=0, table_id=1)
+        datapath.send_msg(msg)
+
+    def set_state_entry(self, datapath):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        (state, state_mask) = parser.substate(state=2,section=1,sec_count=1)
+        msg = datapath.ofproto_parser.OFPStateEntry(
+            datapath, ofproto.OFPSC_SET_FLOW_STATE, state, state_mask, key_count=4, keys=[10,0,0,3],
+            cookie=0, cookie_mask=0, table_id=1)
+        datapath.send_msg(msg)
 
     def del_state_entry(self, datapath):
         ofproto = datapath.ofproto
-        state = datapath.ofproto_parser.OFPStateEntry(
-            datapath, ofproto.OFPSC_DEL_FLOW_STATE, 4, 2, [10,0,0,3],
+        parser = datapath.ofproto_parser
+        (state, state_mask) = parser.substate(state=2,section=1,sec_count=1)
+        msg = datapath.ofproto_parser.OFPStateEntry(
+            datapath, ofproto.OFPSC_DEL_FLOW_STATE, state, state_mask, key_count=4, keys=[10,0,0,3],
             cookie=0, cookie_mask=0, table_id=1)
-        datapath.send_msg(state)
+        datapath.send_msg(msg)
 
     def send_key_lookup(self, datapath):
         ofp = datapath.ofproto
