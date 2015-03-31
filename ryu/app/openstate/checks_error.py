@@ -83,9 +83,9 @@ class SimpleSwitch13(app_manager.RyuApp):
 
         ''' [TEST 8]
         dovrebbe tornare un errore (type=1,code=9))'''
-        self.test8(datapath)
+        #self.test8(datapath)
 
-        ####################################################################################################################à
+        ####################################################################################################################
 
         '''
         [FLAGS]
@@ -117,7 +117,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         ''' [TEST 12]
         mininet> h5 ping -c5 h6
         Dovrebbe perdersi solo il primo ping'''
-        #self.test12(datapath)  
+        self.test12(datapath)  
 
 
     def add_flow(self, datapath, priority, match, actions):
