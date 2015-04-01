@@ -131,7 +131,7 @@ class OSMacLearning(app_manager.RyuApp):
     def add_state_entry(self, datapath):
         ofproto = datapath.ofproto
         state = datapath.ofproto_parser.OFPStateEntry(
-            datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=4, state_mask=0xFFFFFFFF, key_count=6, keys=[0,0,0,0,0,2], table_id=0)
+            datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=4, key_count=6, keys=[0,0,0,0,0,2], table_id=0)
         datapath.send_msg(state)
 
     def send_features_request(self, datapath):
