@@ -188,7 +188,7 @@ class SimpleSwitch13(app_manager.RyuApp):
     def test2(self,datapath):
         ofproto=datapath.ofproto
         parser=datapath.ofproto_parser
-        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, 12, 88, [0,0,0,0,0,2,0,0,0,0,0,4],cookie=0, cookie_mask=0, table_id=0)
+        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, state=88, state_mask=0xffffffff, keys=[0,0,0,0,0,2,0,0,0,0,0,4], key_count=12, table_id=0)
         datapath.send_msg(state)
 
         actions = [parser.OFPActionOutput(4,0)]
@@ -248,13 +248,13 @@ class SimpleSwitch13(app_manager.RyuApp):
     def test7(self,datapath):
         ofproto=datapath.ofproto
         parser=datapath.ofproto_parser
-        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, 12, 88, [0,0,0,0,0,2,0,0,0,0,0,4,8],cookie=0, cookie_mask=0, table_id=0)
+        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, state=88, state_mask=0xffffffff, key_count=12,keys=[0,0,0,0,0,2,0,0,0,0,0,4,8],table_id=0)
         datapath.send_msg(state)
 
     def test8(self,datapath):
         ofproto=datapath.ofproto
         parser=datapath.ofproto_parser
-        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, 12, 88, [0,0,0,0,0,2,0,0,0,0,0,4],cookie=0, cookie_mask=0, table_id=200)
+        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, state=88, state_mask=0xffffffff, key_count=12, keys=[0,0,0,0,0,2,0,0,0,0,0,4],table_id=200)
         datapath.send_msg(state)
 
     def test9(self,datapath):
@@ -326,7 +326,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         datapath.send_msg(key_lookup_extractor)
         key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_ETH_SRC])
         datapath.send_msg(key_lookup_extractor)
-        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, 4, 88, [10,0,0,5],cookie=0, cookie_mask=0, table_id=0)
+        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, state=88, state_mask=0xffffffff, key_count=4, keys=[10,0,0,5],table_id=0)
         datapath.send_msg(state)
 
     def test14(self,datapath):
@@ -337,5 +337,5 @@ class SimpleSwitch13(app_manager.RyuApp):
         datapath.send_msg(key_lookup_extractor)
         key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_ETH_SRC])
         datapath.send_msg(key_lookup_extractor)
-        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_EXP_DEL_FLOW_STATE, 4, 99, [10,0,0,5],cookie=0, cookie_mask=0, table_id=0)
+        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(datapath, ofproto.OFPSC_EXP_DEL_FLOW_STATE, state=99, state_mask=0xffffffff, key_count=4, keys=[10,0,0,5], table_id=0)
         datapath.send_msg(state)
