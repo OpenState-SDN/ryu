@@ -3323,7 +3323,7 @@ class OFPActionSetState(OFPAction):
     table_id         Stage ID
     ================ ======================================================
     """
-    def __init__(self, state=0,state_mask=0,table_id=0,type_=None, len_=None):
+    def __init__(self, state=0,state_mask=0xffffffff,table_id=0,type_=None, len_=None):
         super(OFPActionSetState, self).__init__()
         self.type = ofproto.OFPAT_SET_STATE
         self.len = ofproto.OFP_ACTION_SET_STATE_SIZE
