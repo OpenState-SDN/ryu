@@ -102,8 +102,61 @@ def maskedflags(string,offset=0):
     mask=''.join(mask)
     value=''.join(value)
     return (int(value,2),int(mask,2))
+'''
+state field is 32bit long
+Thanks to the mask we can divide the field in multiple substate matchable with masks.
 
-def OFPExpActionSetState(state=0,table_id=0):
+substate(state,section,sec_count)
+state = state to match
+section = number of the selected subsection (starts from 0 from the right)
+sec_count = number of how many subsection the state field has been divided
+
+substate(5,1,4)   -> |********|********|00000101|********|-> (1280,16711680)
+
+'''
+def substate(state,section,sec_count):
+    
+    if not isinstance(state, int) or not isinstance(section, int) or not isinstance(sec_count, int):
+        print("ERROR: parameters must be integers!")
+        return(0,0)
+    if state < 0 or section < 0 or sec_count < 0:
+        print("ERROR: parameters must be positive!")
+        return(0,0)
+    if 32%sec_count != 0:
+        print("ERROR: the number of sections must be a divisor of 32")
+        return(0,0)
+    section_len = 32/sec_count
+    if state >= pow(2,section_len):
+        print("ERROR: state exceed the section's length")
+        return(0,0)
+    if section not in range (1,sec_count+1):
+        print("ERROR: section not exist. It must be between 1 and sec_count")
+        return(0,0)
+
+    sec_count = sec_count -1
+    count = 1
+    starting_point = section*section_len
+    
+    mask=['0']*32
+    value=['0']*32
+    bin_state=['0']*section_len
+    
+    state = bin(state)
+    state = ''.join(state[2:])
+    
+    for i in range(0,len(state)):
+        bin_state [section_len-1-i]= state[len(state)-1-i]
+    
+    for i in range(starting_point,starting_point+section_len):
+        value[31-i]=bin_state[section_len - count]
+        count = count + 1 
+        mask[31-i]="1"
+    
+    mask=''.join(mask)
+    value=''.join(value)
+    return (int(value,2),int(mask,2))
+
+def OFPExpActionSetState(state=0,state_mask=0xffffffff,table_id=0):
     """ 
     Returns a Set state experimenter action
 
@@ -113,11 +166,12 @@ def OFPExpActionSetState(state=0,table_id=0):
     Attribute        Description
     ================ ======================================================
     state            State instance
+    state_mask       State mask
     table_id         Stage ID
     ================ ======================================================
     """
     act_type=0
-    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, table_id)
+    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, state_mask, table_id)
     return OFPActionExperimenter(experimenter=0x000026e1, data=data)
 
 def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
@@ -143,9 +197,9 @@ def OFPExpMsgFlagMod(datapath, command, flag=0, flag_mask=0):
     exp_type=5 # see enum ofp_extension_commands in openflow-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0x000026e1, exp_type=exp_type, data=data)
 
-def OFPExpMsgSetStateEntry(datapath, command,key_count,state,keys,cookie=0, cookie_mask=0, table_id=0):
-    data=struct.pack(ofproto.OFP_EXP_STATE_MOD_PACK_STR,cookie, cookie_mask, table_id,command)
-    data+=struct.pack(ofproto.OFP_EXP_STATE_MOD_ENTRY_PACK_STR,key_count,state)
+def OFPExpMsgSetStateEntry(datapath, command,state,state_mask,key_count,keys,table_id=0):
+    data=struct.pack(ofproto.OFP_EXP_STATE_MOD_PACK_STR, table_id,command)
+    data+=struct.pack(ofproto.OFP_EXP_STATE_MOD_ENTRY_PACK_STR,key_count,state,state_mask)
     field_extract_format='!B'
 
     if key_count <= ofproto.MAX_KEY_LEN:
@@ -160,8 +214,8 @@ def OFPExpMsgSetStateEntry(datapath, command,key_count,state,keys,cookie=0, cook
     exp_type=4 # see enum ofp_extension_commands in openflow-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0x000026e1, exp_type=exp_type, data=data)
 
-def OFPExpMsgKeyExtract(datapath, command, field_count, fields, cookie=0, cookie_mask=0, table_id=0):
-    data=struct.pack(ofproto.OFP_EXP_STATE_MOD_PACK_STR,cookie, cookie_mask, table_id,command)
+def OFPExpMsgKeyExtract(datapath, command, field_count, fields, table_id=0):
+    data=struct.pack(ofproto.OFP_EXP_STATE_MOD_PACK_STR, table_id,command)
     data+=struct.pack(ofproto.OFP_EXP_STATE_MOD_EXTRACT_PACK_STR,field_count)
     field_extract_format='!I'
 
