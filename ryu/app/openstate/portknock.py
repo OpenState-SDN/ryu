@@ -104,12 +104,12 @@ class OSPortKnocking(app_manager.RyuApp):
             match = parser.OFPMatch(
                 state=state, eth_type=0x0800, ip_proto=17, udp_dst=PORT_LIST[state])
             if not state == 4:
-                actions = [parser.OFPActionSetState(state +1,0)]
+                actions = [parser.OFPActionSetState(state=state +1,table_id=0)]
                 inst = [parser.OFPInstructionActions(
                     datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
             else:
                 actions = [parser.OFPActionOutput(2, 0),
-                            parser.OFPActionSetState(state,0)]
+                            parser.OFPActionSetState(state=state,table_id=0)]
                 inst = [ parser.OFPInstructionActions(
                     datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
             mod = parser.OFPFlowMod(
@@ -122,7 +122,7 @@ class OSPortKnocking(app_manager.RyuApp):
             datapath.send_msg(mod)
 
         # se sbaglio sequenza, torno allo stato DEFAULT
-        actions = [parser.OFPActionSetState(0,0)]
+        actions = [parser.OFPActionSetState(state=0,table_id=0)]
         match = parser.OFPMatch()
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
