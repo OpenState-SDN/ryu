@@ -99,14 +99,14 @@ class OSMacLearning(app_manager.RyuApp):
                         actions = [
                             parser.OFPActionOutput(
                                 ofproto.OFPP_FLOOD),
-                            parser.OFPActionSetState(in_port,0)]
+                            parser.OFPActionSetState(state=in_port,table_id=0)]
                         match = parser.OFPMatch(
                             in_port=in_port, state=state)
                     
                     else:
                         actions = [
                            parser.OFPActionOutput(state, 0),
-                           parser.OFPActionSetState(in_port,0)]
+                           parser.OFPActionSetState(state=in_port,table_id=0)]
                         match = parser.OFPMatch(
                             in_port=in_port, state=state)
                     
@@ -131,8 +131,7 @@ class OSMacLearning(app_manager.RyuApp):
     def add_state_entry(self, datapath):
         ofproto = datapath.ofproto
         state = datapath.ofproto_parser.OFPStateEntry(
-            datapath, ofproto.OFPSC_ADD_FLOW_STATE, 6, 4, [0,0,0,0,0,2],
-            cookie=0, cookie_mask=0, table_id=0)
+            datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=4, key_count=6, keys=[0,0,0,0,0,2], table_id=0)
         datapath.send_msg(state)
 
     def send_features_request(self, datapath):
