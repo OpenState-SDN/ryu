@@ -6140,7 +6140,7 @@ class OFPKeyExtract(MsgBase):
         
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
 class OFPStateEntry(MsgBase):
-    def __init__(self, datapath, command,state,state_mask,key_count,keys,table_id=0
+    def __init__(self, datapath, command,state,key_count,keys,state_mask=0xffffffff,table_id=0
                  ):
         super(OFPStateEntry, self).__init__(datapath)
         self.table_id = table_id
