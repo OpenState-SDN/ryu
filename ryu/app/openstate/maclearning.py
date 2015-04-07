@@ -37,7 +37,6 @@ class OSMacLearning(app_manager.RyuApp):
         LOG.info("OpenState MAC Learning sample app initialized")
         LOG.info("Supporting MAX %d ports per switch" % SWITCH_PORTS)
         super(OSMacLearning, self).__init__(*args, **kwargs)
-        self.mac_to_port = {}
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -51,8 +50,7 @@ class OSMacLearning(app_manager.RyuApp):
         self.send_key_lookup(datapath)
         self.send_key_update(datapath)
 
-        self.add_flow(datapath, False)
-
+        self.add_flow(datapath, table_miss=False)
 
     def add_flow(self, datapath, table_miss=False):
         ofproto = datapath.ofproto
@@ -79,22 +77,9 @@ class OSMacLearning(app_manager.RyuApp):
 
         else:
 
-            '''
-
-            Lookup-scope=ETH_DST
-            Update-scope=ETH_SRC
-
-            # the state of a flow is the port where a host can be reached
-
-            match: state=0 & in_port=i  =>  action: set_state(i) & flood()
-            match: state=j & in_port=i  =>  action: set_state(i) & output(j)
-
-            '''
-
             for in_port in range(1, SWITCH_PORTS + 1):  # for each port (from 1 to #ports)
                 LOG.info("Installing flow rule for port %d..." % in_port)
                 for state in range(SWITCH_PORTS + 1):   # for each state (from 0 to #ports)
-
                     if state == 0:  # DEFAULT state
                         actions = [
                             parser.OFPActionOutput(
@@ -102,14 +87,12 @@ class OSMacLearning(app_manager.RyuApp):
                             parser.OFPActionSetState(state=in_port,table_id=0)]
                         match = parser.OFPMatch(
                             in_port=in_port, state=state)
-                    
                     else:
                         actions = [
                            parser.OFPActionOutput(state, 0),
                            parser.OFPActionSetState(state=in_port,table_id=0)]
                         match = parser.OFPMatch(
                             in_port=in_port, state=state)
-                    
                     inst = [parser.OFPInstructionActions(
                             ofproto.OFPIT_APPLY_ACTIONS, actions)]
                     mod = parser.OFPFlowMod(
@@ -125,14 +108,8 @@ class OSMacLearning(app_manager.RyuApp):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
 
-        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFUL)
+        req = ofp_parser.OFPTableMod(datapath, table_id=0, config=ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
-
-    def add_state_entry(self, datapath):
-        ofproto = datapath.ofproto
-        state = datapath.ofproto_parser.OFPStateEntry(
-            datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=4, key_count=6, keys=[0,0,0,0,0,2], table_id=0)
-        datapath.send_msg(state)
 
     def send_features_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
@@ -144,13 +121,12 @@ class OSMacLearning(app_manager.RyuApp):
         ofp = datapath.ofproto
 
         key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(
-            datapath, ofp.OFPSC_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_ETH_DST])
+            datapath, command=ofp.OFPSC_SET_L_EXTRACTOR, field_count=1, fields=[ofp.OXM_OF_ETH_DST], table_id=0)
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
 
         key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(
-            datapath, ofp.OFPSC_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_ETH_SRC])
+            datapath, command=ofp.OFPSC_SET_U_EXTRACTOR, field_count=1, fields=[ofp.OXM_OF_ETH_SRC], table_id=0)
         datapath.send_msg(key_update_extractor)
-
