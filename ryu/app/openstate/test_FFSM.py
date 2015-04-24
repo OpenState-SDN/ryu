@@ -56,6 +56,36 @@ class OSTestFFSM(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(OSTestFFSM, self).__init__(*args, **kwargs)
 
+    @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
+    def flow_stats_reply_handler(self, ev):
+        flows = []
+        for stat in ev.msg.body:
+            flows.append('table_id=%s '
+                         'duration_sec=%d duration_nsec=%d '
+                         'priority=%d '
+                         'idle_timeout=%d hard_timeout=%d flags=0x%04x '
+                         'cookie=%d packet_count=%d byte_count=%d '
+                         'match=%s instructions=%s' %
+                         (stat.table_id,
+                          stat.duration_sec, stat.duration_nsec,
+                          stat.priority,
+                          stat.idle_timeout, stat.hard_timeout, stat.flags,
+                          stat.cookie, stat.packet_count, stat.byte_count,
+                          stat.match, stat.instructions))
+        print('FlowStats: %s' % flows)
+    
+    @set_ev_cls(ofp_event.EventOFPStateStatsReply, MAIN_DISPATCHER)
+    def state_stats_reply_handler(self, ev):
+        states = []
+        for stat in ev.msg.body:
+            states.append('table_id=%s '
+                         'key=%s state=%d' %
+                         (stat.table_id,
+                          stat.entry.key,
+                          stat.entry.state))
+        print('StateStats: %s' % states)
+    
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         msg = ev.msg
@@ -69,6 +99,7 @@ class OSTestFFSM(app_manager.RyuApp):
         self.send_key_update(datapath)
 
         self.add_flow(datapath)
+        '''
         self.set_substate_entry(datapath)
         time.sleep(5)
         self.set_substate_entry2(datapath)
@@ -78,6 +109,14 @@ class OSTestFFSM(app_manager.RyuApp):
         self.del_state_entry(datapath)
         time.sleep(5)
         self.set_state_entry(datapath)
+
+        time.sleep(5)
+        '''
+        #self.send_flow_stats_request(datapath)
+        self.set_state_entry(datapath)
+        self.send_state_stats_request(datapath)
+        
+        
         
 
     def add_flow(self, datapath, table_miss=False):
@@ -250,7 +289,7 @@ class OSTestFFSM(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         (state, state_mask) = parser.substate(state=2,section=4,sec_count=4)
         msg = datapath.ofproto_parser.OFPStateEntry(
-            datapath, ofproto.OFPSC_SET_FLOW_STATE, state, state_mask, key_count=4, keys=[10,0,0,5], table_id=1)
+            datapath, ofproto.OFPSC_SET_FLOW_STATE, state=state, state_mask=state_mask, key_count=4, keys=[10,0,0,5], table_id=1)
         datapath.send_msg(msg)
 
     def set_substate_entry2(self, datapath):
@@ -258,7 +297,7 @@ class OSTestFFSM(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         (state, state_mask) = parser.substate(state=6,section=3,sec_count=4)
         msg = datapath.ofproto_parser.OFPStateEntry(
-            datapath, ofproto.OFPSC_SET_FLOW_STATE, state, state_mask, key_count=4, keys=[10,0,0,5], table_id=1)
+            datapath, ofproto.OFPSC_SET_FLOW_STATE, state=state, state_mask=state_mask, key_count=4, keys=[10,0,0,5], table_id=1)
         datapath.send_msg(msg)
 
     def set_state_entry(self, datapath):
@@ -266,7 +305,7 @@ class OSTestFFSM(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         (state, state_mask) = parser.substate(state=2,section=1,sec_count=1)
         msg = datapath.ofproto_parser.OFPStateEntry(
-            datapath, ofproto.OFPSC_SET_FLOW_STATE, state, state_mask, key_count=4, keys=[10,0,0,3], table_id=1)
+            datapath, ofproto.OFPSC_SET_FLOW_STATE, state=state, state_mask=state_mask, key_count=4, keys=[10,0,0,3], table_id=1)
         datapath.send_msg(msg)
 
     def del_state_entry(self, datapath):
@@ -274,7 +313,7 @@ class OSTestFFSM(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         (state, state_mask) = parser.substate(state=2,section=1,sec_count=1)
         msg = datapath.ofproto_parser.OFPStateEntry(
-            datapath, ofproto.OFPSC_DEL_FLOW_STATE, state, state_mask, key_count=4, keys=[10,0,0,3], table_id=1)
+            datapath, ofproto.OFPSC_DEL_FLOW_STATE, state=state, state_mask=state_mask, key_count=4, keys=[10,0,0,3], table_id=1)
         datapath.send_msg(msg)
 
     def send_key_lookup(self, datapath):
@@ -288,3 +327,25 @@ class OSTestFFSM(app_manager.RyuApp):
         key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(
             datapath, ofp.OFPSC_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_IPV4_SRC],table_id=1)
         datapath.send_msg(key_update_extractor)
+
+    def send_state_stats_request(self, datapath):
+        ofp = datapath.ofproto
+        ofp_parser = datapath.ofproto_parser
+
+        #match = ofp_parser.OFPMatch(ipv4_src=10.0.0.2)
+        #req = ofp_parser.OFPStateStatsRequest(datapath=datapath, table_id = 0, match=match)
+        req = ofp_parser.OFPStateStatsRequest(datapath=datapath, table_id=1, match=None)
+        datapath.send_msg(req)
+
+    def send_flow_stats_request(self, datapath):
+        ofp = datapath.ofproto
+        ofp_parser = datapath.ofproto_parser
+
+        cookie = cookie_mask = 0
+        #match = ofp_parser.OFPMatch(in_port=1)
+        req = ofp_parser.OFPFlowStatsRequest(datapath, 0,
+                                             ofp.OFPTT_ALL,
+                                             ofp.OFPP_ANY, ofp.OFPG_ANY,
+                                             cookie, cookie_mask,
+                                             match=None)
+        datapath.send_msg(req)

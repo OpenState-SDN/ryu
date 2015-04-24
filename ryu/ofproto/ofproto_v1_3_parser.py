@@ -4710,6 +4710,114 @@ class OFPMeterStatsReply(OFPMultipartReply):
     def __init__(self, datapath, type_=None, **kwargs):
         super(OFPMeterStatsReply, self).__init__(datapath, **kwargs)
 
+class OFPStateStats(StringifyMixin):
+    def __init__(self, table_id=None, field_count=None, fields=None, entry=None,length=None):
+        super(OFPStateStats, self).__init__()
+        self.length = 0
+        self.table_id = table_id
+        self.field_count = field_count
+        self.fields = fields
+        self.entry = entry
+        
+    @classmethod
+    def parser(cls, buf, offset):
+        state_stats = cls()
+
+        (state_stats.length, state_stats.table_id,state_stats.field_count) = struct.unpack_from(
+            ofproto.OFP_STATE_STATS_0_PACK_STR, buf, offset)
+        offset += ofproto.OFP_STATE_STATS_0_SIZE
+
+        state_stats.fields=[]
+        field_extract_format='!I'
+        if state_stats.field_count <= ofproto.MAX_FIELD_COUNT:
+            for f in range(state_stats.field_count):
+                field=struct.unpack_from(field_extract_format,buf,offset)
+                state_stats.fields.append(field[0])
+                offset +=4
+        offset += ((ofproto.MAX_FIELD_COUNT-state_stats.field_count)*4)
+
+        state_stats.entry = OFPStateEntry2.parser(buf, offset)
+
+        return state_stats
+
+class OFPStateStatsRequestBase(OFPMultipartRequest):
+    def __init__(self, datapath, flags, table_id, match):
+        super(OFPStateStatsRequestBase, self).__init__(datapath, flags)
+        self.table_id = table_id
+        self.match = match
+
+    def _serialize_stats_body(self):
+        offset = ofproto.OFP_MULTIPART_REQUEST_SIZE
+        msg_pack_into(ofproto.OFP_STATE_STATS_REQUEST_0_PACK_STR,
+                      self.buf, offset, self.table_id)
+
+        offset += ofproto.OFP_STATE_STATS_REQUEST_0_SIZE
+        self.match.serialize(self.buf, offset)
+
+@_set_stats_type(ofproto.OFPMP_STATE, OFPStateStats)
+@_set_msg_type(ofproto.OFPT_MULTIPART_REQUEST)
+class OFPStateStatsRequest(OFPStateStatsRequestBase):
+    """
+    Individual flow statistics request message
+
+    The controller uses this message to query state table statistics.
+
+    ================ ======================================================
+    Attribute        Description
+    ================ ======================================================
+    flags            Zero or ``OFPMPF_REQ_MORE``
+    table_id         ID of table to read
+    match            Instance of ``OFPMatch``
+    ================ ======================================================
+
+    Example::
+
+        def send_state_stats_request(self, datapath):
+            ofp = datapath.ofproto
+            ofp_parser = datapath.ofproto_parser
+
+            match = ofp_parser.OFPMatch(in_port=1)
+            req = ofp_parser.OFPStateStatsRequest(datapath, 0,
+                                                 match)
+            datapath.send_msg(req)
+    """
+    def __init__(self, datapath, flags=0, table_id=ofproto.OFPTT_ALL,
+                 match=None, type_=None):
+        if match is None:
+            match = OFPMatch()
+        super(OFPStateStatsRequest, self).__init__(datapath, flags, table_id,
+                                                match)
+@OFPMultipartReply.register_stats_type()
+@_set_stats_type(ofproto.OFPMP_STATE, OFPStateStats)
+@_set_msg_type(ofproto.OFPT_MULTIPART_REPLY)
+class OFPStateStatsReply(OFPMultipartReply):
+    """
+    State entry statistics reply message
+
+    The switch responds with this message to an individual state statistics
+    request.
+
+    ================ ======================================================
+    Attribute        Description
+    ================ ======================================================
+    body             List of ``OFPStateStats`` instance
+    ================ ======================================================
+
+    Example::
+
+        @set_ev_cls(ofp_event.EventOFPStateStatsReply, MAIN_DISPATCHER)
+            def state_stats_reply_handler(self, ev):
+                states = []
+                for stat in ev.msg.body:
+                    states.append('table_id=%s '
+                                 'key=%s state=%d ' %
+                                 (stat.table_id,
+                                  stat.entry.key,
+                                  stat.entry.state))
+                print('StateStats: %s', states)
+    """
+    def __init__(self, datapath, type_=None, **kwargs):
+        super(OFPStateStatsReply, self).__init__(datapath, **kwargs)
 
 class OFPMeterBand(StringifyMixin):
     def __init__(self, type_, len_):
@@ -6171,6 +6279,34 @@ class OFPStateEntry(MsgBase):
         else:
             LOG.error("OFPStateEntry: Number of keys given > MAX_FIELD_COUNT")
 
+class OFPStateEntry2(object):
+    def __init__(self, key_count=None, key=None, state=None):
+        super(OFPStateEntry2, self).__init__()
+        
+        self.key_count=key_count
+        self.key = key
+        self.state = state
+    
+    @classmethod
+    def parser(cls, buf, offset):
+        entry = OFPStateEntry2()
+
+        key_count = struct.unpack_from('!I', buf, offset)
+        entry.key_count = key_count[0]
+        offset += 4
+        entry.key=[]
+        if entry.key_count <= ofproto.MAX_KEY_LEN:
+            for f in range(entry.key_count):
+                key=struct.unpack_from('!B',buf,offset,)
+                entry.key.append(key[0])
+                offset +=1
+        offset += (ofproto.MAX_KEY_LEN - entry.key_count)
+
+        state = struct.unpack_from('!I', buf, offset)
+        entry.state=state[0]
+        offset += 4
+
+        return entry
 
 @_set_msg_type(ofproto.OFPT_FLAG_MOD)
 class OFPFlagMod(MsgBase):
