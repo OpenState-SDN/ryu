@@ -4736,7 +4736,7 @@ class OFPStateStats(StringifyMixin):
                 offset +=4
         offset += ((ofproto.MAX_FIELD_COUNT-state_stats.field_count)*4)
 
-        state_stats.entry = OFPStateEntry2.parser(buf, offset)
+        state_stats.entry = OFPStateEntry.parser(buf, offset)
 
         return state_stats
 
@@ -6247,10 +6247,10 @@ class OFPKeyExtract(MsgBase):
             LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
         
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
-class OFPStateEntry(MsgBase):
+class OFPStateMod(MsgBase):
     def __init__(self, datapath, command,state,key_count,keys,state_mask=0xffffffff,table_id=0
                  ):
-        super(OFPStateEntry, self).__init__(datapath)
+        super(OFPStateMod, self).__init__(datapath)
         self.table_id = table_id
         self.command = command
         self.key_count=key_count
@@ -6275,13 +6275,13 @@ class OFPStateEntry(MsgBase):
                     msg_pack_into(field_extract_format,self.buf,offset,self.keys[f])
                     offset +=1
             else:
-                LOG.error("OFPStateEntry: Number of keys given != key_count")
+                LOG.error("OFPStateMod: Number of keys given != key_count")
         else:
-            LOG.error("OFPStateEntry: Number of keys given > MAX_FIELD_COUNT")
+            LOG.error("OFPStateMod: Number of keys given > MAX_FIELD_COUNT")
 
-class OFPStateEntry2(object):
+class OFPStateEntry(object):
     def __init__(self, key_count=None, key=None, state=None):
-        super(OFPStateEntry2, self).__init__()
+        super(OFPStateEntry, self).__init__()
         
         self.key_count=key_count
         self.key = key
@@ -6289,7 +6289,7 @@ class OFPStateEntry2(object):
     
     @classmethod
     def parser(cls, buf, offset):
-        entry = OFPStateEntry2()
+        entry = OFPStateEntry()
 
         key_count = struct.unpack_from('!I', buf, offset)
         entry.key_count = key_count[0]

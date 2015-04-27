@@ -210,16 +210,16 @@ class SimpleSwitch13(app_manager.RyuApp):
         self.send_key_lookup(datapath)
         self.send_key_update(datapath)
         # I provide more keys than declared
-        state = datapath.ofproto_parser.OFPStateEntry(datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=88, key_count=12, keys=[0,0,0,0,0,2,0,0,0,0,0,4,8],table_id=0)
+        state = datapath.ofproto_parser.OFPStateMod(datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=88, key_count=12, keys=[0,0,0,0,0,2,0,0,0,0,0,4,8],table_id=0)
         datapath.send_msg(state)
         # I declare more keys than provided
-        state = datapath.ofproto_parser.OFPStateEntry(datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=88, key_count=14, keys=[0,0,0,0,0,2,0,0,0,0,0,4,8],table_id=0)
+        state = datapath.ofproto_parser.OFPStateMod(datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=88, key_count=14, keys=[0,0,0,0,0,2,0,0,0,0,0,4,8],table_id=0)
         datapath.send_msg(state)
         # I provide and declared zero keys => it's consistent but I cannot access the state table with an empty key!
-        state = datapath.ofproto_parser.OFPStateEntry(datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=88, key_count=0, keys=[],table_id=0)
+        state = datapath.ofproto_parser.OFPStateMod(datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=88, key_count=0, keys=[],table_id=0)
         datapath.send_msg(state)
         # I provide and declared more keys than allowed
-        state = datapath.ofproto_parser.OFPStateEntry(datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=88, key_count=49, keys=[0,0,0,0,0,2,0,0,0,0,0,4,0,0,0,0,0,2,0,0,0,0,0,4,0,0,0,0,0,2,0,0,0,0,0,4,0,0,0,0,0,2,0,0,0,0,0,4,5],table_id=0)
+        state = datapath.ofproto_parser.OFPStateMod(datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=88, key_count=49, keys=[0,0,0,0,0,2,0,0,0,0,0,4,0,0,0,0,0,2,0,0,0,0,0,4,0,0,0,0,0,2,0,0,0,0,0,4,0,0,0,0,0,2,0,0,0,0,0,4,5],table_id=0)
         datapath.send_msg(state)
 
     def test5(self,datapath):
@@ -230,7 +230,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         datapath.send_msg(key_lookup_extractor)
         key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_ETH_SRC])
         datapath.send_msg(key_lookup_extractor)
-        state = datapath.ofproto_parser.OFPStateEntry(datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=88, key_count=4, keys=[10,0,0,5],table_id=0)
+        state = datapath.ofproto_parser.OFPStateMod(datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=88, key_count=4, keys=[10,0,0,5],table_id=0)
         datapath.send_msg(state)
 
     def test6(self,datapath):
@@ -241,7 +241,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         datapath.send_msg(key_lookup_extractor)
         key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(datapath, ofp.OFPSC_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_ETH_SRC])
         datapath.send_msg(key_lookup_extractor)
-        state = datapath.ofproto_parser.OFPStateEntry(datapath, command=ofproto.OFPSC_DEL_FLOW_STATE, state=9, key_count=4, keys=[10,0,0,5],table_id=0)
+        state = datapath.ofproto_parser.OFPStateMod(datapath, command=ofproto.OFPSC_DEL_FLOW_STATE, state=9, key_count=4, keys=[10,0,0,5],table_id=0)
         datapath.send_msg(state)
 
     def test7(self,datapath):
@@ -267,7 +267,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         parser=datapath.ofproto_parser
         self.send_key_lookup(datapath)
         self.send_key_update(datapath)
-        state = datapath.ofproto_parser.OFPStateEntry(datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=88, key_count=12, keys=[0,0,0,0,0,2,0,0,0,0,0,4],table_id=200)
+        state = datapath.ofproto_parser.OFPStateMod(datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=88, key_count=12, keys=[0,0,0,0,0,2,0,0,0,0,0,4],table_id=200)
         datapath.send_msg(state)
 
     def test9(self,datapath):
