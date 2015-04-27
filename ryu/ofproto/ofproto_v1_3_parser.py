@@ -43,6 +43,7 @@ The following extensions are not implemented yet.
 import struct
 import itertools
 
+from array import array
 from ryu.lib import addrconv
 from ryu.lib import mac
 from ryu import utils
@@ -156,6 +157,176 @@ def substate(state,section,sec_count):
     mask=''.join(mask)
     value=''.join(value)
     return (int(value,2),int(mask,2))
+
+def get_field_string(field,key,offset):
+    if field==ofproto.OXM_OF_IN_PORT:
+        length = 4
+        value = struct.unpack('<I', array('B',key[offset:offset+length]))[0]
+        return ("in_port=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_IN_PHY_PORT:
+        length = 4
+        VLAN_VID_MASK = 0x0fff
+        value = struct.unpack('<I', array('B',key[offset:offset+length]))[0] & VLAN_VID_MASK
+        return ("in_phy_port=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_VLAN_VID:
+        length = 2
+        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+        return ("vlan_vid=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_VLAN_PCP:
+        length = 1
+        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x7
+        return ("vlan_pcp=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_ETH_TYPE:
+        length = 2
+        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+        return ("eth_type=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_TCP_SRC:
+        length = 2
+        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+        return ("tcp_src=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_TCP_DST:
+        length = 2
+        print(key)
+        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+        return ("tcp_dst=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_UDP_SRC:
+        length = 2
+        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+        return ("udp_src=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_UDP_DST:
+        length = 2
+        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+        return ("udp_dst=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_SCTP_SRC:
+        length = 2
+        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+        return ("sctp_src=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_SCTP_DST:
+        length = 2
+        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+        return ("sctp_dst=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_ETH_SRC:
+        length = 6
+        return ("eth_src=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
+    elif field==ofproto.OXM_OF_ETH_DST:
+        length = 6
+        return ("eth_dst=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
+    elif field==ofproto.OXM_OF_IPV4_SRC:
+        length = 4
+        return ("ipv4_src=\"%d.%d.%d.%d\""%(key[offset],key[offset+1],key[offset+2],key[offset+3]),length)
+    elif field==ofproto.OXM_OF_IPV4_DST:
+        length = 4
+        return ("ipv4_dst=\"%d.%d.%d.%d\""%(key[offset],key[offset+1],key[offset+2],key[offset+3]),length)
+    elif field==ofproto.OXM_OF_IP_PROTO:
+        length = 1
+        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
+        return ("ip_proto=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_IP_DSCP:
+        length = 1
+        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x3f
+        return ("ip_dscp=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_IP_ECN:
+        length = 1
+        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x3
+        return ("ip_ecn=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_ICMPV4_TYPE:
+        length = 1
+        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
+        return ("icmpv4_type=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_ICMPV4_CODE:
+        length = 1
+        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
+        return ("icmpv4_code=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_ARP_SHA:
+        length = 6
+        return ("arp_sha=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
+    elif field==ofproto.OXM_OF_ARP_THA:
+        length = 6
+        return ("arp_tha=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
+    elif field==ofproto.OXM_OF_ARP_SPA:
+        length = 4
+        return ("arp_spa=\"%d.%d.%d.%d\""%(key[offset],key[offset+1],key[offset+2],key[offset+3]),length)
+    elif field==ofproto.OXM_OF_ARP_TPA:
+        length = 4
+        return ("arp_tpa=\"%d.%d.%d.%d\""%(key[offset],key[offset+1],key[offset+2],key[offset+3]),length)
+    elif field==ofproto.OXM_OF_ARP_OP:
+        length = 2
+        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+        return ("arp_op=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_IPV6_SRC:
+        length = 16
+        value = []
+        for q in range(8): 
+            value[q]=format(struct.unpack('<H', array('B',key[offset:offset+2]))[0],'x')
+            offset += 2
+        return ("nw_src_ipv6=\"%s:%s:%s:%s:%s:%s:%s:%s\""%(value[0],value[1],value[2],value[3],value[4],value[5],value[6],value[7]),length)
+    elif field==ofproto.OXM_OF_IPV6_DST:
+        length = 16
+        value = []
+        for q in range(8): 
+            value.append(format(struct.unpack('<H', array('B',key[offset:offset+2]))[0],'x'))
+            offset += 2
+        return ("nw_dst_ipv6=\"%s:%s:%s:%s:%s:%s:%s:%s\""%(value[0],value[1],value[2],value[3],value[4],value[5],value[6],value[7]),length)
+    elif field==ofproto.OXM_OF_IPV6_ND_TARGET:
+        length = 16
+        value = []
+        for q in range(8): 
+            value[q]=format(struct.unpack('<H', array('B',key[offset:offset+2]))[0],'x')
+            offset += 2
+        return ("ipv6_nd_target=\"%s:%s:%s:%s:%s:%s:%s:%s\""%(value[0],value[1],value[2],value[3],value[4],value[5],value[6],value[7]),length)
+    elif field==ofproto.OXM_OF_IPV6_ND_SLL:
+        length = 6
+        return ("ipv6_nd_sll=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
+    elif field==ofproto.OXM_OF_IPV6_ND_TLL:
+        length = 6
+        return ("ipv6_nd_tll=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
+    elif field==ofproto.OXM_OF_IPV6_FLABEL:
+        length = 4
+        value = struct.unpack('<I', array('B',key[offset:offset+length]))[0] & 0x000fffff
+        return ("ipv6_flow_label=\"%d\""%(value),length)    
+    elif field==ofproto.OXM_OF_ICMPV6_TYPE:
+        length = 1
+        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
+        return ("icmpv6_type=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_ICMPV6_CODE:
+        length = 1
+        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
+        return ("icmpv6_code=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_MPLS_LABEL:
+        length = 4
+        value = struct.unpack('<I', array('B',key[offset:offset+length]))[0] & 0x000fffff
+        return ("mpls_label=\"%d\""%(value),length)  
+    elif field==ofproto.OXM_OF_MPLS_TC:
+        length = 1
+        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x3
+        return ("mpls_tc=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_MPLS_BOS:
+        length = 1
+        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x1
+        return ("mpls_bos=\"%d\""%(value),length)
+    elif field==ofproto.OXM_OF_PBB_ISID:
+        length = 4
+        value = struct.unpack('<I', array('B',key[offset:offset+length]))[0]
+        return ("pbb_isid=\"%d\""%(value),length)  
+    elif field==ofproto.OXM_OF_TUNNEL_ID:
+        length = 8
+        value = struct.unpack('<Q', array('B',key[offset:offset+length]))[0]
+        return ("tunnel_id=\"%d\""%(value),length) 
+    elif field==ofproto.OXM_OF_IPV6_EXTHDR:
+        length = 2
+        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+        return ("ext_hdr=\"%d\""%(value),length)
+
+def state_entry_key_to_str(extr,key):
+    offset=0
+    s=''
+    for field in extr:
+        (string,field_len) = get_field_string(field,key,offset)
+        s += string
+        offset += field_len
+        if field!=extr[-1]:
+            s += ","
+    return s
 
 @ofproto_parser.register_msg_parser(ofproto.OFP_VERSION)
 def msg_parser(datapath, version, msg_type, msg_len, xid, buf):

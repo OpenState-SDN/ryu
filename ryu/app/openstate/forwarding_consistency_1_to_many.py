@@ -52,6 +52,17 @@ class OSLoadBalancing(app_manager.RyuApp):
         self.send_key_update(datapath)
 
         self.add_flow(datapath, table_miss=False)
+
+    @set_ev_cls(ofp_event.EventOFPStateNotification, MAIN_DISPATCHER)
+    def state_notification_handler(self, ev):
+        msg = ev.msg
+        dp = msg.datapath
+        ofp = dp.ofproto
+        parser = dp.ofproto_parser
+
+        extractor = [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST]
+        print('OFPStateNotification received: table_id=%s, key={%s}, state=%s ' %(
+                          msg.table_id, parser.state_entry_key_to_str(extractor,msg.key), msg.state))
         
     def add_flow(self, datapath, table_miss=False):
         ofproto = datapath.ofproto

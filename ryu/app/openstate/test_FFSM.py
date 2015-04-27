@@ -59,24 +59,32 @@ class OSTestFFSM(app_manager.RyuApp):
     
     @set_ev_cls(ofp_event.EventOFPStateStatsReply, MAIN_DISPATCHER)
     def state_stats_reply_handler(self, ev):
+        msg = ev.msg
+        dp = msg.datapath
+        ofp = dp.ofproto
+        parser = dp.ofproto_parser
+
+        extractor = [ofp.OXM_OF_IPV4_SRC]
         states = []
         for stat in ev.msg.body:
-            states.append('table_id=%s '
-                         'key=%s state=%d' %
-                         (stat.table_id,
-                          stat.entry.key,
-                          stat.entry.state))
-        print('StateStats: %s' % states)
-
+            if stat.entry.key_count!=0:
+                states.append('{table_id=%s, '
+                             'key={%s}, state=%d}' %
+                             (stat.table_id,
+                              parser.state_entry_key_to_str(extractor,stat.entry.key),
+                              stat.entry.state))
+        print('OFPStateStatsReply received: %s' % states)
     
     @set_ev_cls(ofp_event.EventOFPStateNotification, MAIN_DISPATCHER)
     def state_notification_handler(self, ev):
         msg = ev.msg
         dp = msg.datapath
         ofp = dp.ofproto
+        parser = dp.ofproto_parser
 
-        print('OFPStateNotification received: table_id=%s state=%s key=%s' %(
-                          msg.table_id, msg.state, msg.key))
+        extractor = [ofp.OXM_OF_IPV4_SRC]
+        print('OFPStateNotification received: table_id=%s, key={%s}, state=%s ' %(
+                          msg.table_id, parser.state_entry_key_to_str(extractor,msg.key), msg.state))
     
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
