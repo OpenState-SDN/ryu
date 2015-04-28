@@ -2392,6 +2392,54 @@ class OFPPortStatus(MsgBase):
                                   ofproto.OFP_PORT_STATUS_DESC_OFFSET)
         return msg
 
+@_register_parser
+@_set_msg_type(ofproto.OFPT_STATE_NOTIFICATION)
+class OFPStateNotification(MsgBase):
+    """
+    State notification message
+
+    The switch notifies controller of state transitions.
+
+    ================ ======================================================
+    Attribute        Description
+    ================ ======================================================
+    table_id         State table
+    state            New state
+    key              State entry key
+    ================ ======================================================
+
+    Example::
+
+        @set_ev_cls(ofp_event.EventOFPStateNotification, MAIN_DISPATCHER)
+        def state_notification_handler(self, ev):
+            msg = ev.msg
+            dp = msg.datapath
+            ofp = dp.ofproto
+
+
+            print('OFPStateNotification received: table_id=%s state=%s key=%s',
+                              msg.table_id, msg.desc, msg.key)
+    """
+    def __init__(self, datapath, table_id=None, state=None, key=None):
+        super(OFPStateNotification, self).__init__(datapath)
+        self.table_id = table_id
+        self.state = state
+        self.key = key
+
+    @classmethod
+    def parser(cls, datapath, version, msg_type, msg_len, xid, buf):
+        msg = super(OFPStateNotification, cls).parser(datapath, version, msg_type,
+                                               msg_len, xid, buf)
+        (msg.table_id, msg.state) = struct.unpack_from(ofproto.OFP_STATE_NOTIFICATION_PACK_STR, msg.buf, ofproto.OFP_HEADER_SIZE)
+
+        offset = ofproto.OFP_STATE_NOTIFICATION_SIZE
+
+        msg.key=[]
+        key_extract_format='!B'
+        for i in range(msg_len-ofproto.OFP_STATE_NOTIFICATION_SIZE):
+            msg.key.append(struct.unpack_from(key_extract_format,msg.buf,offset)[0])
+            offset +=1
+        return msg
 
 @_set_msg_type(ofproto.OFPT_PACKET_OUT)
 class OFPPacketOut(MsgBase):

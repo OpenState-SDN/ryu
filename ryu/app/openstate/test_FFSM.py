@@ -56,23 +56,6 @@ class OSTestFFSM(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(OSTestFFSM, self).__init__(*args, **kwargs)
 
-    @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
-    def flow_stats_reply_handler(self, ev):
-        flows = []
-        for stat in ev.msg.body:
-            flows.append('table_id=%s '
-                         'duration_sec=%d duration_nsec=%d '
-                         'priority=%d '
-                         'idle_timeout=%d hard_timeout=%d flags=0x%04x '
-                         'cookie=%d packet_count=%d byte_count=%d '
-                         'match=%s instructions=%s' %
-                         (stat.table_id,
-                          stat.duration_sec, stat.duration_nsec,
-                          stat.priority,
-                          stat.idle_timeout, stat.hard_timeout, stat.flags,
-                          stat.cookie, stat.packet_count, stat.byte_count,
-                          stat.match, stat.instructions))
-        print('FlowStats: %s' % flows)
     
     @set_ev_cls(ofp_event.EventOFPStateStatsReply, MAIN_DISPATCHER)
     def state_stats_reply_handler(self, ev):
@@ -84,6 +67,16 @@ class OSTestFFSM(app_manager.RyuApp):
                           stat.entry.key,
                           stat.entry.state))
         print('StateStats: %s' % states)
+
+    
+    @set_ev_cls(ofp_event.EventOFPStateNotification, MAIN_DISPATCHER)
+    def state_notification_handler(self, ev):
+        msg = ev.msg
+        dp = msg.datapath
+        ofp = dp.ofproto
+
+        print('OFPStateNotification received: table_id=%s state=%s key=%s' %(
+                          msg.table_id, msg.state, msg.key))
     
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -99,7 +92,7 @@ class OSTestFFSM(app_manager.RyuApp):
         self.send_key_update(datapath)
 
         self.add_flow(datapath)
-        '''
+        
         self.set_substate_entry(datapath)
         time.sleep(5)
         self.set_substate_entry2(datapath)
@@ -111,8 +104,7 @@ class OSTestFFSM(app_manager.RyuApp):
         self.set_state_entry(datapath)
 
         time.sleep(5)
-        '''
-        #self.send_flow_stats_request(datapath)
+        
         self.set_state_entry(datapath)
         self.send_state_stats_request(datapath)
         

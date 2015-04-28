@@ -64,6 +64,7 @@ OFPT_SET_ASYNC = 28    # Controller/switch message
 OFPT_METER_MOD = 29    # Controller/switch message
 OFPT_STATE_MOD = 30  #Controller/switch message
 OFPT_FLAG_MOD = 31  #Controller/switch message
+OFPT_STATE_NOTIFICATION = 32  #Controller/switch message
  
 # struct ofp_port
 OFP_MAX_PORT_NAME_LEN = 16
@@ -851,6 +852,12 @@ assert (calcsize(OFP_PORT_STATUS_PACK_STR) + OFP_HEADER_SIZE ==
 OFPPR_ADD = 0    # The port was added.
 OFPPR_DELETE = 1    # The port was removed.
 OFPPR_MODIFY = 2    # Some attribute of the port has changed.
+
+# struct ofp_state_notification
+OFP_STATE_NOTIFICATION_PACK_STR = '!3xBI'
+OFP_STATE_NOTIFICATION_SIZE = 16
+assert (calcsize(OFP_STATE_NOTIFICATION_PACK_STR) + OFP_HEADER_SIZE ==
+        OFP_STATE_NOTIFICATION_SIZE)
 
 # OFPMP_EXPERIMENTER
 # struct onf_experimenter_multipart_msg

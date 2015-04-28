@@ -128,12 +128,6 @@ class OSMacLearning(app_manager.RyuApp):
         req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
 
-    def add_state_entry(self, datapath):
-        ofproto = datapath.ofproto
-        state = datapath.ofproto_parser.OFPStateMod(
-            datapath, command=ofproto.OFPSC_SET_FLOW_STATE, state=4, key_count=6, keys=[0,0,0,0,0,2], table_id=0)
-        datapath.send_msg(state)
-
     def send_features_request(self, datapath):
         ofp_parser = datapath.ofproto_parser
 
