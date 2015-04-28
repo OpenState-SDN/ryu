@@ -138,13 +138,13 @@ class OSMacLearning(app_manager.RyuApp):
         ofp = datapath.ofproto
 
         key_lookup_extractor = datapath.ofproto_parser.OFPKeyExtract(
-            datapath, ofp.OFPSC_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_ETH_DST])
+            datapath, ofp.OFPSC_SET_L_EXTRACTOR, [ofp.OXM_OF_ETH_DST])
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
 
         key_update_extractor = datapath.ofproto_parser.OFPKeyExtract(
-            datapath, ofp.OFPSC_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_ETH_SRC])
+            datapath, ofp.OFPSC_SET_U_EXTRACTOR, [ofp.OXM_OF_ETH_SRC])
         datapath.send_msg(key_update_extractor)
 

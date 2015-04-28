@@ -6264,12 +6264,10 @@ class OFPSetAsync(MsgBase):
 
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
 class OFPKeyExtract(MsgBase):
-    def __init__(self, datapath, command,field_count,fields,table_id=0
-                 ):
+    def __init__(self, datapath, command,fields,table_id=0):
         super(OFPKeyExtract, self).__init__(datapath)
         self.table_id = table_id
         self.command = command
-        self.field_count=field_count
         self.fields=fields
 
     def _serialize_body(self):
@@ -6278,30 +6276,26 @@ class OFPKeyExtract(MsgBase):
 
         offset=ofproto.OFP_STATE_MOD_SIZE
 
-        msg_pack_into(ofproto.OFP_STATE_MOD_EXTRACT_PACK_STR,self.buf,offset,self.field_count)
+        msg_pack_into(ofproto.OFP_STATE_MOD_EXTRACT_PACK_STR,self.buf,offset,len(self.fields))
 
         offset += ofproto.OFP_STATE_MOD_EXTRACT_SIZE
         field_extract_format='!I'
         #msg_pack_into(field_extract_format, self.buf,offset,self.fields[0])
 
-        if self.field_count <= ofproto.MAX_FIELD_COUNT:
-            if len(self.fields)==self.field_count:
-                for f in range(self.field_count):
-                    msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
-                    offset +=4
-            else:
-                LOG.error("OFPKeyExtract: Number of fields given != field_count")
+        if len(self.fields) <= ofproto.MAX_FIELD_COUNT:
+            for f in range(len(self.fields)):
+                msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
+                offset +=4
         else:
             LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
         
 @_set_msg_type(ofproto.OFPT_STATE_MOD)
 class OFPStateMod(MsgBase):
-    def __init__(self, datapath, command,state,key_count,keys,state_mask=0xffffffff,table_id=0
+    def __init__(self, datapath, command,state,keys,state_mask=0xffffffff,table_id=0
                  ):
         super(OFPStateMod, self).__init__(datapath)
         self.table_id = table_id
         self.command = command
-        self.key_count=key_count
         self.state = state
         self.state_mask = state_mask
         self.keys = keys
@@ -6311,19 +6305,16 @@ class OFPStateMod(MsgBase):
         msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.table_id,self.command)
         offset=ofproto.OFP_STATE_MOD_SIZE
 
-        msg_pack_into(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,self.buf,offset,self.key_count,self.state,self.state_mask)
+        msg_pack_into(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,self.buf,offset,len(self.keys),self.state,self.state_mask)
 
         offset += ofproto.OFP_STATE_MOD_ENTRY_SIZE
 
         field_extract_format='!B'
 
-        if self.key_count <= ofproto.MAX_KEY_LEN:
-            if len(self.keys)==self.key_count:
-                for f in range(self.key_count):
-                    msg_pack_into(field_extract_format,self.buf,offset,self.keys[f])
-                    offset +=1
-            else:
-                LOG.error("OFPStateMod: Number of keys given != key_count")
+        if len(self.keys) <= ofproto.MAX_KEY_LEN:
+            for f in range(len(self.keys)):
+                msg_pack_into(field_extract_format,self.buf,offset,self.keys[f])
+                offset +=1
         else:
             LOG.error("OFPStateMod: Number of keys given > MAX_FIELD_COUNT")
 
