@@ -169,7 +169,7 @@ class OSLoadBalancing(app_manager.RyuApp):
                         parser.OFPActionSetField(eth_dst=dest_eth),
                         parser.OFPActionSetField(tcp_dst=dest_tcp),
                         parser.OFPActionOutput(state+1, 0),
-                        parser.OFPExpActionSetState(state, 0)]
+                        parser.OFPExpActionSetState(state=state, table_id=0)]
                     match = parser.OFPMatch(
                         in_port=1, state=state, eth_type=0x800, ip_proto=6)
                 inst = [
@@ -198,7 +198,7 @@ class OSLoadBalancing(app_manager.RyuApp):
                     ofp_parser.OFPActionSetField(eth_dst=dest_eth),
                     ofp_parser.OFPActionSetField(tcp_dst=dest_tcp),
                     ofp_parser.OFPActionOutput(port, max_len),
-                    ofp_parser.OFPExpActionSetState(port-1, 0)]
+                    ofp_parser.OFPExpActionSetState(state=port-1, table_id=0)]
 
                 weight = 0
                 watch_port = ofp.OFPP_ANY

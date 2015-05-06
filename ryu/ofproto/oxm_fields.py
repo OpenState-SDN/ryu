@@ -119,7 +119,7 @@ class ONFExperimenter(_Experimenter):
         self.exp_type = num
 
 class ExperimenterMatch(_Experimenter):
-    experimenter_id = 0x000026e1
+    experimenter_id = 0x0000BEBA
 
     def __init__(self, name, num, type_):
         super(ExperimenterMatch, self).__init__(name, num, type_)
@@ -245,7 +245,7 @@ def parse(mod, buf, offset):
             num = (ONFExperimenter, exp_type)
         '''
         TODO?!?
-        elif exp_id == 0x000026e1:
+        elif exp_id == 0x0000BEBA:
             of_exp_type_pack_str = '!I'
             (exp_type, ) = struct.unpack_from(of_exp_type_pack_str, buf,
                                               offset + hdr_len + exp_hdr_len)

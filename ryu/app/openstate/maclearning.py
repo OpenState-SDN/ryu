@@ -99,14 +99,14 @@ class OSMacLearning(app_manager.RyuApp):
                         actions = [
                             parser.OFPActionOutput(
                                 ofproto.OFPP_FLOOD),
-                            parser.OFPExpActionSetState(in_port,0)]
+                            parser.OFPExpActionSetState(state=in_port,table_id=0)]
                         match = parser.OFPMatch(
                             in_port=in_port, state=state)
                     
                     else:
                         actions = [
                            parser.OFPActionOutput(state, 0),
-                           parser.OFPExpActionSetState(in_port,0)]
+                           parser.OFPExpActionSetState(state=in_port,table_id=0)]
                         match = parser.OFPMatch(
                             in_port=in_port, state=state)
                     
