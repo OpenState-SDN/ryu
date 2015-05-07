@@ -237,7 +237,7 @@ class OSTestFFSM(app_manager.RyuApp):
     def send_table_mod(self, datapath):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPTableMod(datapath, 1, ofp.OFPTC_TABLE_STATEFUL)
+        req = ofp_parser.OFPTableMod(datapath=datapath, table_id=1, config=ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
 
     def send_features_request(self, datapath):
@@ -249,43 +249,43 @@ class OSTestFFSM(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         (state, state_mask) = parser.substate(state=2,section=4,sec_count=4)
-        msg = datapath.ofproto_parser.OFPExpMsgSetStateEntry(
-            datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, state, state_mask, key_count=4, keys=[10,0,0,5], table_id=1)
+        msg = datapath.ofproto_parser.OFPExpMsgStateMod(
+            datapath=datapath, command=ofproto.OFPSC_EXP_SET_FLOW_STATE, state=state, state_mask=state_mask,  keys=[10,0,0,5], table_id=1)
         datapath.send_msg(msg)
 
     def set_substate_entry2(self, datapath):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         (state, state_mask) = parser.substate(state=6,section=3,sec_count=4)
-        msg = datapath.ofproto_parser.OFPExpMsgSetStateEntry(
-            datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, state, state_mask, key_count=4, keys=[10,0,0,5], table_id=1)
+        msg = datapath.ofproto_parser.OFPExpMsgStateMod(
+            datapath=datapath, command=ofproto.OFPSC_EXP_SET_FLOW_STATE, state=state, state_mask=state_mask,  keys=[10,0,0,5], table_id=1)
         datapath.send_msg(msg)
 
     def set_state_entry(self, datapath):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         (state, state_mask) = parser.substate(state=2,section=1,sec_count=1)
-        msg = datapath.ofproto_parser.OFPExpMsgSetStateEntry(
-            datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, state, state_mask, key_count=4, keys=[10,0,0,3], table_id=1)
+        msg = datapath.ofproto_parser.OFPExpMsgStateMod(
+            datapath=datapath, command=ofproto.OFPSC_EXP_SET_FLOW_STATE, state=state, state_mask=state_mask,  keys=[10,0,0,3], table_id=1)
         datapath.send_msg(msg)
 
     def del_state_entry(self, datapath):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         (state, state_mask) = parser.substate(state=2,section=1,sec_count=1)
-        msg = datapath.ofproto_parser.OFPExpMsgSetStateEntry(
-            datapath, ofproto.OFPSC_EXP_DEL_FLOW_STATE, state, state_mask, key_count=4, keys=[10,0,0,3], table_id=1)
+        msg = datapath.ofproto_parser.OFPExpMsgStateMod(
+            datapath=datapath, command=ofproto.OFPSC_EXP_DEL_FLOW_STATE, state=state, state_mask=tate_mask,  keys=[10,0,0,3], table_id=1)
         datapath.send_msg(msg)
 
     def send_key_lookup(self, datapath):
         ofp = datapath.ofproto
         key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
-            datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_IPV4_SRC],table_id=1)
+            datapath=datapath, command=ofp.OFPSC_EXP_SET_L_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC], table_id=1)
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
         key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
-            datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_IPV4_SRC],table_id=1)
+            datapath=datapath, command=ofp.OFPSC_EXP_SET_U_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC], table_id=1)
         datapath.send_msg(key_update_extractor)
 

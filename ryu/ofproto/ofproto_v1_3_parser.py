@@ -156,7 +156,7 @@ def substate(state,section,sec_count):
     value=''.join(value)
     return (int(value,2),int(mask,2))
 
-def OFPExpActionSetState(state=0,state_mask=0xffffffff,table_id=0):
+def OFPExpActionSetState(state, table_id=0, state_mask=0xffffffff):
     """ 
     Returns a Set state experimenter action
 
@@ -197,34 +197,30 @@ def OFPExpMsgFlagMod(datapath, command, flag=0, flag_mask=0):
     exp_type=5 # see enum ofp_extension_commands in openflow-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0x0000BEBA, exp_type=exp_type, data=data)
 
-def OFPExpMsgSetStateEntry(datapath, command,state,state_mask,key_count,keys,table_id=0):
+def OFPExpMsgStateMod(datapath, command, state, keys, state_mask=0xffffffff, table_id=0):
+    key_count=len(keys)
     data=struct.pack(ofproto.OFP_EXP_STATE_MOD_PACK_STR, table_id,command)
     data+=struct.pack(ofproto.OFP_EXP_STATE_MOD_ENTRY_PACK_STR,key_count,state,state_mask)
     field_extract_format='!B'
 
     if key_count <= ofproto.MAX_KEY_LEN:
-        if len(keys)==key_count:
-            for f in range(key_count):
+        for f in range(key_count):
                 data+=struct.pack(field_extract_format,keys[f])
-        else:
-            LOG.error("OFPExpMsgSetStateEntry: Number of keys given != key_count")
     else:
-        LOG.error("OFPExpMsgSetStateEntry: Number of keys given > MAX_KEY_LEN")
+        LOG.error("OFPExpMsgStateMod: Number of keys given > MAX_KEY_LEN")
     
     exp_type=4 # see enum ofp_extension_commands in openflow-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0x0000BEBA, exp_type=exp_type, data=data)
 
-def OFPExpMsgKeyExtract(datapath, command, field_count, fields, table_id=0):
+def OFPExpMsgKeyExtract(datapath, command, fields, table_id=0):
+    field_count=len(fields)
     data=struct.pack(ofproto.OFP_EXP_STATE_MOD_PACK_STR, table_id,command)
     data+=struct.pack(ofproto.OFP_EXP_STATE_MOD_EXTRACT_PACK_STR,field_count)
     field_extract_format='!I'
 
     if field_count <= ofproto.MAX_FIELD_COUNT:
-        if len(fields)==field_count:
-            for f in range(field_count):
-                data+=struct.pack(field_extract_format,fields[f])
-        else:
-            LOG.error("OFPExpMsgKeyExtract: Number of fields given != field_count")    
+        for f in range(field_count):
+            data+=struct.pack(field_extract_format,fields[f])
     else:
         LOG.error("OFPExpMsgKeyExtract: Number of fields given > MAX_FIELD_COUNT")
     

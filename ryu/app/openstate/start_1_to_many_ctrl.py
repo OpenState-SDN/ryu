@@ -9,7 +9,7 @@ import os, time
 ######Starting controller
 
 
-os.system("xterm -e 'ryu-manager ~/ryu/ryu/app/openstate/forwarding_consistency_1_to_many_ctrl.py'&")
+os.system("xterm -e 'ryu-manager ~/ryu_exp/ryu/app/openstate/forwarding_consistency_1_to_many_ctrl.py'&")
 
 
 
@@ -18,9 +18,9 @@ os.system("xterm -e 'ryu-manager ~/ryu/ryu/app/openstate/forwarding_consistency_
 mytopo=SingleSwitchTopo(4)
 time.sleep(1)
 print("\n********************************** HELP *********************************************")
-print("\nType \"python ~/ryu/ryu/app/openstate/echo_server.py 200\" in h2's xterm")
-print("Type \"python ~/ryu/ryu/app/openstate/echo_server.py 300\" in h3's xterm")
-print("Type \"python ~/ryu/ryu/app/openstate/echo_server.py 400\" in h4's xterm")
+print("\nType \"python ~/ryu_exp/ryu/app/openstate/echo_server.py 200\" in h2's xterm")
+print("Type \"python ~/ryu_exp/ryu/app/openstate/echo_server.py 300\" in h3's xterm")
+print("Type \"python ~/ryu_exp/ryu/app/openstate/echo_server.py 400\" in h4's xterm")
 print("Type \"nc 10.0.0.2 80\" in all h1's xterms\n")
 print("In order to test new path selection, close and reopen netcat")
 print("\nTo exit type \"ctrl+D\" or exit")

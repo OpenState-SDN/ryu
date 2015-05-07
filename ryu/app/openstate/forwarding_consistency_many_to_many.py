@@ -476,15 +476,15 @@ class OSLoadBalancing(app_manager.RyuApp):
     def send_table_mod(self, datapath):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFUL)
+        req = ofp_parser.OFPTableMod(datapath=datapath, table_id=0, config=ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
 
     def send_table_mod_2(self, datapath):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFUL)
+        req = ofp_parser.OFPTableMod(datapath=datapath, table_id=0, config=ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
-        req = ofp_parser.OFPTableMod(datapath, 1, ofp.OFPTC_TABLE_STATEFUL)
+        req = ofp_parser.OFPTableMod(datapath=datapath, table_id=1, config=ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
     
     def send_features_request(self, datapath):
@@ -495,34 +495,34 @@ class OSLoadBalancing(app_manager.RyuApp):
 
     def send_key_lookup_1(self, datapath):
         ofp = datapath.ofproto
-        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST])
+        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath=datapath, command=ofp.OFPSC_EXP_SET_L_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST], table_id=0)
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update_1(self, datapath):
         ofp = datapath.ofproto
-        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST])
+        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath=datapath, command=ofp.OFPSC_EXP_SET_U_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST], table_id=0)
         datapath.send_msg(key_update_extractor)
 
     def send_key_lookup_2(self, datapath):
         ofp = datapath.ofproto
-        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST])
+        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath=datapath, command=ofp.OFPSC_EXP_SET_L_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST], table_id=0)
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update_2(self, datapath):
         ofp = datapath.ofproto
-        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR,  4, [ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_TCP_DST,ofp.OXM_OF_TCP_SRC])
+        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath=datapath, command=ofp.OFPSC_EXP_SET_U_EXTRACTOR,   fields=[ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_TCP_DST,ofp.OXM_OF_TCP_SRC])
         datapath.send_msg(key_update_extractor)
 
     def send_key_lookup_3(self, datapath):
         ofp = datapath.ofproto
-        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST],table_id=0)
+        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath=datapath, command=ofp.OFPSC_EXP_SET_L_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST],table_id=0)
         datapath.send_msg(key_lookup_extractor)
-        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST],table_id=1)
+        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath=datapath, command=ofp.OFPSC_EXP_SET_L_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST],table_id=1)
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update_3(self, datapath):
         ofp = datapath.ofproto
-        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR,  4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST],table_id=0)
+        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath=datapath, command=ofp.OFPSC_EXP_SET_U_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST],table_id=0)
         datapath.send_msg(key_update_extractor)
-        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR,  4, [ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_TCP_DST,ofp.OXM_OF_TCP_SRC],table_id=1)
+        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath=datapath, command=ofp.OFPSC_EXP_SET_U_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_TCP_DST,ofp.OXM_OF_TCP_SRC],table_id=1)
         datapath.send_msg(key_update_extractor)

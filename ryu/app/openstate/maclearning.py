@@ -125,13 +125,13 @@ class OSMacLearning(app_manager.RyuApp):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
 
-        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFUL)
+        req = ofp_parser.OFPTableMod(datapath=datapath, table_id=0, config=ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
 
     def add_state_entry(self, datapath):
         ofproto = datapath.ofproto
-        state = datapath.ofproto_parser.OFPExpMsgSetStateEntry(
-            datapath, ofproto.OFPSC_EXP_SET_FLOW_STATE, state=4, state_mask=0xffffffff, key_count=6, keys=[0,0,0,0,0,2], table_id=0)
+        state = datapath.ofproto_parser.OFPExpMsgStateMod(
+            datapath=datapath, command=ofproto.OFPSC_EXP_SET_FLOW_STATE, state=4, keys=[0,0,0,0,0,2], table_id=0)
         datapath.send_msg(state)
 
     def send_features_request(self, datapath):
@@ -144,13 +144,13 @@ class OSMacLearning(app_manager.RyuApp):
         ofp = datapath.ofproto
 
         key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
-            datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_ETH_DST])
+            datapath=datapath, command=ofp.OFPSC_EXP_SET_L_EXTRACTOR,  fields=[ofp.OXM_OF_ETH_DST])
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
 
         key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
-            datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_ETH_SRC])
+            datapath=datapath, command=ofp.OFPSC_EXP_SET_U_EXTRACTOR,  fields=[ofp.OXM_OF_ETH_SRC])
         datapath.send_msg(key_update_extractor)
 

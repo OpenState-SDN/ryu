@@ -79,12 +79,12 @@ class OSLoadBalancing(app_manager.RyuApp):
         h3 is listening at 10.0.0.3:300
         h4 is listening at 10.0.0.4:400
 
-        $ ryu-manager ryu/ryu/app/openstate/forwarding_consistency_1_to_many.py
+        $ ryu-manager ryu_exp/ryu/app/openstate/forwarding_consistency_1_to_many.py
         $ sudo mn --topo single,4 --switch user --mac --controller remote
         mininet> xterm h1 h1 h1 h2 h3 h4
-        h2# python ryu/ryu/app/openstate/echo_server.py 200
-        h3# python ryu/ryu/app/openstate/echo_server.py 300
-        h4# python ryu/ryu/app/openstate/echo_server.py 400
+        h2# python ryu_exp/ryu/app/openstate/echo_server.py 200
+        h3# python ryu_exp/ryu/app/openstate/echo_server.py 300
+        h4# python ryu_exp/ryu/app/openstate/echo_server.py 400
 
         Let's try to connect from h1 to the EchoServer and send some message:
         h1# nc 10.0.0.2 80
@@ -224,7 +224,7 @@ class OSLoadBalancing(app_manager.RyuApp):
     def send_table_mod(self, datapath):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFUL)
+        req = ofp_parser.OFPTableMod(datapath=datapath, table_id=0, config=ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
     
     def send_features_request(self, datapath):
@@ -234,10 +234,10 @@ class OSLoadBalancing(app_manager.RyuApp):
 
     def send_key_lookup(self, datapath):
         ofp = datapath.ofproto
-        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST])
+        key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath=datapath, command=ofp.OFPSC_EXP_SET_L_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST], table_id=0)
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
-        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR,  4, [ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST])
+        key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(datapath=datapath, command=ofp.OFPSC_EXP_SET_U_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST], table_id=0)
         datapath.send_msg(key_update_extractor)

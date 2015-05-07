@@ -64,7 +64,7 @@ class OSPortKnocking(app_manager.RyuApp):
         
         h2# nc -ul 2000
 
-        h1# ./ryu/ryu/app/openstate/test_port_knocking.sh
+        h1# ./ryu_exp/ryu/app/openstate/test_port_knocking.sh
 
         '''
 
@@ -139,7 +139,7 @@ class OSPortKnocking(app_manager.RyuApp):
     def send_table_mod(self, datapath):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPTableMod(datapath, 0, ofp.OFPTC_TABLE_STATEFUL)
+        req = ofp_parser.OFPTableMod(datapath=datapath, table_id=0, config=ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
 
     def send_features_request(self, datapath):
@@ -150,11 +150,11 @@ class OSPortKnocking(app_manager.RyuApp):
     def send_key_lookup(self, datapath):
         ofp = datapath.ofproto
         key_lookup_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
-            datapath, ofp.OFPSC_EXP_SET_L_EXTRACTOR, 1, [ofp.OXM_OF_IPV4_SRC])
+            datapath=datapath, command=ofp.OFPSC_EXP_SET_L_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC])
         datapath.send_msg(key_lookup_extractor)
 
     def send_key_update(self, datapath):
         ofp = datapath.ofproto
         key_update_extractor = datapath.ofproto_parser.OFPExpMsgKeyExtract(
-            datapath, ofp.OFPSC_EXP_SET_U_EXTRACTOR, 1, [ofp.OXM_OF_IPV4_SRC])
+            datapath=datapath, command=ofp.OFPSC_EXP_SET_U_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC])
         datapath.send_msg(key_update_extractor)

@@ -151,7 +151,7 @@ class OSLinkProtection(app_manager.RyuApp):
 
     def send_reset_flag_mod(self, datapath):
         ofproto = datapath.ofproto
-        msg = datapath.ofproto_parser.OFPFlagMod(
+        msg = datapath.ofproto_parser.OFPExpMsgFlagMod(
             datapath, ofproto.OFPSC_RESET_FLAGS)
         datapath.send_msg(msg)
 
@@ -159,6 +159,6 @@ class OSLinkProtection(app_manager.RyuApp):
         ofproto = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
         (flag, flag_mask) = ofp_parser.maskedflags(flags_string,offset_value)
-        msg = datapath.ofproto_parser.OFPFlagMod(
-            datapath, ofproto.OFPSC_MODIFY_FLAGS, flag, flag_mask)
+        msg = datapath.ofproto_parser.OFPExpMsgFlagMod(
+            datapath, ofproto.OFPSC_EXP_MODIFY_FLAGS, flag, flag_mask)
         datapath.send_msg(msg)
