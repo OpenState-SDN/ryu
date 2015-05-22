@@ -90,23 +90,22 @@ class OSMacLearning(app_manager.RyuApp):
             match: state=j & in_port=i  =>  action: set_state(i) & output(j)
 
             '''
-
+            
             for in_port in range(1, SWITCH_PORTS + 1):  # for each port (from 1 to #ports)
                 LOG.info("Installing flow rule for port %d..." % in_port)
                 for state in range(SWITCH_PORTS + 1):   # for each state (from 0 to #ports)
 
                     if state == 0:  # DEFAULT state
                         actions = [
-                            parser.OFPActionOutput(
-                                ofproto.OFPP_FLOOD),
-                            parser.OFPExpActionSetState(state=in_port,table_id=0)]
+                            parser.OFPExpActionSetState(state=in_port,table_id=0),
+                            parser.OFPActionOutput(ofproto.OFPP_FLOOD)]
                         match = parser.OFPMatch(
                             in_port=in_port, state=state)
                     
                     else:
                         actions = [
-                           parser.OFPActionOutput(state, 0),
-                           parser.OFPExpActionSetState(state=in_port,table_id=0)]
+                           parser.OFPExpActionSetState(state=in_port,table_id=0),
+                           parser.OFPActionOutput(state, 0)]
                         match = parser.OFPMatch(
                             in_port=in_port, state=state)
                     
@@ -127,12 +126,6 @@ class OSMacLearning(app_manager.RyuApp):
 
         req = ofp_parser.OFPTableMod(datapath=datapath, table_id=0, config=ofp.OFPTC_TABLE_STATEFUL)
         datapath.send_msg(req)
-
-    def add_state_entry(self, datapath):
-        ofproto = datapath.ofproto
-        state = datapath.ofproto_parser.OFPExpMsgStateMod(
-            datapath=datapath, command=ofproto.OFPSC_EXP_SET_FLOW_STATE, state=4, keys=[0,0,0,0,0,2], table_id=0)
-        datapath.send_msg(state)
 
     def send_features_request(self, datapath):
         ofp_parser = datapath.ofproto_parser

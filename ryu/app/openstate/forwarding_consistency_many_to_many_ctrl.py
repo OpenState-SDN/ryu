@@ -356,8 +356,8 @@ class OSLoadBalancing(app_manager.RyuApp):
             for in_port in range(1,4):  
                 # state x means output port x+1
                 actions = [
-                    parser.OFPActionOutput(4, 0),
-                    parser.OFPExpActionSetState(state=in_port, table_id=0)]
+                    parser.OFPExpActionSetState(state=in_port, table_id=0),
+                    parser.OFPActionOutput(4, 0)]
                 match = parser.OFPMatch(
                     in_port=in_port, eth_type=0x800)
                 inst = [
@@ -448,8 +448,8 @@ class OSLoadBalancing(app_manager.RyuApp):
         for port in range(2,5):
             max_len = 2000
             actions = [
-                ofp_parser.OFPActionOutput(port, max_len),
-                ofp_parser.OFPExpActionSetState(port-1, table_id=0)]
+                ofp_parser.OFPExpActionSetState(port-1, table_id=0),
+                ofp_parser.OFPActionOutput(port, max_len)]
 
             weight = 0
             watch_port = ofp.OFPP_ANY

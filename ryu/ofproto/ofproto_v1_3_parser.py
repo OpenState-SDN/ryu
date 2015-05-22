@@ -172,7 +172,7 @@ def OFPExpActionSetState(state, table_id=0, state_mask=0xffffffff):
     """
     act_type=0
     data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, state_mask, table_id)
-    return OFPActionExperimenter(experimenter=0x0000BEBA, data=data)
+    return OFPActionExperimenter(experimenter=0xBEBABEBA, data=data)
 
 def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
     """ 
@@ -189,13 +189,13 @@ def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
     """
     act_type=1
     data=struct.pack(ofproto.OFP_EXP_ACTION_SET_FLAG_PACK_STR, act_type, flag, flag_mask)
-    return OFPActionExperimenter(experimenter=0x0000BEBA, data=data)
+    return OFPActionExperimenter(experimenter=0XBEBABEBA, data=data)
 
 def OFPExpMsgFlagMod(datapath, command, flag=0, flag_mask=0):
     data=struct.pack(ofproto.OFP_EXP_FLAG_MOD_PACK_STR,flag,flag_mask,command)
     
     exp_type=5 # see enum ofp_extension_commands in openflow-ext.h
-    return OFPExperimenter(datapath=datapath, experimenter=0x0000BEBA, exp_type=exp_type, data=data)
+    return OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpMsgStateMod(datapath, command, state, keys, state_mask=0xffffffff, table_id=0):
     key_count=len(keys)
@@ -210,7 +210,7 @@ def OFPExpMsgStateMod(datapath, command, state, keys, state_mask=0xffffffff, tab
         LOG.error("OFPExpMsgStateMod: Number of keys given > MAX_KEY_LEN")
     
     exp_type=4 # see enum ofp_extension_commands in openflow-ext.h
-    return OFPExperimenter(datapath=datapath, experimenter=0x0000BEBA, exp_type=exp_type, data=data)
+    return OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpMsgKeyExtract(datapath, command, fields, table_id=0):
     field_count=len(fields)
@@ -225,7 +225,7 @@ def OFPExpMsgKeyExtract(datapath, command, fields, table_id=0):
         LOG.error("OFPExpMsgKeyExtract: Number of fields given > MAX_FIELD_COUNT")
     
     exp_type=4 # see enum ofp_extension_commands in openflow-ext.h
-    return OFPExperimenter(datapath=datapath, experimenter=0x0000BEBA, exp_type=exp_type, data=data)
+    return OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 @ofproto_parser.register_msg_parser(ofproto.OFP_VERSION)
 def msg_parser(datapath, version, msg_type, msg_len, xid, buf):
@@ -1120,19 +1120,7 @@ class OFPMatch(StringifyMixin):
                 header = ofproto.OXM_OF_METADATA_W
             self.append_field(header, self._flow.metadata,
                               self._wc.metadata_mask)
-        '''
-        if self._wc.ft_test(ofproto.OFPXMT_OFB_STATE):
-            self.append_field(ofproto.OXM_OF_STATE,
-                              self._flow.state)
 
-        if self._wc.ft_test(ofproto.OFPXMT_OFB_FLAGS):
-            if self._wc.flags_mask == UINT32_MAX:
-                header = ofproto.OXM_OF_FLAGS
-            else:
-                header = ofproto.OXM_OF_FLAGS_W
-            self.append_field(header, self._flow.flags,
-                              self._wc.flags_mask)
-        '''
         if self._wc.ft_test(ofproto.OFPXMT_OFB_ETH_DST):
             if self._wc.dl_dst_mask:
                 header = ofproto.OXM_OF_ETH_DST_W
@@ -1396,18 +1384,13 @@ class OFPMatch(StringifyMixin):
         self._wc.ft_set(ofproto.OFPXMT_OFB_METADATA)
         self._wc.metadata_mask = mask
         self._flow.metadata = metadata & mask
-
+        
     def set_state(self, state):
         self._wc.ft_set(ofproto.OFPXMT_OFB_STATE)
         self._flow.state = state
 
     def set_flags(self, flags):
         self.set_flags_masked(flags, UINT32_MAX)
-
-    def set_flags_masked(self, flags, mask):
-        self._wc.ft_set(ofproto.OFPXMT_OFB_FLAGS)
-        self._wc.flags_mask = mask
-        self._flow.flags = flags & mask
 
     def set_dl_dst(self, dl_dst):
         self._wc.ft_set(ofproto.OFPXMT_OFB_ETH_DST)

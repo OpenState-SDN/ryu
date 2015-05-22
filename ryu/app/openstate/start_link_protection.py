@@ -9,7 +9,7 @@ import os, time
 ######Starting controller
 
 
-os.system("xterm -e 'ryu-manager ~/ryu_exp/ryu/app/openstate/link_protection.py'&")
+os.system("xterm -e 'ryu-manager ~/ryu.b/ryu/app/openstate/link_protection.py'&")
 
 ######Starting mininet
 

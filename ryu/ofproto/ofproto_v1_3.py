@@ -1227,8 +1227,8 @@ oxm_types = [
     oxm_fields.OpenFlowBasic('tunnel_id', 38, oxm_fields.Int8),
     oxm_fields.OpenFlowBasic('ipv6_exthdr', 39, oxm_fields.Int2),
     oxm_fields.ONFExperimenter('pbb_uca', 2560, oxm_fields.Int1),
-    oxm_fields.ExperimenterMatch('flags', 40, oxm_fields.Int4),
-    oxm_fields.ExperimenterMatch('state', 41, oxm_fields.Int4)
+    oxm_fields.OpenStateExperimenter('flags', 0, oxm_fields.Int4),
+    oxm_fields.OpenStateExperimenter('state', 1, oxm_fields.Int4)
 ]
 
 oxm_fields.generate(__name__)

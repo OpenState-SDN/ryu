@@ -64,7 +64,7 @@ class OSPortKnocking(app_manager.RyuApp):
         
         h2# nc -ul 2000
 
-        h1# ./ryu_exp/ryu/app/openstate/test_port_knocking.sh
+        h1# ./ryu.b/ryu/app/openstate/test_port_knocking.sh
 
         '''
 
@@ -108,8 +108,8 @@ class OSPortKnocking(app_manager.RyuApp):
                 inst = [parser.OFPInstructionActions(
                     datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
             else:
-                actions = [parser.OFPActionOutput(2, 0),
-                            parser.OFPExpActionSetState(state=state,table_id=0)]
+                actions = [parser.OFPExpActionSetState(state=state,table_id=0),
+                        parser.OFPActionOutput(2, 0)]
                 inst = [ parser.OFPInstructionActions(
                     datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
             mod = parser.OFPFlowMod(

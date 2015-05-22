@@ -79,12 +79,12 @@ class OSLoadBalancing(app_manager.RyuApp):
         h3 is listening at 10.0.0.3:300
         h4 is listening at 10.0.0.4:400
 
-        $ ryu-manager ryu_exp/ryu/app/openstate/forwarding_consistency_1_to_many.py
+        $ ryu-manager ryu.b/ryu/app/openstate/forwarding_consistency_1_to_many.py
         $ sudo mn --topo single,4 --switch user --mac --controller remote
         mininet> xterm h1 h1 h1 h2 h3 h4
-        h2# python ryu_exp/ryu/app/openstate/echo_server.py 200
-        h3# python ryu_exp/ryu/app/openstate/echo_server.py 300
-        h4# python ryu_exp/ryu/app/openstate/echo_server.py 400
+        h2# python ryu.b/ryu/app/openstate/echo_server.py 200
+        h3# python ryu.b/ryu/app/openstate/echo_server.py 300
+        h4# python ryu.b/ryu/app/openstate/echo_server.py 400
 
         Let's try to connect from h1 to the EchoServer and send some message:
         h1# nc 10.0.0.2 80
@@ -171,13 +171,13 @@ class OSLoadBalancing(app_manager.RyuApp):
                     dest_eth="00:00:00:00:00:0"+str(state+1)
                     dest_tcp=(state+1)*100
                     actions = [
+                        parser.OFPExpActionSetState(state=state, table_id=0),
+                        parser.OFPExpActionSetState(state=0, table_id=0),
+                        parser.OFPExpActionSetState(state=state, table_id=0),
                         parser.OFPActionSetField(ipv4_dst=dest_ip),
                         parser.OFPActionSetField(eth_dst=dest_eth),
                         parser.OFPActionSetField(tcp_dst=dest_tcp),
-                        parser.OFPActionOutput(state=state+1, 0),
-                        parser.OFPExpActionSetState(state=state, table_id=0),
-                        parser.OFPExpActionSetState(state=0, table_id=0),
-                        parser.OFPExpActionSetState(state=state, table_id=0)]
+                        parser.OFPActionOutput(state+1, 0)]
                     match = parser.OFPMatch(
                         in_port=1, state=state, eth_type=0x800, ip_proto=6)
                 inst = [
@@ -202,13 +202,14 @@ class OSLoadBalancing(app_manager.RyuApp):
                 dest_ip="10.0.0."+str(port)
                 dest_eth="00:00:00:00:00:0"+str(port)
                 dest_tcp=(port)*100
-                actions = [ofp_parser.OFPActionSetField(ipv4_dst=dest_ip),
-                    ofp_parser.OFPActionSetField(eth_dst=dest_eth),
-                    ofp_parser.OFPActionSetField(tcp_dst=dest_tcp),
-                    ofp_parser.OFPActionOutput(port, max_len),
+                actions = [
                     ofp_parser.OFPExpActionSetState(state=port-1, table_id=0),
                     ofp_parser.OFPExpActionSetState(state=0, table_id=0),
-                    ofp_parser.OFPExpActionSetState(state=port-1, table_id=0)]
+                    ofp_parser.OFPExpActionSetState(state=port-1, table_id=0),
+                    ofp_parser.OFPActionSetField(ipv4_dst=dest_ip),
+                    ofp_parser.OFPActionSetField(eth_dst=dest_eth),
+                    ofp_parser.OFPActionSetField(tcp_dst=dest_tcp),
+                    ofp_parser.OFPActionOutput(port, max_len)]
                 
                 weight = 0
                 watch_port = ofp.OFPP_ANY

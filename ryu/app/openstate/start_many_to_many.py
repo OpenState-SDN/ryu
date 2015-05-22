@@ -45,7 +45,7 @@ class MyTopo( Topo ):
 ######Starting controller
 
 
-os.system("xterm -e 'ryu-manager ~/ryu_exp/ryu/app/openstate/forwarding_consistency_many_to_many.py'&")
+os.system("xterm -e 'ryu-manager ~/ryu.b/ryu/app/openstate/forwarding_consistency_many_to_many.py'&")
 
 
 
@@ -54,7 +54,7 @@ topos = { 'mytopo': ( lambda: MyTopo() ) }
 mytopo=MyTopo()
 time.sleep(1)
 print("\n********************************** HELP *********************************************")
-print("Type \"python ~/ryu_exp/ryu/app/openstate/echo_server.py 200\" in h2's xterm")
+print("Type \"python ~/ryu.b/ryu/app/openstate/echo_server.py 200\" in h2's xterm")
 print("Type \"nc 10.0.0.2 200\" in h1's xterm")
 print("Watching the tcpdump results, it is possible to see that forwarding consistency is guaranteed\n"
       "In order to test new path selection, close and reopen netcat")

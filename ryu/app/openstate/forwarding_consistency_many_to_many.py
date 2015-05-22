@@ -297,8 +297,8 @@ class OSLoadBalancing(app_manager.RyuApp):
             for in_port in range(1,SWITCH_PORTS):  
                 # state x means output port x+1
                 actions = [
-                    parser.OFPActionOutput(4, 0),
-                    parser.OFPExpActionSetState(state=in_port, table_id=0)]
+                    parser.OFPExpActionSetState(state=in_port, table_id=0),
+                    parser.OFPActionOutput(4, 0)]
                 match = parser.OFPMatch(
                     in_port=in_port, eth_type=0x800)
                 inst = [
@@ -373,8 +373,8 @@ class OSLoadBalancing(app_manager.RyuApp):
             for in_port in range(1,4):
                 # if state=DEFAULT => send it to the first group entry in the group table
                 actions = [
-                        parser.OFPActionGroup(1),
-                        parser.OFPExpActionSetState(state=in_port, table_id=1)]
+                        parser.OFPExpActionSetState(state=in_port, table_id=1),
+                        parser.OFPActionGroup(1)]
                 match = parser.OFPMatch(
                         in_port=in_port, state=0, eth_type=0x800)
                 inst = [
@@ -438,8 +438,8 @@ class OSLoadBalancing(app_manager.RyuApp):
             for port in range(2,SWITCH_PORTS+1):
                 max_len = 2000
                 actions = [
-                    ofp_parser.OFPActionOutput(port, max_len),
-                    ofp_parser.OFPExpActionSetState(state=port-1, table_id=0)]
+                    ofp_parser.OFPExpActionSetState(state=port-1, table_id=0),
+                    ofp_parser.OFPActionOutput(port, max_len)]
 
                 weight = 0
                 watch_port = ofp.OFPP_ANY
@@ -460,8 +460,8 @@ class OSLoadBalancing(app_manager.RyuApp):
             for port in range(4,7):
                 max_len = 2000
                 actions = [
-                    ofp_parser.OFPActionOutput(port, max_len),
-                    ofp_parser.OFPExpActionSetState(state=port, table_id=0)]
+                    ofp_parser.OFPExpActionSetState(state=port, table_id=0),
+                    ofp_parser.OFPActionOutput(port, max_len)]
 
                 weight = 0
                 watch_port = ofp.OFPP_ANY

@@ -104,8 +104,8 @@ class OSTestFFSM(app_manager.RyuApp):
             ipv4_src="10.0.0.1", in_port=1, eth_type=0x0800)
         (flag, flag_mask) = parser.maskedflags("1*01",8)
         (state, state_mask) = parser.substate(state=4294967290,section=1,sec_count=1)
-        actions = [parser.OFPExpActionSetState(state,state_mask,table_id=1),
-            parser.OFPExpActionSetFlag(flag,flag_mask)]
+        actions = [parser.OFPExpActionSetState(state=state,state_mask=state_mask,table_id=1),
+            parser.OFPExpActionSetFlag(flag=flag,flag_mask=flag_mask)]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions),
             parser.OFPInstructionGotoTable(1),
@@ -137,7 +137,7 @@ class OSTestFFSM(app_manager.RyuApp):
         match = parser.OFPMatch(
             ipv4_src="10.0.0.5", in_port=5, eth_type=0x0800)
         (state, state_mask) = parser.substate(state=3,section=1,sec_count=4)
-        actions = [parser.OFPExpActionSetState(state,state_mask,table_id=1)]
+        actions = [parser.OFPExpActionSetState(state=state,state_mask=state_mask,table_id=1)]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions),
             parser.OFPInstructionGotoTable(1)]
@@ -274,7 +274,7 @@ class OSTestFFSM(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         (state, state_mask) = parser.substate(state=2,section=1,sec_count=1)
         msg = datapath.ofproto_parser.OFPExpMsgStateMod(
-            datapath=datapath, command=ofproto.OFPSC_EXP_DEL_FLOW_STATE, state=state, state_mask=tate_mask,  keys=[10,0,0,3], table_id=1)
+            datapath=datapath, command=ofproto.OFPSC_EXP_DEL_FLOW_STATE, state=state, state_mask=state_mask,  keys=[10,0,0,3], table_id=1)
         datapath.send_msg(msg)
 
     def send_key_lookup(self, datapath):
