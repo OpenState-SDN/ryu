@@ -108,10 +108,10 @@ Thanks to the mask we can divide the field in multiple substate matchable with m
 
 substate(state,section,sec_count)
 state = state to match
-section = number of the selected subsection (starts from 0 from the right)
+section = number of the selected subsection (starts from 1 from the right)
 sec_count = number of how many subsection the state field has been divided
 
-substate(5,1,4)   -> |********|********|00000101|********|-> (1280,16711680)
+substate(5,2,4)   -> |********|********|00000101|********|-> (1280,16711680)
 
 '''
 def substate(state,section,sec_count):
