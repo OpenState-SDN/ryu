@@ -194,7 +194,7 @@ def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
 def OFPExpMsgFlagMod(datapath, command, flag=0, flag_mask=0):
     data=struct.pack(ofproto.OFP_EXP_FLAG_MOD_PACK_STR,flag,flag_mask,command)
     
-    exp_type=5 # see enum ofp_extension_commands in openflow-ext.h
+    exp_type=1 # see enum ofp_extension_commands in openstate-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpMsgStateMod(datapath, command, state, keys, state_mask=0xffffffff, table_id=0):
@@ -209,7 +209,7 @@ def OFPExpMsgStateMod(datapath, command, state, keys, state_mask=0xffffffff, tab
     else:
         LOG.error("OFPExpMsgStateMod: Number of keys given > MAX_KEY_LEN")
     
-    exp_type=4 # see enum ofp_extension_commands in openflow-ext.h
+    exp_type=0 # see enum ofp_extension_commands in openstate-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpMsgKeyExtract(datapath, command, fields, table_id=0):
@@ -224,7 +224,7 @@ def OFPExpMsgKeyExtract(datapath, command, fields, table_id=0):
     else:
         LOG.error("OFPExpMsgKeyExtract: Number of fields given > MAX_FIELD_COUNT")
     
-    exp_type=4 # see enum ofp_extension_commands in openflow-ext.h
+    exp_type=0 # see enum ofp_extension_commands in openstate-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpMsgConfigureStatefulness(datapath, statefulness, table_id=0):
@@ -232,7 +232,7 @@ def OFPExpMsgConfigureStatefulness(datapath, statefulness, table_id=0):
     data=struct.pack(ofproto.OFP_EXP_STATE_MOD_PACK_STR, table_id,command)
     data+=struct.pack(ofproto.OFP_EXP_STATE_MOD_STATEFULNESS_CONFIG_PACK_STR,statefulness)
     
-    exp_type=4 # see enum ofp_extension_commands in openflow-ext.h
+    exp_type=0 # see enum ofp_extension_commands in openstate-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 @ofproto_parser.register_msg_parser(ofproto.OFP_VERSION)
