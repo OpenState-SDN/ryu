@@ -476,15 +476,15 @@ class OSLoadBalancing(app_manager.RyuApp):
     def send_table_mod(self, datapath):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPTableMod(datapath=datapath, table_id=0, config=ofp.OFPTC_TABLE_STATEFUL)
+        req = ofp_parser.OFPExpMsgConfigureStatefulness(datapath=datapath, table_id=0, statefulness=1)
         datapath.send_msg(req)
 
     def send_table_mod_2(self, datapath):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPTableMod(datapath=datapath, table_id=0, config=ofp.OFPTC_TABLE_STATEFUL)
+        req = ofp_parser.OFPExpMsgConfigureStatefulness(datapath=datapath, table_id=0, statefulness=1)
         datapath.send_msg(req)
-        req = ofp_parser.OFPTableMod(datapath=datapath, table_id=1, config=ofp.OFPTC_TABLE_STATEFUL)
+        req = ofp_parser.OFPExpMsgConfigureStatefulness(datapath=datapath, table_id=1, statefulness=1)
         datapath.send_msg(req)
     
     def send_features_request(self, datapath):

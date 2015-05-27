@@ -227,6 +227,14 @@ def OFPExpMsgKeyExtract(datapath, command, fields, table_id=0):
     exp_type=4 # see enum ofp_extension_commands in openflow-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
+def OFPExpMsgConfigureStatefulness(datapath, statefulness, table_id=0):
+    command=ofproto.OFPSC_STATEFULNESS_CONFIG
+    data=struct.pack(ofproto.OFP_EXP_STATE_MOD_PACK_STR, table_id,command)
+    data+=struct.pack(ofproto.OFP_EXP_STATE_MOD_STATEFULNESS_CONFIG_PACK_STR,statefulness)
+    
+    exp_type=4 # see enum ofp_extension_commands in openflow-ext.h
+    return OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+
 @ofproto_parser.register_msg_parser(ofproto.OFP_VERSION)
 def msg_parser(datapath, version, msg_type, msg_len, xid, buf):
     parser = _MSG_PARSERS.get(msg_type)
