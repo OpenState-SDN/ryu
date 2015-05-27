@@ -56,6 +56,35 @@ class OSTestFFSM(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(OSTestFFSM, self).__init__(*args, **kwargs)
 
+    '''@set_ev_cls(ofp_event.EventOFPStateStatsReply, MAIN_DISPATCHER)
+    def state_stats_reply_handler(self, ev):
+        msg = ev.msg
+        dp = msg.datapath
+        ofp = dp.ofproto
+        parser = dp.ofproto_parser
+
+        extractor = [ofp.OXM_OF_IPV4_SRC]
+        states = []
+        for stat in ev.msg.body:
+            if stat.entry.key_count!=0:
+                states.append('{table_id=%s, '
+                             'key={%s}, state=%d}' %
+                             (stat.table_id,
+                              parser.state_entry_key_to_str(extractor,stat.entry.key),
+                              stat.entry.state))
+        print('OFPStateStatsReply received: %s' % states)
+    
+    @set_ev_cls(ofp_event.EventOFPStateNotification, MAIN_DISPATCHER)
+    def state_notification_handler(self, ev):
+        msg = ev.msg
+        dp = msg.datapath
+        ofp = dp.ofproto
+        parser = dp.ofproto_parser
+
+        extractor = [ofp.OXM_OF_IPV4_SRC]
+        print('OFPStateNotification received: table_id=%s, key={%s}, state=%s ' %(
+                          msg.table_id, parser.state_entry_key_to_str(extractor,msg.key), msg.state))'''
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         msg = ev.msg
@@ -78,7 +107,8 @@ class OSTestFFSM(app_manager.RyuApp):
         self.del_state_entry(datapath)
         time.sleep(5)
         self.set_state_entry(datapath)
-        
+
+        #self.send_state_stats_request(datapath)
 
     def add_flow(self, datapath, table_miss=False):
         ofproto = datapath.ofproto
@@ -289,3 +319,24 @@ class OSTestFFSM(app_manager.RyuApp):
             datapath=datapath, command=ofp.OFPSC_EXP_SET_U_EXTRACTOR,  fields=[ofp.OXM_OF_IPV4_SRC], table_id=1)
         datapath.send_msg(key_update_extractor)
 
+    '''def send_state_stats_request(self, datapath):
+        ofp = datapath.ofproto
+        ofp_parser = datapath.ofproto_parser
+
+        #match = ofp_parser.OFPMatch(ipv4_src=10.0.0.2)
+        #req = ofp_parser.OFPStateStatsRequest(datapath=datapath, table_id = 0, match=match)
+        req = ofp_parser.OFPStateStatsRequest(datapath=datapath, table_id=1, match=None)
+        datapath.send_msg(req)'''
+
+    def send_flow_stats_request(self, datapath):
+        ofp = datapath.ofproto
+        ofp_parser = datapath.ofproto_parser
+
+        cookie = cookie_mask = 0
+        #match = ofp_parser.OFPMatch(in_port=1)
+        req = ofp_parser.OFPFlowStatsRequest(datapath, 0,
+                                             ofp.OFPTT_ALL,
+                                             ofp.OFPP_ANY, ofp.OFPG_ANY,
+                                             cookie, cookie_mask,
+                                             match=None)
+        datapath.send_msg(req)
