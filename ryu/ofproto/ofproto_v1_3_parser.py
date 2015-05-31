@@ -235,6 +235,384 @@ def OFPExpMsgConfigureStatefulness(datapath, statefulness, table_id=0):
     exp_type=0 # see enum ofp_extension_commands in openstate-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
+def OFPExpStateStatsMultipartRequest(datapath, flags=0, table_id=ofproto.OFPTT_ALL, match=None):
+    if match is None:
+        match = OFPMatch()
+
+    data=bytearray()
+    msg_pack_into(ofproto.OFP_STATE_STATS_REQUEST_0_PACK_STR, data, 0, table_id)
+    
+    offset=ofproto.OFP_STATE_STATS_REQUEST_0_SIZE
+    match.serialize(data, offset)
+
+    exp_type=0 # see enum ofp_stats_extension_commands in openstate-ext.h
+    return OFPExperimenterStatsRequest(datapath=datapath, flags=flags, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+
+def OFPExpGlobalStateStatsMultipartRequest(datapath, flags=0):
+    data=bytearray()
+
+    exp_type=1 # see enum ofp_stats_extension_commands in openstate-ext.h
+    return OFPExperimenterStatsRequest(datapath=datapath, flags=flags, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+
+class OFPStateEntry(object):
+    def __init__(self, key_count=None, key=None, state=None):
+        super(OFPStateEntry, self).__init__()
+        
+        self.key_count=key_count
+        self.key = key
+        self.state = state
+    
+    @classmethod
+    def parser(cls, buf, offset):
+        entry = OFPStateEntry()
+
+        key_count = struct.unpack_from('!I', buf, offset)
+        entry.key_count = key_count[0]
+        offset += 4
+        entry.key=[]
+        if entry.key_count <= ofproto.MAX_KEY_LEN:
+            for f in range(entry.key_count):
+                key=struct.unpack_from('!B',buf,offset,)
+                entry.key.append(key[0])
+                offset +=1
+        offset += (ofproto.MAX_KEY_LEN - entry.key_count)
+
+        state = struct.unpack_from('!I', buf, offset)
+        entry.state=state[0]
+        offset += 4
+
+        return entry
+
+class OFPStateStats(StringifyMixin):
+    def __init__(self, table_id=None, field_count=None, fields=None, entry=None,length=None):
+        super(OFPStateStats, self).__init__()
+        self.length = 0
+        self.table_id = table_id
+        self.field_count = field_count
+        self.fields = fields
+        self.entry = entry
+        
+    @classmethod
+    def parser(cls, buf, offset):
+        state_stats = cls()
+
+        (state_stats.length, state_stats.table_id,state_stats.field_count) = struct.unpack_from(
+            ofproto.OFP_STATE_STATS_0_PACK_STR, buf, offset)
+        offset += ofproto.OFP_STATE_STATS_0_SIZE
+
+        state_stats.fields=[]
+        field_extract_format='!I'
+        if state_stats.field_count <= ofproto.MAX_FIELD_COUNT:
+            for f in range(state_stats.field_count):
+                field=struct.unpack_from(field_extract_format,buf,offset)
+                state_stats.fields.append(field[0])
+                offset +=4
+        offset += ((ofproto.MAX_FIELD_COUNT-state_stats.field_count)*4)
+
+        state_stats.entry = OFPStateEntry.parser(buf, offset)
+
+        return state_stats
+
+class OFPGlobalStateStats(StringifyMixin):
+    def __init__(self, flags=None):
+        super(OFPGlobalStateStats, self).__init__()
+        self.flags = flags
+        
+    @classmethod
+    def parser(cls, buf, offset):
+        global_state_stats = cls()
+        
+        (global_state_stats.flags, ) = struct.unpack_from('!I', buf, offset)
+
+        return global_state_stats
+
+def get_field_string(field,key,key_count,offset):
+    if field==ofproto.OXM_OF_IN_PORT:
+        if key_count!=0:
+            length = 4
+            value = struct.unpack('<I', array('B',key[offset:offset+length]))[0]
+            return ("in_port=\"%d\""%(value),length)
+        else:
+            return ("in_port=*",0)
+    elif field==ofproto.OXM_OF_IN_PHY_PORT:
+        if key_count!=0:
+            length = 4
+            VLAN_VID_MASK = 0x0fff
+            value = struct.unpack('<I', array('B',key[offset:offset+length]))[0] & VLAN_VID_MASK
+            return ("in_phy_port=\"%d\""%(value),length)
+        else:
+            return ("in_phy_port=*",0)
+    elif field==ofproto.OXM_OF_VLAN_VID:
+        if key_count!=0:
+            length = 2
+            value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+            return ("vlan_vid=\"%d\""%(value),length)
+        else:
+            return ("vlan_vid=*",0)
+    elif field==ofproto.OXM_OF_VLAN_PCP:
+        if key_count!=0:
+            length = 1
+            value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x7
+            return ("vlan_pcp=\"%d\""%(value),length)
+        else:
+            return ("vlan_pcp=*",0)
+    elif field==ofproto.OXM_OF_ETH_TYPE:
+        if key_count!=0:
+            length = 2
+            value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+            return ("eth_type=\"%d\""%(value),length)
+        else:
+            return ("eth_type=*",0)
+    elif field==ofproto.OXM_OF_TCP_SRC:
+        if key_count!=0:
+            length = 2
+            value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+            return ("tcp_src=\"%d\""%(value),length)
+        else:
+            return ("tcp_src=*",0)
+    elif field==ofproto.OXM_OF_TCP_DST:
+        if key_count!=0:
+            length = 2
+            print(key)
+            value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+            return ("tcp_dst=\"%d\""%(value),length)
+        else:
+            return ("tcp_dst=*",0)
+    elif field==ofproto.OXM_OF_UDP_SRC:
+        if key_count!=0:
+            length = 2
+            value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+            return ("udp_src=\"%d\""%(value),length)
+        else:
+            return ("udp_src=*",0)
+    elif field==ofproto.OXM_OF_UDP_DST:
+        if key_count!=0:
+            length = 2
+            value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+            return ("udp_dst=\"%d\""%(value),length)
+        else:
+            return ("udp_dst=*",0)
+    elif field==ofproto.OXM_OF_SCTP_SRC:
+        if key_count!=0:
+            length = 2
+            value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+            return ("sctp_src=\"%d\""%(value),length)
+        else:
+            return ("sctp_src=*",0)
+    elif field==ofproto.OXM_OF_SCTP_DST:
+        if key_count!=0:
+            length = 2
+            value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+            return ("sctp_dst=\"%d\""%(value),length)
+        else:
+            return ("sctp_dst=*",0)
+    elif field==ofproto.OXM_OF_ETH_SRC:
+        if key_count!=0:
+            length = 6
+            return ("eth_src=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
+        else:
+            return ("eth_src=*",0)
+    elif field==ofproto.OXM_OF_ETH_DST:
+        if key_count!=0:
+            length = 6
+            return ("eth_dst=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
+        else:
+            return ("eth_dst=*",0)
+    elif field==ofproto.OXM_OF_IPV4_SRC:
+        if key_count!=0:
+            length = 4
+            return ("ipv4_src=\"%d.%d.%d.%d\""%(key[offset],key[offset+1],key[offset+2],key[offset+3]),length)
+        else:
+            return ("ipv4_src=*",0)
+    elif field==ofproto.OXM_OF_IPV4_DST:
+        if key_count!=0:
+            length = 4
+            return ("ipv4_dst=\"%d.%d.%d.%d\""%(key[offset],key[offset+1],key[offset+2],key[offset+3]),length)
+        else:
+            return ("ipv4_dst=*",0)
+    elif field==ofproto.OXM_OF_IP_PROTO:
+        if key_count!=0:
+            length = 1
+            value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
+            return ("ip_proto=\"%d\""%(value),length)
+        else:
+            return ("ip_proto=*",0)
+    elif field==ofproto.OXM_OF_IP_DSCP:
+        if key_count!=0:
+            length = 1
+            value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x3f
+            return ("ip_dscp=\"%d\""%(value),length)
+        else:
+            return ("ip_dscp=*",0)
+    elif field==ofproto.OXM_OF_IP_ECN:
+        if key_count!=0:
+            length = 1
+            value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x3
+            return ("ip_ecn=\"%d\""%(value),length)
+        else:
+            return ("ip_ecn=*",0)
+    elif field==ofproto.OXM_OF_ICMPV4_TYPE:
+        if key_count!=0:
+            length = 1
+            value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
+            return ("icmpv4_type=\"%d\""%(value),length)
+        else:
+            return ("icmpv4_type=*",0)
+    elif field==ofproto.OXM_OF_ICMPV4_CODE:
+        if key_count!=0:
+            length = 1
+            value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
+            return ("icmpv4_code=\"%d\""%(value),length)
+        else:
+            return ("icmpv4_code=*",0)
+    elif field==ofproto.OXM_OF_ARP_SHA:
+        if key_count!=0:
+            length = 6
+            return ("arp_sha=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
+        else:
+            return ("arp_sha=*",0)
+    elif field==ofproto.OXM_OF_ARP_THA:
+        if key_count!=0:
+            length = 6
+            return ("arp_tha=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
+        else:
+            return ("arp_tha=*",0)
+    elif field==ofproto.OXM_OF_ARP_SPA:
+        if key_count!=0:
+            length = 4
+            return ("arp_spa=\"%d.%d.%d.%d\""%(key[offset],key[offset+1],key[offset+2],key[offset+3]),length)
+        else:
+            return ("arp_spa=*",0)
+    elif field==ofproto.OXM_OF_ARP_TPA:
+        if key_count!=0:
+            length = 4
+            return ("arp_tpa=\"%d.%d.%d.%d\""%(key[offset],key[offset+1],key[offset+2],key[offset+3]),length)
+        else:
+            return ("arp_tpa=*",0)
+    elif field==ofproto.OXM_OF_ARP_OP:
+        if key_count!=0:
+            length = 2
+            value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+            return ("arp_op=\"%d\""%(value),length)
+        else:
+            return ("arp_op=*",0)
+    elif field==ofproto.OXM_OF_IPV6_SRC:
+        if key_count!=0:
+            length = 16
+            value = []
+            for q in range(8): 
+                value[q]=format(struct.unpack('<H', array('B',key[offset:offset+2]))[0],'x')
+                offset += 2
+            return ("nw_src_ipv6=\"%s:%s:%s:%s:%s:%s:%s:%s\""%(value[0],value[1],value[2],value[3],value[4],value[5],value[6],value[7]),length)
+        else:
+            return ("nw_src_ipv6=*",0)
+    elif field==ofproto.OXM_OF_IPV6_DST:
+        if key_count!=0:
+            length = 16
+            value = []
+            for q in range(8): 
+                value.append(format(struct.unpack('<H', array('B',key[offset:offset+2]))[0],'x'))
+                offset += 2
+            return ("nw_dst_ipv6=\"%s:%s:%s:%s:%s:%s:%s:%s\""%(value[0],value[1],value[2],value[3],value[4],value[5],value[6],value[7]),length)
+        else:
+            return ("nw_dst_ipv6=*",0)
+    elif field==ofproto.OXM_OF_IPV6_ND_TARGET:
+        if key_count!=0:
+            length = 16
+            value = []
+            for q in range(8): 
+                value[q]=format(struct.unpack('<H', array('B',key[offset:offset+2]))[0],'x')
+                offset += 2
+            return ("ipv6_nd_target=\"%s:%s:%s:%s:%s:%s:%s:%s\""%(value[0],value[1],value[2],value[3],value[4],value[5],value[6],value[7]),length)
+        else:
+            return ("ipv6_nd_target=*",0)
+    elif field==ofproto.OXM_OF_IPV6_ND_SLL:
+        if key_count!=0:
+            length = 6
+            return ("ipv6_nd_sll=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
+        else:
+            return ("ipv6_nd_sll=*",0)
+    elif field==ofproto.OXM_OF_IPV6_ND_TLL:
+        if key_count!=0:
+            length = 6
+            return ("ipv6_nd_tll=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
+        else:
+            return ("ipv6_nd_tll=*",0)
+    elif field==ofproto.OXM_OF_IPV6_FLABEL:
+        if key_count!=0:
+            length = 4
+            value = struct.unpack('<I', array('B',key[offset:offset+length]))[0] & 0x000fffff
+            return ("ipv6_flow_label=\"%d\""%(value),length)    
+        else:
+            return ("ipv6_flow_label=*",0)
+    elif field==ofproto.OXM_OF_ICMPV6_TYPE:
+        if key_count!=0:
+            length = 1
+            value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
+            return ("icmpv6_type=\"%d\""%(value),length)
+        else:
+            return ("icmpv6_type=*",0)
+    elif field==ofproto.OXM_OF_ICMPV6_CODE:
+        if key_count!=0:
+            length = 1
+            value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
+            return ("icmpv6_code=\"%d\""%(value),length)
+        else:
+            return ("icmpv6_code=*",0)
+    elif field==ofproto.OXM_OF_MPLS_LABEL:
+        if key_count!=0:
+            length = 4
+            value = struct.unpack('<I', array('B',key[offset:offset+length]))[0] & 0x000fffff
+            return ("mpls_label=\"%d\""%(value),length)  
+        else:
+            return ("mpls_label=*",0)
+    elif field==ofproto.OXM_OF_MPLS_TC:
+        if key_count!=0:
+            length = 1
+            value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x3
+            return ("mpls_tc=\"%d\""%(value),length)
+        else:
+            return ("mpls_tc=*",0)
+    elif field==ofproto.OXM_OF_MPLS_BOS:
+        if key_count!=0:
+            length = 1
+            value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x1
+            return ("mpls_bos=\"%d\""%(value),length)
+        else:
+            return ("mpls_bos=*",0)
+    elif field==ofproto.OXM_OF_PBB_ISID:
+        if key_count!=0:
+            length = 4
+            value = struct.unpack('<I', array('B',key[offset:offset+length]))[0]
+            return ("pbb_isid=\"%d\""%(value),length)  
+        else:
+            return ("pbb_isid=*",0)
+    elif field==ofproto.OXM_OF_TUNNEL_ID:
+        if key_count!=0:
+            length = 8
+            value = struct.unpack('<Q', array('B',key[offset:offset+length]))[0]
+            return ("tunnel_id=\"%d\""%(value),length)
+        else:
+            return ("tunnel_id=*",0)
+    elif field==ofproto.OXM_OF_IPV6_EXTHDR:
+        if key_count!=0:
+            length = 2
+            value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
+            return ("ext_hdr=\"%d\""%(value),length)
+        else:
+            return ("ext_hdr=*",0)
+
+def state_entry_key_to_str(extr,key,key_count):
+    offset=0
+    s=''
+    for field in extr:
+        (string,field_len) = get_field_string(field,key,key_count,offset)
+        s += string
+        offset += field_len
+        if field!=extr[-1]:
+            s += ","
+    return s
+
 @ofproto_parser.register_msg_parser(ofproto.OFP_VERSION)
 def msg_parser(datapath, version, msg_type, msg_len, xid, buf):
     parser = _MSG_PARSERS.get(msg_type)
