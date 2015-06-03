@@ -135,7 +135,7 @@ class OSMacLearning(app_manager.RyuApp):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
 
-        req = ofp_parser.OFPExpMsgConfigureStatefulness(datapath=datapath, table_id=0, statefulness=1)
+        req = ofp_parser.OFPExpMsgConfigureStatefulTable(datapath=datapath, table_id=0, statefulness=1)
         datapath.send_msg(req)
 
     def send_features_request(self, datapath):

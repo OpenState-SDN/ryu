@@ -295,7 +295,7 @@ class OSTestFFSM(app_manager.RyuApp):
     def send_table_mod(self, datapath):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPExpMsgConfigureStatefulness(datapath=datapath, table_id=1, statefulness=1)
+        req = ofp_parser.OFPExpMsgConfigureStatefulTable(datapath=datapath, table_id=1, statefulness=1)
         datapath.send_msg(req)
 
     def send_features_request(self, datapath):

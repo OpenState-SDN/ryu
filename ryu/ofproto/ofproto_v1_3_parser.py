@@ -227,10 +227,10 @@ def OFPExpMsgKeyExtract(datapath, command, fields, table_id=0):
     exp_type=0 # see enum ofp_extension_commands in openstate-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
-def OFPExpMsgConfigureStatefulness(datapath, statefulness, table_id=0):
-    command=ofproto.OFPSC_STATEFULNESS_CONFIG
+def OFPExpMsgConfigureStatefulTable(datapath, statefulness, table_id=0):
+    command=ofproto.OFPSC_STATEFUL_TABLE_CONFIG
     data=struct.pack(ofproto.OFP_EXP_STATE_MOD_PACK_STR, table_id,command)
-    data+=struct.pack(ofproto.OFP_EXP_STATE_MOD_STATEFULNESS_CONFIG_PACK_STR,statefulness)
+    data+=struct.pack(ofproto.OFP_EXP_STATE_MOD_STATEFUL_TABLE_CONFIG_PACK_STR,statefulness)
     
     exp_type=0 # see enum ofp_extension_commands in openstate-ext.h
     return OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
