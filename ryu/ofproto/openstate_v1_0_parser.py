@@ -4,7 +4,7 @@ import ofproto_v1_3_parser
 from . import ofproto_v1_3 as ofproto
 from . import openstate_v1_0 as osproto
 
-def OFPExpActionSetState(state, table_id=0, state_mask=0xffffffff):
+def OFPExpActionSetState(state, hard_timeout=0, idle_timeout=0, hard_rollback=0, idle_rollback=0, table_id=0, state_mask=0xffffffff):
     """ 
     Returns a Set state experimenter action
 
@@ -19,7 +19,7 @@ def OFPExpActionSetState(state, table_id=0, state_mask=0xffffffff):
     ================ ======================================================
     """
     act_type=ofproto.OFPAT_EXP_SET_STATE
-    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, state_mask, table_id)
+    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, state_mask, table_id, hard_timeout, idle_timeout, hard_rollback, idle_rollback)
     return ofproto_v1_3_parser.OFPActionExperimenter(experimenter=0xBEBABEBA, data=data)
 
 def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
@@ -62,11 +62,11 @@ def OFPExpMsgKeyExtract(datapath, command, fields, table_id):
     exp_type=osproto.OFPT_EXP_STATE_MOD
     return ofproto_v1_3_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
-def OFPExpMsgSetFlowState(datapath, state, keys, table_id, state_mask=0xffffffff):
+def OFPExpMsgSetFlowState(datapath, state, keys, table_id, idle_timeout=0, idle_rollback=0, hard_timeout=0, hard_rollback=0, state_mask=0xffffffff):
     key_count=len(keys)
     command=osproto.OFPSC_EXP_SET_FLOW_STATE
     data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, command)
-    data+=struct.pack(osproto.OFP_EXP_STATE_MOD_SET_FLOW_STATE_PACK_STR,table_id,key_count,state,state_mask)
+    data+=struct.pack(osproto.OFP_EXP_STATE_MOD_SET_FLOW_STATE_PACK_STR,table_id,key_count,state,state_mask,idle_timeout,idle_rollback,hard_timeout,hard_rollback)
     field_extract_format='!B'
 
     if key_count <= osproto.MAX_KEY_LEN:
