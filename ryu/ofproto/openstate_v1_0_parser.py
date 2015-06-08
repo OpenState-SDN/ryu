@@ -4,7 +4,7 @@ import ofproto_v1_3_parser
 from . import ofproto_v1_3 as ofproto
 from . import openstate_v1_0 as osproto
 
-def OFPExpActionSetState(state, hard_timeout=0, idle_timeout=0, hard_rollback=0, idle_rollback=0, table_id=0, state_mask=0xffffffff):
+def OFPExpActionSetState(state, table_id, hard_timeout=0, idle_timeout=0, hard_rollback=0, idle_rollback=0, state_mask=0xffffffff):
     """ 
     Returns a Set state experimenter action
 
