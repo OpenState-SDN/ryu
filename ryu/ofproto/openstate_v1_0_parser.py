@@ -19,7 +19,7 @@ def OFPExpActionSetState(state, hard_timeout=0, idle_timeout=0, hard_rollback=0,
     ================ ======================================================
     """
     act_type=ofproto.OFPAT_EXP_SET_STATE
-    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, state_mask, table_id, hard_timeout, idle_timeout, hard_rollback, idle_rollback)
+    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, state_mask, table_id, hard_rollback, idle_rollback, hard_timeout, idle_timeout)
     return ofproto_v1_3_parser.OFPActionExperimenter(experimenter=0xBEBABEBA, data=data)
 
 def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
@@ -66,7 +66,7 @@ def OFPExpMsgSetFlowState(datapath, state, keys, table_id, idle_timeout=0, idle_
     key_count=len(keys)
     command=osproto.OFPSC_EXP_SET_FLOW_STATE
     data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, command)
-    data+=struct.pack(osproto.OFP_EXP_STATE_MOD_SET_FLOW_STATE_PACK_STR,table_id,key_count,state,state_mask,idle_timeout,idle_rollback,hard_timeout,hard_rollback)
+    data+=struct.pack(osproto.OFP_EXP_STATE_MOD_SET_FLOW_STATE_PACK_STR, table_id, key_count, state, state_mask, hard_rollback, idle_rollback, hard_timeout, idle_timeout)
     field_extract_format='!B'
 
     if key_count <= osproto.MAX_KEY_LEN:

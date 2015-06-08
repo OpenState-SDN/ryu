@@ -103,13 +103,16 @@ class OSPortKnocking(app_manager.RyuApp):
         for state in range(len(PORT_LIST)):
             match = parser.OFPMatch(
                 state=state, eth_type=0x0800, ip_proto=17, udp_dst=PORT_LIST[state])
-            if not state == 4:
-                actions = [parser.OFPExpActionSetState(state=state +1,table_id=0)]
+            if not state == 4 and not state == 3:
+                actions = [parser.OFPExpActionSetState(state=state +1,table_id=0, idle_timeout=5)]
                 inst = [parser.OFPInstructionActions(
                     datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
-            else:
-                actions = [parser.OFPExpActionSetState(state=state,table_id=0),
-                        parser.OFPActionOutput(2, 0)]
+            elif state == 3:
+                actions = [parser.OFPExpActionSetState(state=state +1,table_id=0, idle_timeout=10, hard_timeout=60)]
+                inst = [parser.OFPInstructionActions(
+                    datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
+            elif state == 4:
+                actions = [parser.OFPActionOutput(2, 0)]
                 inst = [ parser.OFPInstructionActions(
                     datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
             mod = parser.OFPFlowMod(
