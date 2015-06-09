@@ -89,7 +89,7 @@ class OSLinkProtection(app_manager.RyuApp):
         match = parser.OFPMatch(in_port=2,eth_type=0x0800,ip_proto=6, tcp_dst=33333)
         (flag, flag_mask) = parser.maskedflags("1")
         actions = [
-            parser.OFPActionSetFlag(flag, flag_mask)]
+            parser.OFPExpActionSetFlag(flag, flag_mask)]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
         mod = parser.OFPFlowMod(
@@ -104,7 +104,7 @@ class OSLinkProtection(app_manager.RyuApp):
         match = parser.OFPMatch(in_port=3,eth_type=0x0800,ip_proto=6, tcp_dst=22222)
         (flag, flag_mask) = parser.maskedflags("0")
         actions = [
-            parser.OFPActionSetFlag(flag, flag_mask)]
+            parser.OFPExpActionSetFlag(flag, flag_mask)]
         inst = [parser.OFPInstructionActions(
             datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
         mod = parser.OFPFlowMod(
@@ -151,7 +151,7 @@ class OSLinkProtection(app_manager.RyuApp):
 
     def send_reset_flag_mod(self, datapath):
         ofproto = datapath.ofproto
-        msg = datapath.ofproto_parser.OFPFlagMod(
+        msg = datapath.ofproto_parser.OFPExpSetGlobalState(
             datapath, ofproto.OFPSC_RESET_FLAGS)
         datapath.send_msg(msg)
 
@@ -159,6 +159,6 @@ class OSLinkProtection(app_manager.RyuApp):
         ofproto = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
         (flag, flag_mask) = ofp_parser.maskedflags(flags_string,offset_value)
-        msg = datapath.ofproto_parser.OFPFlagMod(
-            datapath, ofproto.OFPSC_MODIFY_FLAGS, flag, flag_mask)
+        msg = datapath.ofproto_parser.OFPExpSetGlobalState(
+            datapath, flag, flag_mask)
         datapath.send_msg(msg)

@@ -111,7 +111,7 @@ class OSLoadBalancing(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         LOG.info("Configuring default flow entries for switch %d" % datapath.id)     
-
+        
         #table miss
         actions = [parser.OFPActionOutput(
             ofproto.OFPP_CONTROLLER, ofproto.OFPCML_NO_BUFFER)]
@@ -127,7 +127,7 @@ class OSLoadBalancing(app_manager.RyuApp):
             flags=0, match=match, instructions=inst)
 
         datapath.send_msg(mod)
-
+        
         # Reverse path flow
         for in_port in range(2, SWITCH_PORTS + 1):
             src_ip="10.0.0."+str(in_port)
