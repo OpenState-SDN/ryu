@@ -15,6 +15,7 @@
 # limitations under the License.
 
 from ryu.ofproto import oxm_fields
+from openstate_v1_0 import *
 
 from struct import calcsize
 
@@ -62,8 +63,6 @@ OFPT_GET_ASYNC_REPLY = 27    # Controller/switch message
 OFPT_SET_ASYNC = 28    # Controller/switch message
 
 OFPT_METER_MOD = 29    # Controller/switch message
-OFPT_STATE_MOD = 30  #Controller/switch message
-OFPT_FLAG_MOD = 31  #Controller/switch message
  
 # struct ofp_port
 OFP_MAX_PORT_NAME_LEN = 16
@@ -249,8 +248,6 @@ OFPAT_DEC_NW_TTL = 24  # Decrement IP TTL.
 OFPAT_SET_FIELD = 25  # Set a header field using OXM TLV format.
 OFPAT_PUSH_PBB = 26  # Push a new PBB service tag (I-TAG)
 OFPAT_POP_PBB = 27  # Pop the outer PBB service tag (I-TAG)
-OFPAT_SET_STATE = 28 #Apply new state 
-OFPAT_SET_FLAG = 29 #Apply new global state 
 OFPAT_EXPERIMENTER = 0xffff
 
 # struct ofp_action_header
@@ -311,16 +308,6 @@ OFP_ACTION_EXPERIMENTER_HEADER_SIZE = 8
 assert (calcsize(OFP_ACTION_EXPERIMENTER_HEADER_PACK_STR) ==
         OFP_ACTION_EXPERIMENTER_HEADER_SIZE)
 
-#struct ofp_action_set_state
-OFP_ACTION_SET_STATE_PACK_STR = '!HHIIB3x'
-OFP_ACTION_SET_STATE_SIZE = 16
-assert calcsize(OFP_ACTION_SET_STATE_PACK_STR) == OFP_ACTION_SET_STATE_SIZE
-
-#struct ofp_action_set_flag
-OFP_ACTION_SET_FLAG_PACK_STR = '!HHII4x'
-OFP_ACTION_SET_FLAG_SIZE = 16
-assert calcsize(OFP_ACTION_SET_FLAG_PACK_STR) == OFP_ACTION_SET_FLAG_SIZE
-
 # ofp_switch_features
 OFP_SWITCH_FEATURES_PACK_STR = '!QIBB2xII'
 OFP_SWITCH_FEATURES_SIZE = 32
@@ -335,7 +322,6 @@ OFPC_GROUP_STATS = 1 << 3    # Group statistics.
 OFPC_IP_REASM = 1 << 5        # Can reassemble IP fragments.
 OFPC_QUEUE_STATS = 1 << 6    # Queue statistics.
 OFPC_PORT_BLOCKED = 1 << 8    # Switch will block looping ports.
-OFPC_OPENSTATE = 1 << 9 # Switch will extend to support OpenState features
 
 # struct ofp_switch_config
 OFP_SWITCH_CONFIG_PACK_STR = '!HH'
@@ -364,7 +350,6 @@ OFPTC_TABLE_MISS_CONTROLLER = 0
 OFPTC_TABLE_MISS_CONTINUE = 1 << 0
 OFPTC_TABLE_MISS_DROP = 1 << 1
 OFPTC_TABLE_MISS_MASK = 3
-OFPTC_TABLE_STATEFUL = 1 << 4
 
 # struct ofp_flow_mod
 _OFP_FLOW_MOD_PACK_STR0 = 'QQBBHHHIIIH2x'
@@ -482,42 +467,6 @@ OFP_METER_BAND_EXPERIMENTER_SIZE = 16
 assert (calcsize(OFP_METER_BAND_EXPERIMENTER_PACK_STR) ==
         OFP_METER_BAND_EXPERIMENTER_SIZE)
 
-#state ofp_flag_mod
-OFP_FLAG_MOD_PACK_STR='!IIB7x'
-OFP_FLAG_MOD_SIZE =24
-assert (calcsize(OFP_FLAG_MOD_PACK_STR)) + OFP_HEADER_SIZE ==OFP_FLAG_MOD_SIZE
-
-#enum ofp_flag_mod_command 
-OFPSC_MODIFY_FLAGS = 0
-OFPSC_RESET_FLAGS = 1
-
-#state ofp_state_mod
-OFP_STATE_MOD_PACK_STR='!BB'
-OFP_STATE_MOD_SIZE =10
-assert (calcsize(OFP_STATE_MOD_PACK_STR)) + OFP_HEADER_SIZE ==OFP_STATE_MOD_SIZE
-
-# struct ofp_state_mod_entry
-MAX_KEY_LEN=48
-OFP_STATE_MOD_ENTRY_PACK_STR='!III'
-OFP_STATE_MOD_ENTRY_SIZE = 12
-assert (calcsize(OFP_STATE_MOD_ENTRY_PACK_STR) ==
-        OFP_STATE_MOD_ENTRY_SIZE)
- 
-#struct ofp_state_mod_extraction
-MAX_FIELD_COUNT=6
-OFP_STATE_MOD_EXTRACT_PACK_STR='!I'
-OFP_STATE_MOD_EXTRACT_SIZE = 4
-assert (calcsize(OFP_STATE_MOD_EXTRACT_PACK_STR)==
-          OFP_STATE_MOD_EXTRACT_SIZE)
-
-
-#enum ofp_state_mod_command 
-OFPSC_SET_L_EXTRACTOR = 0
-OFPSC_SET_U_EXTRACTOR=1
-OFPSC_SET_FLOW_STATE=2
-OFPSC_DEL_FLOW_STATE=3
-
-
 # struct ofp_multipart_request
 OFP_MULTIPART_REQUEST_PACK_STR = '!HH4x'
 OFP_MULTIPART_REQUEST_SIZE = 16
@@ -566,7 +515,6 @@ OFP_DESC_PACK_STR = '!' + \
                     DESC_STR_LEN_STR + 's'
 OFP_DESC_SIZE = 1056
 assert calcsize(OFP_DESC_PACK_STR) == OFP_DESC_SIZE
-
 
 # struct ofp_flow_stats_request
 _OFP_FLOW_STATS_REQUEST_0_PACK_STR = 'B3xII4xQQ'
@@ -936,7 +884,6 @@ OFPET_SWITCH_CONFIG_FAILED = 10    # Switch config request failed.
 OFPET_ROLE_REQUEST_FAILED = 11    # Controller Role request failed.
 OFPET_METER_MOD_FAILED = 12    # Error in meter.
 OFPET_TABLE_FEATURES_FAILED = 13    # Setting table features failed.
-OFPET_STATE_MOD_FAILED=14
 OFPET_EXPERIMENTER = 0xffff    # Experimenter error messages.
 
 # enum ofp_hello_failed_code
@@ -1231,9 +1178,9 @@ oxm_types = [
     oxm_fields.OpenFlowBasic('pbb_isid', 37, oxm_fields.Int3),
     oxm_fields.OpenFlowBasic('tunnel_id', 38, oxm_fields.Int8),
     oxm_fields.OpenFlowBasic('ipv6_exthdr', 39, oxm_fields.Int2),
-    oxm_fields.OpenFlowBasic('flags', 40, oxm_fields.Int4),
-    oxm_fields.OpenFlowBasic('state', 41, oxm_fields.Int4),
     oxm_fields.ONFExperimenter('pbb_uca', 2560, oxm_fields.Int1),
+    oxm_fields.OpenStateExperimenter('flags', 0, oxm_fields.Int4),
+    oxm_fields.OpenStateExperimenter('state', 1, oxm_fields.Int4)
 ]
 
 oxm_fields.generate(__name__)
@@ -1245,4 +1192,3 @@ OFP_TCP_PORT = 6633
 MAX_XID = 0xffffffff
 
 OFP_NO_BUFFER = 0xffffffff
-
