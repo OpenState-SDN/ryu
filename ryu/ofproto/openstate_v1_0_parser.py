@@ -39,10 +39,10 @@ def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
     data=struct.pack(ofproto.OFP_EXP_ACTION_SET_FLAG_PACK_STR, act_type, flag, flag_mask)
     return ofproto_v1_3_parser.OFPActionExperimenter(experimenter=0XBEBABEBA, data=data)
 
-def OFPExpMsgConfigureStatefulTable(datapath, statefulness, table_id):
+def OFPExpMsgConfigureStatefulTable(datapath, stateful, table_id):
     command=osproto.OFPSC_STATEFUL_TABLE_CONFIG
     data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, command)
-    data+=struct.pack(osproto.OFP_EXP_STATE_MOD_STATEFUL_TABLE_CONFIG_PACK_STR,table_id,statefulness)
+    data+=struct.pack(osproto.OFP_EXP_STATE_MOD_STATEFUL_TABLE_CONFIG_PACK_STR,table_id,stateful)
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
     return ofproto_v1_3_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
