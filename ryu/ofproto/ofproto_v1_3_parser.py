@@ -43,7 +43,6 @@ The following extensions are not implemented yet.
 import struct
 import itertools
 
-from array import array
 from ryu.lib import addrconv
 from ryu.lib import mac
 from ryu import utils
@@ -52,6 +51,7 @@ from . import ether
 from . import ofproto_parser
 from . import ofproto_common
 from . import ofproto_v1_3 as ofproto
+from openstate_v1_0_parser import *
 
 import logging
 LOG = logging.getLogger('ryu.ofproto.ofproto_v1_3_parser')
@@ -72,261 +72,6 @@ def _register_parser(cls):
     assert cls.cls_msg_type not in _MSG_PARSERS
     _MSG_PARSERS[cls.cls_msg_type] = cls.parser
     return cls
-
-'''
-Flags are 32, numbered from 0 to 31 from right to left
-
-maskedflags("0*1100")       -> **************************0*1100 -> (12,47)
-maskedflags("0*1100",12)    -> ***************0*1100*********** -> (49152, 192512)
-
-'''
-def maskedflags(string,offset=0):
-    import re
-    str_len=len(string)
-    if re.search('r[^01*]', string) or str_len>32 or str_len<1:
-        print("ERROR: flags string can only contain 0,1 and * and must have at least 1 bit and at most 32 bits!")
-        return (0,0)
-    if offset>31 or offset<0:
-        print("ERROR: offset must be in range 0-31!")
-        return (0,0)
-    if str_len+offset>32:
-        print("ERROR: offset is too big")
-        return (0,0)
-
-    mask=['0']*32
-    value=['0']*32
-
-    for i in range(offset,str_len+offset):
-        if not string[str_len-1+offset-i]=="*":
-            mask[31-i]="1"
-            value[31-i]=string[str_len-1+offset-i]
-    mask=''.join(mask)
-    value=''.join(value)
-    return (int(value,2),int(mask,2))
-
-'''
-state field is 32bit long
-Thanks to the mask we can divide the field in multiple substate matchable with masks.
-
-substate(state,section,sec_count)
-state = state to match
-section = number of the selected subsection (starts from 0 from the right)
-sec_count = number of how many subsection the state field has been divided
-
-substate(5,1,4)   -> |********|********|00000101|********|-> (1280,16711680)
-
-'''
-def substate(state,section,sec_count):
-    
-    if not isinstance(state, int) or not isinstance(section, int) or not isinstance(sec_count, int):
-        print("ERROR: parameters must be integers!")
-        return(0,0)
-    if state < 0 or section < 0 or sec_count < 0:
-        print("ERROR: parameters must be positive!")
-        return(0,0)
-    if 32%sec_count != 0:
-        print("ERROR: the number of sections must be a divisor of 32")
-        return(0,0)
-    section_len = 32/sec_count
-    if state >= pow(2,section_len):
-        print("ERROR: state exceed the section's length")
-        return(0,0)
-    if section not in range (1,sec_count+1):
-        print("ERROR: section not exist. It must be between 1 and sec_count")
-        return(0,0)
-
-    sec_count = sec_count -1
-    count = 1
-    starting_point = section*section_len
-    
-    mask=['0']*32
-    value=['0']*32
-    bin_state=['0']*section_len
-    
-    state = bin(state)
-    state = ''.join(state[2:])
-    
-    for i in range(0,len(state)):
-        bin_state [section_len-1-i]= state[len(state)-1-i]
-    
-    for i in range(starting_point,starting_point+section_len):
-        value[31-i]=bin_state[section_len - count]
-        count = count + 1 
-        mask[31-i]="1"
-    
-    mask=''.join(mask)
-    value=''.join(value)
-    return (int(value,2),int(mask,2))
-
-def get_field_string(field,key,offset):
-    if field==ofproto.OXM_OF_IN_PORT:
-        length = 4
-        value = struct.unpack('<I', array('B',key[offset:offset+length]))[0]
-        return ("in_port=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_IN_PHY_PORT:
-        length = 4
-        VLAN_VID_MASK = 0x0fff
-        value = struct.unpack('<I', array('B',key[offset:offset+length]))[0] & VLAN_VID_MASK
-        return ("in_phy_port=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_VLAN_VID:
-        length = 2
-        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
-        return ("vlan_vid=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_VLAN_PCP:
-        length = 1
-        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x7
-        return ("vlan_pcp=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_ETH_TYPE:
-        length = 2
-        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
-        return ("eth_type=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_TCP_SRC:
-        length = 2
-        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
-        return ("tcp_src=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_TCP_DST:
-        length = 2
-        print(key)
-        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
-        return ("tcp_dst=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_UDP_SRC:
-        length = 2
-        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
-        return ("udp_src=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_UDP_DST:
-        length = 2
-        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
-        return ("udp_dst=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_SCTP_SRC:
-        length = 2
-        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
-        return ("sctp_src=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_SCTP_DST:
-        length = 2
-        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
-        return ("sctp_dst=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_ETH_SRC:
-        length = 6
-        return ("eth_src=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
-    elif field==ofproto.OXM_OF_ETH_DST:
-        length = 6
-        return ("eth_dst=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
-    elif field==ofproto.OXM_OF_IPV4_SRC:
-        length = 4
-        return ("ipv4_src=\"%d.%d.%d.%d\""%(key[offset],key[offset+1],key[offset+2],key[offset+3]),length)
-    elif field==ofproto.OXM_OF_IPV4_DST:
-        length = 4
-        return ("ipv4_dst=\"%d.%d.%d.%d\""%(key[offset],key[offset+1],key[offset+2],key[offset+3]),length)
-    elif field==ofproto.OXM_OF_IP_PROTO:
-        length = 1
-        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
-        return ("ip_proto=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_IP_DSCP:
-        length = 1
-        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x3f
-        return ("ip_dscp=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_IP_ECN:
-        length = 1
-        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x3
-        return ("ip_ecn=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_ICMPV4_TYPE:
-        length = 1
-        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
-        return ("icmpv4_type=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_ICMPV4_CODE:
-        length = 1
-        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
-        return ("icmpv4_code=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_ARP_SHA:
-        length = 6
-        return ("arp_sha=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
-    elif field==ofproto.OXM_OF_ARP_THA:
-        length = 6
-        return ("arp_tha=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
-    elif field==ofproto.OXM_OF_ARP_SPA:
-        length = 4
-        return ("arp_spa=\"%d.%d.%d.%d\""%(key[offset],key[offset+1],key[offset+2],key[offset+3]),length)
-    elif field==ofproto.OXM_OF_ARP_TPA:
-        length = 4
-        return ("arp_tpa=\"%d.%d.%d.%d\""%(key[offset],key[offset+1],key[offset+2],key[offset+3]),length)
-    elif field==ofproto.OXM_OF_ARP_OP:
-        length = 2
-        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
-        return ("arp_op=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_IPV6_SRC:
-        length = 16
-        value = []
-        for q in range(8): 
-            value[q]=format(struct.unpack('<H', array('B',key[offset:offset+2]))[0],'x')
-            offset += 2
-        return ("nw_src_ipv6=\"%s:%s:%s:%s:%s:%s:%s:%s\""%(value[0],value[1],value[2],value[3],value[4],value[5],value[6],value[7]),length)
-    elif field==ofproto.OXM_OF_IPV6_DST:
-        length = 16
-        value = []
-        for q in range(8): 
-            value.append(format(struct.unpack('<H', array('B',key[offset:offset+2]))[0],'x'))
-            offset += 2
-        return ("nw_dst_ipv6=\"%s:%s:%s:%s:%s:%s:%s:%s\""%(value[0],value[1],value[2],value[3],value[4],value[5],value[6],value[7]),length)
-    elif field==ofproto.OXM_OF_IPV6_ND_TARGET:
-        length = 16
-        value = []
-        for q in range(8): 
-            value[q]=format(struct.unpack('<H', array('B',key[offset:offset+2]))[0],'x')
-            offset += 2
-        return ("ipv6_nd_target=\"%s:%s:%s:%s:%s:%s:%s:%s\""%(value[0],value[1],value[2],value[3],value[4],value[5],value[6],value[7]),length)
-    elif field==ofproto.OXM_OF_IPV6_ND_SLL:
-        length = 6
-        return ("ipv6_nd_sll=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
-    elif field==ofproto.OXM_OF_IPV6_ND_TLL:
-        length = 6
-        return ("ipv6_nd_tll=\"%02x:%02x:%02x:%02x:%02x:%02x\""%(key[offset],key[offset+1],key[offset+2],key[offset+3],key[offset+4],key[offset+5]),length)
-    elif field==ofproto.OXM_OF_IPV6_FLABEL:
-        length = 4
-        value = struct.unpack('<I', array('B',key[offset:offset+length]))[0] & 0x000fffff
-        return ("ipv6_flow_label=\"%d\""%(value),length)    
-    elif field==ofproto.OXM_OF_ICMPV6_TYPE:
-        length = 1
-        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
-        return ("icmpv6_type=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_ICMPV6_CODE:
-        length = 1
-        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0]
-        return ("icmpv6_code=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_MPLS_LABEL:
-        length = 4
-        value = struct.unpack('<I', array('B',key[offset:offset+length]))[0] & 0x000fffff
-        return ("mpls_label=\"%d\""%(value),length)  
-    elif field==ofproto.OXM_OF_MPLS_TC:
-        length = 1
-        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x3
-        return ("mpls_tc=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_MPLS_BOS:
-        length = 1
-        value = struct.unpack('<B', array('B',key[offset:offset+length]))[0] & 0x1
-        return ("mpls_bos=\"%d\""%(value),length)
-    elif field==ofproto.OXM_OF_PBB_ISID:
-        length = 4
-        value = struct.unpack('<I', array('B',key[offset:offset+length]))[0]
-        return ("pbb_isid=\"%d\""%(value),length)  
-    elif field==ofproto.OXM_OF_TUNNEL_ID:
-        length = 8
-        value = struct.unpack('<Q', array('B',key[offset:offset+length]))[0]
-        return ("tunnel_id=\"%d\""%(value),length) 
-    elif field==ofproto.OXM_OF_IPV6_EXTHDR:
-        length = 2
-        value = struct.unpack('<H', array('B',key[offset:offset+length]))[0]
-        return ("ext_hdr=\"%d\""%(value),length)
-
-def state_entry_key_to_str(extr,key):
-    offset=0
-    s=''
-    for field in extr:
-        (string,field_len) = get_field_string(field,key,offset)
-        s += string
-        offset += field_len
-        if field!=extr[-1]:
-            s += ","
-    return s
 
 @ofproto_parser.register_msg_parser(ofproto.OFP_VERSION)
 def msg_parser(datapath, version, msg_type, msg_len, xid, buf):
@@ -859,8 +604,6 @@ class Flow(object):
         self.in_port = 0
         self.in_phy_port = 0
         self.metadata = 0
-        self.state = 0
-        self.flags = 0
         self.dl_dst = mac.DONTCARE
         self.dl_src = mac.DONTCARE
         self.dl_type = 0
@@ -946,8 +689,6 @@ class OFPMatch(StringifyMixin):
     in_port          Integer 32bit   Switch input port
     in_phy_port      Integer 32bit   Switch physical input port
     metadata         Integer 64bit   Metadata passed between tables
-    state            Integer 32bit   Flow State
-    flags            Integer 32bit   Global States
     eth_dst          MAC address     Ethernet destination address
     eth_src          MAC address     Ethernet source address
     eth_type         Integer 16bit   Ethernet frame type
@@ -1125,7 +866,6 @@ class OFPMatch(StringifyMixin):
         OXM_OF_IN_PORT         Switch input port
         OXM_OF_IN_PHY_PORT     Switch physical input port
         OXM_OF_METADATA        Metadata passed between tables
-        OXM_OF_FLAGS           Global States
         OXM_OF_ETH_DST         Ethernet destination address
         OXM_OF_ETH_SRC         Ethernet source address
         OXM_OF_ETH_TYPE        Ethernet frame type
@@ -1221,18 +961,6 @@ class OFPMatch(StringifyMixin):
                 header = ofproto.OXM_OF_METADATA_W
             self.append_field(header, self._flow.metadata,
                               self._wc.metadata_mask)
-
-        if self._wc.ft_test(ofproto.OFPXMT_OFB_STATE):
-            self.append_field(ofproto.OXM_OF_STATE,
-                              self._flow.state)
-
-        if self._wc.ft_test(ofproto.OFPXMT_OFB_FLAGS):
-            if self._wc.flags_mask == UINT32_MAX:
-                header = ofproto.OXM_OF_FLAGS
-            else:
-                header = ofproto.OXM_OF_FLAGS_W
-            self.append_field(header, self._flow.flags,
-                              self._wc.flags_mask)
 
         if self._wc.ft_test(ofproto.OFPXMT_OFB_ETH_DST):
             if self._wc.dl_dst_mask:
@@ -1497,19 +1225,7 @@ class OFPMatch(StringifyMixin):
         self._wc.ft_set(ofproto.OFPXMT_OFB_METADATA)
         self._wc.metadata_mask = mask
         self._flow.metadata = metadata & mask
-
-    def set_state(self, state):
-        self._wc.ft_set(ofproto.OFPXMT_OFB_STATE)
-        self._flow.state = state
-
-    def set_flags(self, flags):
-        self.set_flags_masked(flags, UINT32_MAX)
-
-    def set_flags_masked(self, flags, mask):
-        self._wc.ft_set(ofproto.OFPXMT_OFB_FLAGS)
-        self._wc.flags_mask = mask
-        self._flow.flags = flags & mask
-
+        
     def set_dl_dst(self, dl_dst):
         self._wc.ft_set(ofproto.OFPXMT_OFB_ETH_DST)
         self._flow.dl_dst = dl_dst
@@ -1861,24 +1577,6 @@ class MTMetadata(OFPMatchField):
 
     def __init__(self, header, value, mask=None):
         super(MTMetadata, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_STATE])
-class MTState(OFPMatchField):
-    pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTState, self).__init__(header)
-        self.value = value
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_FLAGS,
-                                      ofproto.OXM_OF_FLAGS_W])
-class MTFlags(OFPMatchField):
-    pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTFlags, self).__init__(header)
         self.value = value
         self.mask = mask
 
@@ -2563,54 +2261,6 @@ class OFPPortStatus(MsgBase):
                                   ofproto.OFP_PORT_STATUS_DESC_OFFSET)
         return msg
 
-@_register_parser
-@_set_msg_type(ofproto.OFPT_STATE_NOTIFICATION)
-class OFPStateNotification(MsgBase):
-    """
-    State notification message
-
-    The switch notifies controller of state transitions.
-
-    ================ ======================================================
-    Attribute        Description
-    ================ ======================================================
-    table_id         State table
-    state            New state
-    key              State entry key
-    ================ ======================================================
-
-    Example::
-
-        @set_ev_cls(ofp_event.EventOFPStateNotification, MAIN_DISPATCHER)
-        def state_notification_handler(self, ev):
-            msg = ev.msg
-            dp = msg.datapath
-            ofp = dp.ofproto
-
-
-            print('OFPStateNotification received: table_id=%s state=%s key=%s',
-                              msg.table_id, msg.desc, msg.key)
-    """
-    def __init__(self, datapath, table_id=None, state=None, key=None):
-        super(OFPStateNotification, self).__init__(datapath)
-        self.table_id = table_id
-        self.state = state
-        self.key = key
-
-    @classmethod
-    def parser(cls, datapath, version, msg_type, msg_len, xid, buf):
-        msg = super(OFPStateNotification, cls).parser(datapath, version, msg_type,
-                                               msg_len, xid, buf)
-        (msg.table_id, msg.state) = struct.unpack_from(ofproto.OFP_STATE_NOTIFICATION_PACK_STR, msg.buf, ofproto.OFP_HEADER_SIZE)
-
-        offset = ofproto.OFP_STATE_NOTIFICATION_SIZE
-
-        msg.key=[]
-        key_extract_format='!B'
-        for i in range(msg_len-ofproto.OFP_STATE_NOTIFICATION_SIZE):
-            msg.key.append(struct.unpack_from(key_extract_format,msg.buf,offset)[0])
-            offset +=1
-        return msg
 
 @_set_msg_type(ofproto.OFPT_PACKET_OUT)
 class OFPPacketOut(MsgBase):
@@ -3526,73 +3176,6 @@ class OFPActionExperimenter(OFPAction):
                       buf, offset, self.type, self.len, self.experimenter)
         if self.data:
             buf += self.data
-
-@OFPAction.register_action_type(ofproto.OFPAT_SET_STATE,ofproto.OFP_ACTION_SET_STATE_SIZE)
-class OFPActionSetState(OFPAction):
-    """ 
-    Set state action
-
-    This action applies the state. TO DO: look how deal with ofl msg instruction
-    and also cls
-    ================ ======================================================
-    Attribute        Description
-    ================ ======================================================
-    state            State instance
-    state_mask       State mask
-    table_id         Stage ID
-    ================ ======================================================
-    """
-    def __init__(self, state=0,state_mask=0xffffffff,table_id=0,type_=None, len_=None):
-        super(OFPActionSetState, self).__init__()
-        self.type = ofproto.OFPAT_SET_STATE
-        self.len = ofproto.OFP_ACTION_SET_STATE_SIZE
-        self.state = state
-        self.state_mask = state_mask
-        self.table_id = table_id
-
-    @classmethod
-    def parser(cls, buf, offset):
-        (type_, len_, state, state_mask, table_id) = struct.unpack_from(
-            ofproto.OFP_ACTION_SET_STATE_PACK_STR,
-            buf, offset)
-        return cls(state, state_mask, table_id)
-
-    def serialize(self, buf, offset):
-        msg_pack_into(ofproto.OFP_ACTION_SET_STATE_PACK_STR,
-                      buf, offset, self.type, self.len, self.state, self.state_mask, self.table_id)
-
-@OFPAction.register_action_type(ofproto.OFPAT_SET_FLAG,ofproto.OFP_ACTION_SET_FLAG_SIZE)
-class OFPActionSetFlag(OFPAction):
-    """ 
-    Set flag action
-
-    This action updates flags in the switch global state.
-    
-    ================ ======================================================
-    Attribute        Description
-    ================ ======================================================
-    flag             Flags value
-    flag_mask        Mask value
-    ================ ======================================================
-    """
-    def __init__(self, flag, flag_mask=0xffffffff, type_=None, len_=None):
-        super(OFPActionSetFlag, self).__init__()
-        self.type = ofproto.OFPAT_SET_FLAG
-        self.len = ofproto.OFP_ACTION_SET_FLAG_SIZE
-        self.flag = flag
-        self.flag_mask = flag_mask
-
-    @classmethod
-    def parser(cls, buf, offset):
-        (type_, len_, flag, flag_mask) = struct.unpack_from(
-            ofproto.OFP_ACTION_SET_FLAG_PACK_STR,
-            buf, offset)
-        return cls(flag, flag_mask)
-
-    def serialize(self, buf, offset):
-        msg_pack_into(ofproto.OFP_ACTION_SET_FLAG_PACK_STR,
-                      buf, offset, self.type, self.len, self.flag, self.flag_mask)
-
 
 class OFPBucket(StringifyMixin):
     def __init__(self, weight=0, watch_port=ofproto.OFPP_ANY,
@@ -4929,114 +4512,6 @@ class OFPMeterStatsReply(OFPMultipartReply):
     def __init__(self, datapath, type_=None, **kwargs):
         super(OFPMeterStatsReply, self).__init__(datapath, **kwargs)
 
-class OFPStateStats(StringifyMixin):
-    def __init__(self, table_id=None, field_count=None, fields=None, entry=None,length=None):
-        super(OFPStateStats, self).__init__()
-        self.length = 0
-        self.table_id = table_id
-        self.field_count = field_count
-        self.fields = fields
-        self.entry = entry
-        
-    @classmethod
-    def parser(cls, buf, offset):
-        state_stats = cls()
-
-        (state_stats.length, state_stats.table_id,state_stats.field_count) = struct.unpack_from(
-            ofproto.OFP_STATE_STATS_0_PACK_STR, buf, offset)
-        offset += ofproto.OFP_STATE_STATS_0_SIZE
-
-        state_stats.fields=[]
-        field_extract_format='!I'
-        if state_stats.field_count <= ofproto.MAX_FIELD_COUNT:
-            for f in range(state_stats.field_count):
-                field=struct.unpack_from(field_extract_format,buf,offset)
-                state_stats.fields.append(field[0])
-                offset +=4
-        offset += ((ofproto.MAX_FIELD_COUNT-state_stats.field_count)*4)
-
-        state_stats.entry = OFPStateEntry.parser(buf, offset)
-
-        return state_stats
-
-class OFPStateStatsRequestBase(OFPMultipartRequest):
-    def __init__(self, datapath, flags, table_id, match):
-        super(OFPStateStatsRequestBase, self).__init__(datapath, flags)
-        self.table_id = table_id
-        self.match = match
-
-    def _serialize_stats_body(self):
-        offset = ofproto.OFP_MULTIPART_REQUEST_SIZE
-        msg_pack_into(ofproto.OFP_STATE_STATS_REQUEST_0_PACK_STR,
-                      self.buf, offset, self.table_id)
-
-        offset += ofproto.OFP_STATE_STATS_REQUEST_0_SIZE
-        self.match.serialize(self.buf, offset)
-
-@_set_stats_type(ofproto.OFPMP_STATE, OFPStateStats)
-@_set_msg_type(ofproto.OFPT_MULTIPART_REQUEST)
-class OFPStateStatsRequest(OFPStateStatsRequestBase):
-    """
-    Individual flow statistics request message
-
-    The controller uses this message to query state table statistics.
-
-    ================ ======================================================
-    Attribute        Description
-    ================ ======================================================
-    flags            Zero or ``OFPMPF_REQ_MORE``
-    table_id         ID of table to read
-    match            Instance of ``OFPMatch``
-    ================ ======================================================
-
-    Example::
-
-        def send_state_stats_request(self, datapath):
-            ofp = datapath.ofproto
-            ofp_parser = datapath.ofproto_parser
-
-            match = ofp_parser.OFPMatch(in_port=1)
-            req = ofp_parser.OFPStateStatsRequest(datapath, 0,
-                                                 match)
-            datapath.send_msg(req)
-    """
-    def __init__(self, datapath, flags=0, table_id=ofproto.OFPTT_ALL,
-                 match=None, type_=None):
-        if match is None:
-            match = OFPMatch()
-        super(OFPStateStatsRequest, self).__init__(datapath, flags, table_id,
-                                                match)
-@OFPMultipartReply.register_stats_type()
-@_set_stats_type(ofproto.OFPMP_STATE, OFPStateStats)
-@_set_msg_type(ofproto.OFPT_MULTIPART_REPLY)
-class OFPStateStatsReply(OFPMultipartReply):
-    """
-    State entry statistics reply message
-
-    The switch responds with this message to an individual state statistics
-    request.
-
-    ================ ======================================================
-    Attribute        Description
-    ================ ======================================================
-    body             List of ``OFPStateStats`` instance
-    ================ ======================================================
-
-    Example::
-
-        @set_ev_cls(ofp_event.EventOFPStateStatsReply, MAIN_DISPATCHER)
-            def state_stats_reply_handler(self, ev):
-                states = []
-                for stat in ev.msg.body:
-                    states.append('table_id=%s '
-                                 'key=%s state=%d ' %
-                                 (stat.table_id,
-                                  stat.entry.key,
-                                  stat.entry.state))
-                print('StateStats: %s', states)
-    """
-    def __init__(self, datapath, type_=None, **kwargs):
-        super(OFPStateStatsReply, self).__init__(datapath, **kwargs)
 
 class OFPMeterBand(StringifyMixin):
     def __init__(self, type_, len_):
@@ -6431,103 +5906,3 @@ class OFPSetAsync(MsgBase):
                       self.packet_in_mask[0], self.packet_in_mask[1],
                       self.port_status_mask[0], self.port_status_mask[1],
                       self.flow_removed_mask[0], self.flow_removed_mask[1])
-
-
-@_set_msg_type(ofproto.OFPT_STATE_MOD)
-class OFPKeyExtract(MsgBase):
-    def __init__(self, datapath, command,fields,table_id=0):
-        super(OFPKeyExtract, self).__init__(datapath)
-        self.table_id = table_id
-        self.command = command
-        self.fields=fields
-
-    def _serialize_body(self):
-        
-        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.table_id,self.command)
-
-        offset=ofproto.OFP_STATE_MOD_SIZE
-
-        msg_pack_into(ofproto.OFP_STATE_MOD_EXTRACT_PACK_STR,self.buf,offset,len(self.fields))
-
-        offset += ofproto.OFP_STATE_MOD_EXTRACT_SIZE
-        field_extract_format='!I'
-        #msg_pack_into(field_extract_format, self.buf,offset,self.fields[0])
-
-        if len(self.fields) <= ofproto.MAX_FIELD_COUNT:
-            for f in range(len(self.fields)):
-                msg_pack_into(field_extract_format,self.buf,offset,self.fields[f])
-                offset +=4
-        else:
-            LOG.error("OFPKeyExtract: Number of fields given > MAX_FIELD_COUNT")
-        
-@_set_msg_type(ofproto.OFPT_STATE_MOD)
-class OFPStateMod(MsgBase):
-    def __init__(self, datapath, command,state,keys,state_mask=0xffffffff,table_id=0
-                 ):
-        super(OFPStateMod, self).__init__(datapath)
-        self.table_id = table_id
-        self.command = command
-        self.state = state
-        self.state_mask = state_mask
-        self.keys = keys
-
-
-    def _serialize_body(self):
-        msg_pack_into(ofproto.OFP_STATE_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.table_id,self.command)
-        offset=ofproto.OFP_STATE_MOD_SIZE
-
-        msg_pack_into(ofproto.OFP_STATE_MOD_ENTRY_PACK_STR,self.buf,offset,len(self.keys),self.state,self.state_mask)
-
-        offset += ofproto.OFP_STATE_MOD_ENTRY_SIZE
-
-        field_extract_format='!B'
-
-        if len(self.keys) <= ofproto.MAX_KEY_LEN:
-            for f in range(len(self.keys)):
-                msg_pack_into(field_extract_format,self.buf,offset,self.keys[f])
-                offset +=1
-        else:
-            LOG.error("OFPStateMod: Number of keys given > MAX_FIELD_COUNT")
-
-class OFPStateEntry(object):
-    def __init__(self, key_count=None, key=None, state=None):
-        super(OFPStateEntry, self).__init__()
-        
-        self.key_count=key_count
-        self.key = key
-        self.state = state
-    
-    @classmethod
-    def parser(cls, buf, offset):
-        entry = OFPStateEntry()
-
-        key_count = struct.unpack_from('!I', buf, offset)
-        entry.key_count = key_count[0]
-        offset += 4
-        entry.key=[]
-        if entry.key_count <= ofproto.MAX_KEY_LEN:
-            for f in range(entry.key_count):
-                key=struct.unpack_from('!B',buf,offset,)
-                entry.key.append(key[0])
-                offset +=1
-        offset += (ofproto.MAX_KEY_LEN - entry.key_count)
-
-        state = struct.unpack_from('!I', buf, offset)
-        entry.state=state[0]
-        offset += 4
-
-        return entry
-
-@_set_msg_type(ofproto.OFPT_FLAG_MOD)
-class OFPFlagMod(MsgBase):
-    def __init__(self, datapath, command, flag=0, flag_mask=0,
-                 ):
-        super(OFPFlagMod, self).__init__(datapath)
-        self.flag = flag
-        self.flag_mask = flag_mask
-        self.command = command
-
-    def _serialize_body(self):
-
-        msg_pack_into(ofproto.OFP_FLAG_MOD_PACK_STR,self.buf,ofproto.OFP_HEADER_SIZE,self.flag,self.flag_mask,self.command)
-        offset=ofproto.OFP_FLAG_MOD_SIZE
