@@ -456,14 +456,14 @@ class OSLoadBalancing(app_manager.RyuApp):
                 ofp_parser.OFPExpActionSetState(state=port-1, table_id=0),
                 ofp_parser.OFPActionOutput(port, max_len)]
 
-            weight = 0
+            weight = 100
             watch_port = ofp.OFPP_ANY
             watch_group = ofp.OFPG_ANY
             buckets.append(ofp_parser.OFPBucket(weight, watch_port, watch_group,actions))
 
         group_id = 1
         req = ofp_parser.OFPGroupMod(datapath, ofp.OFPGC_ADD,
-                                     ofp.OFPGT_RANDOM, group_id, buckets)
+                                     ofp.OFPGT_SELECT, group_id, buckets)
         datapath.send_msg(req)
 
     

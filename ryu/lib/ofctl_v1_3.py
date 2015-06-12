@@ -768,8 +768,7 @@ def get_group_features(dp, waiters):
     type_convert = {ofp.OFPGT_ALL: 'ALL',
                     ofp.OFPGT_SELECT: 'SELECT',
                     ofp.OFPGT_INDIRECT: 'INDIRECT',
-                    ofp.OFPGT_FF: 'FF',
-                    ofp.OFPGT_RANDOM: 'RANDOM'}
+                    ofp.OFPGT_FF: 'FF'}
     cap_convert = {ofp.OFPGFC_SELECT_WEIGHT: 'SELECT_WEIGHT',
                    ofp.OFPGFC_SELECT_LIVENESS: 'SELECT_LIVENESS',
                    ofp.OFPGFC_CHAINING: 'CHAINING',
@@ -830,8 +829,7 @@ def get_group_desc(dp, waiters):
     type_convert = {dp.ofproto.OFPGT_ALL: 'ALL',
                     dp.ofproto.OFPGT_SELECT: 'SELECT',
                     dp.ofproto.OFPGT_INDIRECT: 'INDIRECT',
-                    dp.ofproto.OFPGT_FF: 'FF',
-                    dp.ofproto.OFPGT_RANDOM: 'RANDOM'}
+                    dp.ofproto.OFPGT_FF: 'FF'}
 
     stats = dp.ofproto_parser.OFPGroupDescStatsRequest(dp, 0)
     msgs = []
@@ -930,8 +928,7 @@ def mod_group_entry(dp, group, cmd):
     type_convert = {'ALL': dp.ofproto.OFPGT_ALL,
                     'SELECT': dp.ofproto.OFPGT_SELECT,
                     'INDIRECT': dp.ofproto.OFPGT_INDIRECT,
-                    'FF': dp.ofproto.OFPGT_FF,
-                    'RANDOM': dp.ofproto.OFPGT_RANDOM}
+                    'FF': dp.ofproto.OFPGT_FF}
 
     type_ = type_convert.get(group.get('type'))
     if type_ is None:
