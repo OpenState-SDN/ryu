@@ -16,12 +16,12 @@ h2 is listening at 10.0.0.2:200
 h3 is listening at 10.0.0.3:300
 h4 is listening at 10.0.0.4:400
 
-$ ryu-manager ryu.b/ryu/app/openstate/forwarding_consistency_1_to_many.py
+$ ryu-manager ryu/ryu/app/openstate/forwarding_consistency_1_to_many.py
 $ sudo mn --topo single,4 --switch user --mac --controller remote
 mininet> xterm h1 h1 h1 h2 h3 h4
-h2# python ryu.b/ryu/app/openstate/echo_server.py 200
-h3# python ryu.b/ryu/app/openstate/echo_server.py 300
-h4# python ryu.b/ryu/app/openstate/echo_server.py 400
+h2# python ryu/ryu/app/openstate/echo_server.py 200
+h3# python ryu/ryu/app/openstate/echo_server.py 300
+h4# python ryu/ryu/app/openstate/echo_server.py 400
 
 Let's try to connect from h1 to the EchoServer and send some message:
 h1# nc 10.0.0.2 80
@@ -95,14 +95,14 @@ class OSLoadBalancing(app_manager.RyuApp):
                         parser.OFPActionSetField(tcp_dst=dest_tcp),
                         parser.OFPActionOutput(port=port, max_len=max_len) ]
 
-            buckets.append(parser.OFPBucket(weight=0, 
+            buckets.append(parser.OFPBucket(weight=100, 
                                                 watch_port=ofp.OFPP_ANY, 
                                                 watch_group=ofp.OFPG_ANY,
                                                 actions=actions))
 
         req = parser.OFPGroupMod(datapath=datapath, 
                                      command=ofp.OFPGC_ADD,
-                                     type_=ofp.OFPGT_RANDOM, 
+                                     type_=ofp.OFPGT_SELECT, 
                                      group_id=1, 
                                      buckets=buckets)
         datapath.send_msg(req)
