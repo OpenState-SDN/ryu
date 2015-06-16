@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<network xmlns="http://sndlib.zib.de/network" version="1.0">
+ <networkStructure>
+  <nodes coordinatesType="pixel">
+   <node id="N1">
+    <coordinates>
+     <x>100</x>
+     <y>200</y>
+    </coordinates>
+   </node>
+   <node id="N2">
+    <coordinates>
+     <x>200</x>
+     <y>200</y>
+    </coordinates>
+   </node>
+   <node id="N3">
+    <coordinates>
+     <x>300</x>
+     <y>200</y>
+    </coordinates>
+   </node>
+   <node id="N4">
+    <coordinates>
+     <x>400</x>
+     <y>200</y>
+    </coordinates>
+   </node>
+   <node id="N5">
+    <coordinates>
+     <x>300</x>
+     <y>250</y>
+    </coordinates>
+   </node>
+   <node id="N6">
+    <coordinates>
+     <x>500</x>
+     <y>200</y>
+    </coordinates>
+   </node>
+  </nodes>
+  <links>
+   <link id="L1">
+    <source>N1</source>
+    <target>N2</target>
+   </link>
+   <link id="L2">
+    <source>N2</source>
+    <target>N3</target>
+   </link>
+   <link id="L3">
+    <source>N3</source>
+    <target>N4</target>
+   </link>
+   <link id="L4">
+    <source>N4</source>
+    <target>N6</target>
+   </link>
+   <link id="L5">
+    <source>N2</source>
+    <target>N5</target>
+   </link>
+   <link id="L6">
+    <source>N4</source>
+    <target>N5</target>
+   </link>
+
+  </links>
+ </networkStructure>
+ <demands>
+  <demand id="D1">
+   <source>N1</source>
+   <target>N6</target>
+   <demandValue>10</demandValue>
+  </demand>
+  <demand id="D2">
+   <source>N6</source>
+   <target>N1</target>
+   <demandValue>1.0</demandValue>
+  </demand>
+ </demands>
+</network>

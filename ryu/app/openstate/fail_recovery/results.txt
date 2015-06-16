@@ -1,0 +1,7 @@
+set PrimaryPath[1] := 1 2 3 4 6;
+set PrimaryPath[2] := 6 4 5 2 1;
+
+param DetectNode[3,4,1]:= 3;
+
+set DetourPath[3,4,1] := 2 5 4;
+
