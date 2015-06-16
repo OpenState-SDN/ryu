@@ -107,12 +107,17 @@ def OFPExpResetGlobalState(datapath):
     exp_type=osproto.OFPT_EXP_STATE_MOD
     return ofproto_v1_3_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
-def OFPExpStateStatsMultipartRequest(datapath, flags=0, table_id=ofproto.OFPTT_ALL, match=None):
+def OFPExpStateStatsMultipartRequest(datapath, flags=0, table_id=ofproto.OFPTT_ALL, state=None, match=None):
+    get_from_state = 1
+    if state is None:
+        get_from_state = 0
+        state = 0
+        
     if match is None:
         match = ofproto_v1_3_parser.OFPMatch()
 
     data=bytearray()
-    msg_pack_into(osproto.OFP_STATE_STATS_REQUEST_0_PACK_STR, data, 0, table_id)
+    msg_pack_into(osproto.OFP_STATE_STATS_REQUEST_0_PACK_STR, data, 0, table_id, get_from_state, state)
     
     offset=osproto.OFP_STATE_STATS_REQUEST_0_SIZE
     match.serialize(data, offset)
@@ -156,34 +161,50 @@ class OFPStateEntry(object):
         return entry
 
 class OFPStateStats(StringifyMixin):
-    def __init__(self, table_id=None, field_count=None, fields=None, entry=None,length=None):
+    def __init__(self, table_id=None, dur_sec=None, dur_nsec=None, field_count=None, fields=None, 
+        entry=None,length=None, hard_rb=None, idle_rb=None, hard_to=None, idle_to=None):
         super(OFPStateStats, self).__init__()
         self.length = 0
         self.table_id = table_id
+        self.dur_sec = dur_sec
+        self.dur_nsec = dur_nsec
         self.field_count = field_count
         self.fields = fields
         self.entry = entry
+        self.hard_to = hard_to
+        self.hard_rb = hard_rb
+        self.idle_to = idle_to
+        self.hard_rb = hard_rb
         
     @classmethod
     def parser(cls, buf, offset):
-        state_stats = cls()
+        state_stats_list = []
+        
+        for i in range(len(buf)/osproto.OFP_STATE_STATS_SIZE):
+            state_stats = cls()
 
-        (state_stats.length, state_stats.table_id,state_stats.field_count) = struct.unpack_from(
-            osproto.OFP_STATE_STATS_0_PACK_STR, buf, offset)
-        offset += osproto.OFP_STATE_STATS_0_SIZE
+            (state_stats.length, state_stats.table_id, state_stats.dur_sec,
+                state_stats.dur_nsec, state_stats.field_count) = struct.unpack_from(
+                osproto.OFP_STATE_STATS_0_PACK_STR, buf, offset)
+            offset += osproto.OFP_STATE_STATS_0_SIZE
 
-        state_stats.fields=[]
-        field_extract_format='!I'
-        if state_stats.field_count <= osproto.MAX_FIELD_COUNT:
-            for f in range(state_stats.field_count):
-                field=struct.unpack_from(field_extract_format,buf,offset)
-                state_stats.fields.append(field[0])
-                offset +=4
-        offset += ((osproto.MAX_FIELD_COUNT-state_stats.field_count)*4)
+            state_stats.fields=[]
+            field_extract_format='!I'
+            if state_stats.field_count <= osproto.MAX_FIELD_COUNT:
+                for f in range(state_stats.field_count):
+                    field=struct.unpack_from(field_extract_format,buf,offset)
+                    state_stats.fields.append(field[0])
+                    offset +=4
+            offset += ((osproto.MAX_FIELD_COUNT-state_stats.field_count)*4)
+            state_stats.entry = OFPStateEntry.parser(buf, offset)
+            offset += osproto.OFP_STATE_STATS_ENTRY_SIZE
 
-        state_stats.entry = OFPStateEntry.parser(buf, offset)
+            (state_stats.hard_rb, state_stats.idle_rb,state_stats.hard_to, state_stats.idle_to) = struct.unpack_from(
+                osproto.OFP_STATE_STATS_1_PACK_STR, buf, offset)
+            offset += osproto.OFP_STATE_STATS_1_SIZE
+            state_stats_list.append(state_stats)
 
-        return state_stats
+        return state_stats_list
 
 class OFPGlobalStateStats(StringifyMixin):
     def __init__(self, flags=None):

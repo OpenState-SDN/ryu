@@ -66,51 +66,19 @@ class OSTestFFSM(app_manager.RyuApp):
         if ev.msg.body.exp_type==0:
             # EXP_STATE_STATS
             print("OFPExpStateStatsMultipartReply received:")
-            offset=0
-            for stats in ev.msg.body:
+            stats = parser.OFPStateStats.parser(ev.msg.body.data, offset=0)
+            for stat in stats:
                 extractor = [ofp.OXM_OF_IPV4_SRC]
-                stat = parser.OFPStateStats.parser(ev.msg.body.data, offset)
-                print('{table_id=%s, key={%s}, state=%d}' %(stat.table_id,parser.state_entry_key_to_str(extractor,stat.entry.key,stat.entry.key_count),stat.entry.state))
-                offset+=stat.length
+                print('{table_id=%s, key={%s}, state=%d, dur_sec=%d, dur_nsec=%d, idle_to=%d, idle_rb=%d, hard_to=%d, hard_rb=%d}' 
+                        %(stat.table_id,parser.state_entry_key_to_str(extractor,stat.entry.key,stat.entry.key_count),
+                            stat.entry.state,stat.dur_sec,stat.dur_nsec,stat.idle_to,stat.idle_rb,stat.hard_to,stat.hard_rb))
 
         elif ev.msg.body.exp_type==1:
             # EXP_GLOBAL_STATE_STATS
             print("OFPExpGlobalStateStatsMultipartReply received:")
-            offset=0
-            stat = parser.OFPGlobalStateStats.parser(ev.msg.body.data, offset)
+            stat = parser.OFPGlobalStateStats.parser(ev.msg.body.data, offset=0)
             print("{global_states="+'{:032b}'.format(stat.flags)+"}")
 
-
-    @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
-    def flow_stats_reply_handler(self, ev):
-        flows = []
-        for stat in ev.msg.body:
-            flows.append('{table_id=%s '
-                         'duration_sec=%d duration_nsec=%d '
-                         'priority=%d '
-                         'idle_timeout=%d hard_timeout=%d flags=0x%04x '
-                         'cookie=%d packet_count=%d byte_count=%d '
-                         'match=%s instructions=%s}' %
-                         (stat.table_id,
-                          stat.duration_sec, stat.duration_nsec,
-                          stat.priority,
-                          stat.idle_timeout, stat.hard_timeout, stat.flags,
-                          stat.cookie, stat.packet_count, stat.byte_count,
-                          stat.match, stat.instructions))
-        print('')
-        print('OFPFlowStatsReply received: '+str(flows))
-        print('')
-    
-    '''@set_ev_cls(ofp_event.EventOFPStateNotification, MAIN_DISPATCHER)
-    def state_notification_handler(self, ev):
-        msg = ev.msg
-        dp = msg.datapath
-        ofp = dp.ofproto
-        parser = dp.ofproto_parser
-
-        extractor = [ofp.OXM_OF_IPV4_SRC]
-        print('OFPStateNotification received: table_id=%s, key={%s}, state=%s ' %(
-                          msg.table_id, parser.state_entry_key_to_str(extractor,msg.key), msg.state))'''
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -124,9 +92,11 @@ class OSTestFFSM(app_manager.RyuApp):
         self.send_key_lookup(datapath)
         self.send_key_update(datapath)
 
+        
         self.add_flow(datapath)
+        
         self.test_set_global_states(datapath)
-        #time.sleep(5)
+        time.sleep(5)
         self.test_reset_global_states(datapath)
         self.set_substate_entry(datapath)
         time.sleep(5)
@@ -137,8 +107,6 @@ class OSTestFFSM(app_manager.RyuApp):
         self.del_state_entry(datapath)
         time.sleep(5)
         self.set_state_entry(datapath)
-
-        #self.send_flow_stats_request(datapath)
         self.send_state_stats_request(datapath)
         self.send_global_state_stats_request(datapath)
 
@@ -371,28 +339,17 @@ class OSTestFFSM(app_manager.RyuApp):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
 
-        match = ofp_parser.OFPMatch(ipv4_src="10.0.0.2")
-        #req = ofp_parser.OFPExpStateStatsMultipartRequest(datapath=datapath, table_id=0, match=None)
-        #req = ofp_parser.OFPExpStateStatsMultipartRequest(datapath=datapath, table_id=ofproto.OFPTT_ALL, match=match)
-        req = ofp_parser.OFPExpStateStatsMultipartRequest(datapath=datapath, match=None)
+        req = ofp_parser.OFPExpStateStatsMultipartRequest(datapath=datapath)
         datapath.send_msg(req)
+        #match = ofp_parser.OFPMatch(ipv4_src="10.0.0.2")
+        #req = ofp_parser.OFPExpStateStatsMultipartRequest(datapath=datapath, table_id=ofproto.OFPTT_ALL, match=match)
+        #req = ofp_parser.OFPExpStateStatsMultipartRequest(datapath=datapath, table_id=ofproto.OFPTT_ALL, state=768)
+        #req = ofp_parser.OFPExpStateStatsMultipartRequest(datapath=datapath, match=None)
+        #datapath.send_msg(req)
 
     def send_global_state_stats_request(self, datapath):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
 
         req = ofp_parser.OFPExpGlobalStateStatsMultipartRequest(datapath=datapath)
-        datapath.send_msg(req)
-
-    def send_flow_stats_request(self, datapath):
-        ofp = datapath.ofproto
-        ofp_parser = datapath.ofproto_parser
-
-        cookie = cookie_mask = 0
-        #match = ofp_parser.OFPMatch(in_port=1)
-        req = ofp_parser.OFPFlowStatsRequest(datapath, 0,
-                                             ofp.OFPTT_ALL,
-                                             ofp.OFPP_ANY, ofp.OFPG_ANY,
-                                             cookie, cookie_mask,
-                                             match=None)
         datapath.send_msg(req)
