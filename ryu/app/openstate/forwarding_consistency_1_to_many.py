@@ -37,6 +37,10 @@ from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import set_ev_cls
+import ryu.ofproto.ofproto_v1_3 as ofp
+import ryu.ofproto.ofproto_v1_3_parser as ofparser
+import ryu.ofproto.openstate_v1_0 as osp
+import ryu.ofproto.openstate_v1_0_parser as osparser
 
 LOG = logging.getLogger('app.openstate.forwarding_consistency_1_to_many')
 
@@ -56,27 +60,25 @@ class OSLoadBalancing(app_manager.RyuApp):
         
         msg = ev.msg
         datapath = msg.datapath
-        ofp = datapath.ofproto
-        parser = datapath.ofproto_parser
 
         LOG.info("Configuring switch %d..." % datapath.id)
 
         """ Set table 0 as stateful """
-        req = parser.OFPExpMsgConfigureStatefulTable(datapath=datapath, 
+        req = osparser.OFPExpMsgConfigureStatefulTable(datapath=datapath, 
                                                     table_id=0, 
                                                     stateful=1)
         datapath.send_msg(req)
 
         """ Set lookup extractor = {ip_src, ip_dst, tcp_src, tcp_dst} """
-        req = parser.OFPExpMsgKeyExtract(datapath=datapath, 
-                                                command=ofp.OFPSC_EXP_SET_L_EXTRACTOR, 
+        req = osparser.OFPExpMsgKeyExtract(datapath=datapath, 
+                                                command=osp.OFPSC_EXP_SET_L_EXTRACTOR, 
                                                 fields=[ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST], 
                                                 table_id=0)
         datapath.send_msg(req)
 
         """ Set update extractor = {ip_src, ip_dst, tcp_src, tcp_dst} (same as lookup) """
-        req = parser.OFPExpMsgKeyExtract(datapath=datapath, 
-                                                command=ofp.OFPSC_EXP_SET_U_EXTRACTOR, 
+        req = osparser.OFPExpMsgKeyExtract(datapath=datapath, 
+                                                command=osp.OFPSC_EXP_SET_U_EXTRACTOR, 
                                                 fields=[ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST], 
                                                 table_id=0)
         datapath.send_msg(req)
@@ -89,18 +91,18 @@ class OSLoadBalancing(app_manager.RyuApp):
             dest_ip="10.0.0."+str(port)
             dest_eth="00:00:00:00:00:0"+str(port)
             dest_tcp=(port)*100
-            actions = [ parser.OFPExpActionSetState(state=port, table_id=0),
-                        parser.OFPActionSetField(ipv4_dst=dest_ip),
-                        parser.OFPActionSetField(eth_dst=dest_eth),
-                        parser.OFPActionSetField(tcp_dst=dest_tcp),
-                        parser.OFPActionOutput(port=port, max_len=max_len) ]
+            actions = [ osparser.OFPExpActionSetState(state=port, table_id=0),
+                        ofparser.OFPActionSetField(ipv4_dst=dest_ip),
+                        ofparser.OFPActionSetField(eth_dst=dest_eth),
+                        ofparser.OFPActionSetField(tcp_dst=dest_tcp),
+                        ofparser.OFPActionOutput(port=port, max_len=max_len) ]
 
-            buckets.append(parser.OFPBucket(weight=100, 
+            buckets.append(ofparser.OFPBucket(weight=100, 
                                                 watch_port=ofp.OFPP_ANY, 
                                                 watch_group=ofp.OFPG_ANY,
                                                 actions=actions))
 
-        req = parser.OFPGroupMod(datapath=datapath, 
+        req = ofparser.OFPGroupMod(datapath=datapath, 
                                      command=ofp.OFPGC_ADD,
                                      type_=ofp.OFPGT_SELECT, 
                                      group_id=1, 
@@ -110,8 +112,8 @@ class OSLoadBalancing(app_manager.RyuApp):
 
         
         """ ARP packets flooding """
-        match = parser.OFPMatch(eth_type=0x0806)
-        actions = [parser.OFPActionOutput(port=ofp.OFPP_FLOOD)]
+        match = ofparser.OFPMatch(eth_type=0x0806)
+        actions = [ofparser.OFPActionOutput(port=ofp.OFPP_FLOOD)]
         self.add_flow(datapath=datapath, table_id=0, priority=100,
                         match=match, actions=actions)
 
@@ -121,17 +123,17 @@ class OSLoadBalancing(app_manager.RyuApp):
             src_eth="00:00:00:00:00:0"+str(in_port)
             src_tcp=in_port*100
             # we need to match an IPv4 (0x800) TCP (6) packet to do SetField()
-            match = parser.OFPMatch(in_port=in_port, eth_type=0x800, ip_proto=6, ipv4_src=src_ip,eth_src=src_eth,tcp_src=src_tcp)
-            actions = [parser.OFPActionSetField(ipv4_src="10.0.0.2"),
-                       parser.OFPActionSetField(eth_src="00:00:00:00:00:02"),
-                       parser.OFPActionSetField(tcp_src=80),
-                       parser.OFPActionOutput(port=1, max_len=0)]                   
+            match = ofparser.OFPMatch(in_port=in_port, eth_type=0x800, ip_proto=6, ipv4_src=src_ip,eth_src=src_eth,tcp_src=src_tcp)
+            actions = [ofparser.OFPActionSetField(ipv4_src="10.0.0.2"),
+                       ofparser.OFPActionSetField(eth_src="00:00:00:00:00:02"),
+                       ofparser.OFPActionSetField(tcp_src=80),
+                       ofparser.OFPActionOutput(port=1, max_len=0)]                   
             self.add_flow(datapath=datapath, table_id=0, priority=100,
                     match=match, actions=actions)
 
         """ Forwarding consistency rules"""
-        match = parser.OFPMatch(in_port=1, state=0, eth_type=0x800, ip_proto=6)
-        actions = [parser.OFPActionGroup(1)]
+        match = ofparser.OFPMatch(in_port=1, state=0, eth_type=0x800, ip_proto=6)
+        actions = [ofparser.OFPActionGroup(1)]
         self.add_flow(datapath=datapath, table_id=0, priority=100,
                 match=match, actions=actions)
 
@@ -139,21 +141,19 @@ class OSLoadBalancing(app_manager.RyuApp):
             dest_ip="10.0.0."+str(state)
             dest_eth="00:00:00:00:00:0"+str(state)
             dest_tcp=(state)*100
-            match = parser.OFPMatch(in_port=1, state=state, eth_type=0x800, ip_proto=6)
-            actions = [ parser.OFPExpActionSetState(state=state, table_id=0),
-                        parser.OFPActionSetField(ipv4_dst=dest_ip),
-                        parser.OFPActionSetField(eth_dst=dest_eth),
-                        parser.OFPActionSetField(tcp_dst=dest_tcp),
-                        parser.OFPActionOutput(port=state, max_len=0)]        
+            match = ofparser.OFPMatch(in_port=1, state=state, eth_type=0x800, ip_proto=6)
+            actions = [ osparser.OFPExpActionSetState(state=state, table_id=0),
+                        ofparser.OFPActionSetField(ipv4_dst=dest_ip),
+                        ofparser.OFPActionSetField(eth_dst=dest_eth),
+                        ofparser.OFPActionSetField(tcp_dst=dest_tcp),
+                        ofparser.OFPActionOutput(port=state, max_len=0)]        
             self.add_flow(datapath=datapath, table_id=0, priority=100,
                     match=match, actions=actions)
         
     def add_flow(self, datapath, table_id, priority, match, actions):
-        ofp = datapath.ofproto
-        parser = datapath.ofproto_parser
-        inst = [parser.OFPInstructionActions(
+        inst = [ofparser.OFPInstructionActions(
                 ofp.OFPIT_APPLY_ACTIONS, actions)]
-        mod = parser.OFPFlowMod(datapath=datapath, table_id=table_id,
+        mod = ofparser.OFPFlowMod(datapath=datapath, table_id=table_id,
                                 priority=priority, match=match, instructions=inst)
         datapath.send_msg(mod)
 

@@ -15,7 +15,6 @@
 # limitations under the License.
 
 from ryu.ofproto import oxm_fields
-from openstate_v1_0 import *
 
 from struct import calcsize
 

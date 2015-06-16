@@ -51,7 +51,6 @@ from . import ether
 from . import ofproto_parser
 from . import ofproto_common
 from . import ofproto_v1_3 as ofproto
-from openstate_v1_0_parser import *
 
 import logging
 LOG = logging.getLogger('ryu.ofproto.ofproto_v1_3_parser')

@@ -1,8 +1,8 @@
 import struct
 from ofproto_parser import StringifyMixin, MsgBase, msg_pack_into, msg_str_attr
-import ofproto_v1_3_parser
-from . import ofproto_v1_3 as ofproto
-from . import openstate_v1_0 as osproto
+import ryu.ofproto.ofproto_v1_3_parser as ofproto_parser
+import ryu.ofproto.ofproto_v1_3 as ofproto
+import ryu.ofproto.openstate_v1_0 as osproto
 
 def OFPExpActionSetState(state, table_id, hard_timeout=0, idle_timeout=0, hard_rollback=0, idle_rollback=0, state_mask=0xffffffff):
     """ 
@@ -18,9 +18,9 @@ def OFPExpActionSetState(state, table_id, hard_timeout=0, idle_timeout=0, hard_r
     table_id         Stage ID
     ================ ======================================================
     """
-    act_type=ofproto.OFPAT_EXP_SET_STATE
-    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, state_mask, table_id, hard_rollback, idle_rollback, hard_timeout*1000000, idle_timeout*1000000)
-    return ofproto_v1_3_parser.OFPActionExperimenter(experimenter=0xBEBABEBA, data=data)
+    act_type=osproto.OFPAT_EXP_SET_STATE
+    data=struct.pack(osproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, state_mask, table_id, hard_rollback, idle_rollback, hard_timeout*1000000, idle_timeout*1000000)
+    return ofproto_parser.OFPActionExperimenter(experimenter=0xBEBABEBA, data=data)
 
 def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
     """ 
@@ -35,9 +35,9 @@ def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
     flag_mask        Mask value
     ================ ======================================================
     """
-    act_type=ofproto.OFPAT_EXP_SET_FLAG
-    data=struct.pack(ofproto.OFP_EXP_ACTION_SET_FLAG_PACK_STR, act_type, flag, flag_mask)
-    return ofproto_v1_3_parser.OFPActionExperimenter(experimenter=0XBEBABEBA, data=data)
+    act_type=osproto.OFPAT_EXP_SET_FLAG
+    data=struct.pack(osproto.OFP_EXP_ACTION_SET_FLAG_PACK_STR, act_type, flag, flag_mask)
+    return ofproto_parser.OFPActionExperimenter(experimenter=0XBEBABEBA, data=data)
 
 def OFPExpMsgConfigureStatefulTable(datapath, stateful, table_id):
     command=osproto.OFPSC_STATEFUL_TABLE_CONFIG
@@ -45,7 +45,7 @@ def OFPExpMsgConfigureStatefulTable(datapath, stateful, table_id):
     data+=struct.pack(osproto.OFP_EXP_STATE_MOD_STATEFUL_TABLE_CONFIG_PACK_STR,table_id,stateful)
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
-    return ofproto_v1_3_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+    return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpMsgKeyExtract(datapath, command, fields, table_id):
     field_count=len(fields)
@@ -60,7 +60,7 @@ def OFPExpMsgKeyExtract(datapath, command, fields, table_id):
         LOG.error("OFPExpMsgKeyExtract: Number of fields given > MAX_FIELD_COUNT")
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
-    return ofproto_v1_3_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+    return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpMsgSetFlowState(datapath, state, keys, table_id, idle_timeout=0, idle_rollback=0, hard_timeout=0, hard_rollback=0, state_mask=0xffffffff):
     key_count=len(keys)
@@ -76,7 +76,7 @@ def OFPExpMsgSetFlowState(datapath, state, keys, table_id, idle_timeout=0, idle_
         LOG.error("OFPExpMsgSetFlowState: Number of keys given > MAX_KEY_LEN")
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
-    return ofproto_v1_3_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+    return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpMsgDelFlowState(datapath, keys, table_id):
     key_count=len(keys)
@@ -92,20 +92,20 @@ def OFPExpMsgDelFlowState(datapath, keys, table_id):
         LOG.error("OFPExpMsgDelFlowState: Number of keys given > MAX_KEY_LEN")
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
-    return ofproto_v1_3_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+    return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpSetGlobalState(datapath, flag, flag_mask=0xffffffff):
     data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, osproto.OFPSC_SET_GLOBAL_STATE)
     data+=struct.pack(osproto.OFP_EXP_STATE_MOD_SET_GLOBAL_STATE_PACK_STR,flag,flag_mask)
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
-    return ofproto_v1_3_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+    return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpResetGlobalState(datapath):
     data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, osproto.OFPSC_RESET_GLOBAL_STATE)
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
-    return ofproto_v1_3_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+    return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpStateStatsMultipartRequest(datapath, flags=0, table_id=ofproto.OFPTT_ALL, state=None, match=None):
     get_from_state = 1
@@ -114,7 +114,7 @@ def OFPExpStateStatsMultipartRequest(datapath, flags=0, table_id=ofproto.OFPTT_A
         state = 0
         
     if match is None:
-        match = ofproto_v1_3_parser.OFPMatch()
+        match = ofproto_parser.OFPMatch()
 
     data=bytearray()
     msg_pack_into(osproto.OFP_STATE_STATS_REQUEST_0_PACK_STR, data, 0, table_id, get_from_state, state)
@@ -122,14 +122,14 @@ def OFPExpStateStatsMultipartRequest(datapath, flags=0, table_id=ofproto.OFPTT_A
     offset=osproto.OFP_STATE_STATS_REQUEST_0_SIZE
     match.serialize(data, offset)
 
-    exp_type=ofproto.OFPMP_EXP_STATE_STATS
-    return ofproto_v1_3_parser.OFPExperimenterStatsRequest(datapath=datapath, flags=flags, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+    exp_type=osproto.OFPMP_EXP_STATE_STATS
+    return ofproto_parser.OFPExperimenterStatsRequest(datapath=datapath, flags=flags, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpGlobalStateStatsMultipartRequest(datapath, flags=0):
     data=bytearray()
 
     exp_type=osproto.OFPMP_EXP_FLAGS_STATS
-    return ofproto_v1_3_parser.OFPExperimenterStatsRequest(datapath=datapath, flags=flags, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+    return ofproto_parser.OFPExperimenterStatsRequest(datapath=datapath, flags=flags, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 class OFPStateEntry(object):
     def __init__(self, key_count=None, key=None, state=None):
