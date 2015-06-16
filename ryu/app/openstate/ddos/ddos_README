@@ -1,0 +1,73 @@
+Premessa: meglio non far vedere l'intera state table con dpctl perchè ho troppe entry... (facciamo vedere al max una sola entry con TCP_DST=2000)
+Premessa 2: gli idle timeout sono di 5 secondi
+Premessa 3: le opzioni "-o 28" e "-T af11" servono a settare il DSCP al valore che per noi è di default già in uscita dall'host, senza farlo fare allo switch
+
+Requisiti oltre alla macchina pulita come da sito OpenState:
+sudo apt-get install hping3
+
+Aprire 2 terminali nella VM (NB lanciare ssh con l'opzione -X, se no non si aprono gli xterm):
+
+cd ~/ryu/ryu/app/openstate
+ryu-manager ddos.py
+
+sudo mn --topo single,2 --arp --mac --switch user --controller remote
+
+1) Da mininet apriamo 3 terminali
+	mininet> xterm h1 h1 h2
+Da mininet visualizziamo la state table (limitata alla connessione che ci interessa)
+	mininet> sh watch -n1 --color dpctl tcp:127.0.0.1:6634 stats-state table=all tcp_dst=2000 -c
+infine apriamo l'echo server sull'host h2
+	h2# python ~/ryu/ryu/app/openstate/echo_server.py 2000
+
+2) Dall'host h1 apriamo una nuova connessione TCP verso l'echo server
+h1# nc -T af11 10.0.0.2 2000
+scrivere testo o tenere premuto INVIO a lungo. vediamo che riceviamo risposta da h2
+Nella state-table non si vede nulla perchè questa connessione si trova in DEF
+Chiudere netcat con CTRL+C
+
+3) nei 2 terminali di h1 fare
+h1# hping3 -S -p 80 -i u200000 -o 28 10.0.0.2
+h1# nc -T af11 10.0.0.2 2000
+nella finestra di netcat scrivere testo o tenere premuto INVIO a lungo
+Nella state-table non si vede nulla perchè questa connessione si trova in DEF
+Il meter è settato a 10 pack/s (cioè 1 pack ogni 100 ms,) ma io sto inviando 1 nuova connessione ogni 200 ms. (hping -S si limita ad inviare TCP SYN con porte 
+TCP src/dst sempre diverse. Non ci interessa che siano instaurate, l'importante è che siano primi pack di una nuova connessione per essere mandate al meter!).
+Non sto superando il rate di nuove connessioni, quindi la nostra connessione con netcat verso l'echo server funziona perfettamente.
+Chiudere sia netcat che hping3 con CTRL+C
+
+4) in un terminale di h1 fare
+h1# hping3 -S -p 80 -i u5000 -o 28 10.0.0.2
+Se dopo qualche secondo chiudiamo hping3 con CTRL+C si vede che circa il 95% delle nuove connessioni è stata droppata (infatti mando 1 richiesta di connessione 
+ogni 5 ms quando il meter ne fa passare 1 ogni 100 ms => 1 su 20 ce la fa => 5%)
+
+5) nei 2 terminali di h1 fare (tassativamente in questo ordine):
+h1# nc -T af11 10.0.0.2 2000
+h1# hping3 -S -p 80 -i u5000 -o 28 10.0.0.2
+Bisogna essere veloci, quindi prima incollare i comandi nei 2 terminali, poi eseguirli:
+avviare netcat, avviare hping3 e iniziare a premere INVIO a lungo nel terminale netcat.
+Solo il 5% di connessioni di hping non viene droppato, mentre la connessione di netcat va a buon fine perchè è stata instaurata prima che venisse superato il rate limite. 
+Continuando a tenere premuto INVIO riceviamo ancora le risposte da h2, anche se sono sotto attacco.
+
+Ok ma se attendiamo 5 secondi (da quando abbiamo aperto netcat e hping) e premiamo INVIO in netcat, vediamo che non riceviamo più nessuna risposta da h2. Questo perchè sono passati i 5 secondi di idle timeout, quindi la connessione è dichiarata terminata ed è come se stessi cercando di aprire una nuova connessione netcat quando sono già sotto attacco. Di conseguenza lo switch droppa i pack di questa connessione considerata nuova (dovrebbe infatti apparire una entry in stato 1!!)
+Chiudere netcat e hping3 con CTRL+C
+
+6) ripetiamo il punto 5 ma avviamo prima hping3 e poi netcat.
+Vediamo che appena facciamo INVIO in netcat, appare subito la entry in stato 1, perchè sono sotto attacco. La connessione con netcat non funziona, perchè instaurata quando 
+ero sotto attacco
+
+7) se chiudiamo hping3 e riproviamo ad aprire netcat (come al punto 1) tutto funziona perfettamente
+
+
+======================================================================================================================================================
+Modifiche dell'ultimo minuto:
+
+Prendendo in considerazione le tabelle mostrate nel pdf ddos avevamo il problema che in tabella 2 non si riusciva a matchare su state + dscp marchiato.
+Abbiamo ripensato la seconda tabella per ovviare a questo problema
+
+dscp = 0, stato = 0      ->      fwd(2)
+dscp = 0, stato = 1      ->      drop()
+dscp = 1				 ->      setstate(1, idle_to = 5), drop()
+
+Abbiamo deciso di differenziarci sullo stato che rispetto al dscp. Quello che vogliamo mostrare è che a parità di dscp una connessione potrebbe essere in stato 0 o stato 1 se il
+suo syn era stato marchiato con dscp = 1. La terza regola non ha bisogno di matchare anche su stato perchè è per forza il syn di una connessione essendo passato dal meter, quindi è
+la prima volta che questa connessione viene vista dalla tabelle 1 -> ergo state = 0
