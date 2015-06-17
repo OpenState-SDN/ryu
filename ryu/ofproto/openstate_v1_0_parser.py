@@ -1,5 +1,6 @@
 import struct
-from ofproto_parser import StringifyMixin, MsgBase, msg_pack_into, msg_str_attr
+from ryu.lib.pack_utils import msg_pack_into
+from ryu.ofproto.ofproto_parser import StringifyMixin, MsgBase, msg_str_attr
 import ryu.ofproto.ofproto_v1_3_parser as ofproto_parser
 import ryu.ofproto.ofproto_v1_3 as ofproto
 import ryu.ofproto.openstate_v1_0 as osproto
@@ -20,7 +21,7 @@ def OFPExpActionSetState(state, table_id, hard_timeout=0, idle_timeout=0, hard_r
     """
     act_type=osproto.OFPAT_EXP_SET_STATE
     data=struct.pack(osproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, state_mask, table_id, hard_rollback, idle_rollback, hard_timeout*1000000, idle_timeout*1000000)
-    return ofproto_parser.OFPActionExperimenter(experimenter=0xBEBABEBA, data=data)
+    return ofproto_parser.OFPActionExperimenterUnknown(experimenter=0xBEBABEBA, data=data)
 
 def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
     """ 
@@ -37,7 +38,7 @@ def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
     """
     act_type=osproto.OFPAT_EXP_SET_FLAG
     data=struct.pack(osproto.OFP_EXP_ACTION_SET_FLAG_PACK_STR, act_type, flag, flag_mask)
-    return ofproto_parser.OFPActionExperimenter(experimenter=0XBEBABEBA, data=data)
+    return ofproto_parser.OFPActionExperimenterUnknown(experimenter=0XBEBABEBA, data=data)
 
 def OFPExpMsgConfigureStatefulTable(datapath, stateful, table_id):
     command=osproto.OFPSC_STATEFUL_TABLE_CONFIG

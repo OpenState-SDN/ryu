@@ -1,7 +1,5 @@
-#!/usr/bin/env python
-#
-# Copyright (C) 2013 Nippon Telegraph and Telephone Corporation.
-# Copyright (C) 2013 YAMAMOTO Takashi <yamamoto at valinux co jp>
+# Copyright (C) 2013-2015 Nippon Telegraph and Telephone Corporation.
+# Copyright (C) 2013-2015 YAMAMOTO Takashi <yamamoto at valinux co jp>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +23,7 @@ from ryu.lib import stringify
 
 class C1(stringify.StringifyMixin):
     def __init__(self, a, c):
-        print "init", a, c
+        print("init %s %s" % (a, c))
         self.a = a
         self._b = 'B'
         self.c = c
@@ -52,13 +50,12 @@ class Test_stringify(unittest.TestCase):
         eq_(j, c.to_jsondict())
 
     def test_jsondict2(self):
-        import string
 
         def my_encode(x):
-            return string.lower(x)
+            return x.lower()
 
         def my_decode(x):
-            return string.upper(x)
+            return x.upper()
 
         j = {'C1': {'a': 'aaa', 'c': 'ccc'}}
         eq_(j['C1']['a'], my_encode('AAA'))

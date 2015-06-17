@@ -20,7 +20,6 @@ import logging
 import struct
 from struct import *
 from nose.tools import *
-from nose.plugins.skip import Skip, SkipTest
 from ryu.ofproto import ether, inet
 from ryu.lib.packet.packet import Packet
 from ryu.lib.packet.tcp import tcp
@@ -145,8 +144,8 @@ class Test_tcp(unittest.TestCase):
         buf = t.serialize(bytearray(), prev)
         res = struct.unpack(tcp._PACK_STR, buf)
 
-        eq_(res[0], 0)
-        eq_(res[1], 0)
+        eq_(res[0], 1)
+        eq_(res[1], 1)
         eq_(res[2], 0)
         eq_(res[3], 0)
         eq_(res[4], 5 << 4)
@@ -159,8 +158,8 @@ class Test_tcp(unittest.TestCase):
         buf = t.serialize(bytearray(), prev)
         res = struct.unpack(tcp._PACK_STR + '4s', buf)
 
-        eq_(res[0], 0)
-        eq_(res[1], 0)
+        eq_(res[0], 1)
+        eq_(res[1], 1)
         eq_(res[2], 0)
         eq_(res[3], 0)
         eq_(res[4], 6 << 4)
@@ -174,8 +173,8 @@ class Test_tcp(unittest.TestCase):
         buf = t.serialize(bytearray(), prev)
         res = struct.unpack(tcp._PACK_STR + '8s', buf)
 
-        eq_(res[0], 0)
-        eq_(res[1], 0)
+        eq_(res[0], 1)
+        eq_(res[1], 1)
         eq_(res[2], 0)
         eq_(res[3], 0)
         eq_(res[4], 7 << 4)

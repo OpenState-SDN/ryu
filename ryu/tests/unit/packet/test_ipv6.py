@@ -20,7 +20,6 @@ import inspect
 import struct
 
 from nose.tools import *
-from nose.plugins.skip import Skip, SkipTest
 from ryu.lib import addrconv
 from ryu.lib import ip
 from ryu.lib.packet import ipv6
@@ -455,8 +454,8 @@ class Test_ipv6(unittest.TestCase):
         eq_(res[1], 0)
         eq_(res[2], 6)
         eq_(res[3], 255)
-        eq_(res[4], addrconv.ipv6.text_to_bin('::'))
-        eq_(res[5], addrconv.ipv6.text_to_bin('::'))
+        eq_(res[4], addrconv.ipv6.text_to_bin('10::10'))
+        eq_(res[5], addrconv.ipv6.text_to_bin('20::20'))
 
         # with extension header
         ip = ipv6.ipv6(
@@ -471,8 +470,8 @@ class Test_ipv6(unittest.TestCase):
         eq_(res[1], 8)
         eq_(res[2], 0)
         eq_(res[3], 255)
-        eq_(res[4], addrconv.ipv6.text_to_bin('::'))
-        eq_(res[5], addrconv.ipv6.text_to_bin('::'))
+        eq_(res[4], addrconv.ipv6.text_to_bin('10::10'))
+        eq_(res[5], addrconv.ipv6.text_to_bin('20::20'))
         eq_(res[6], '\x3a\x00\x05\x02\x00\x00\x01\x00')
 
     def test_json(self):
@@ -760,7 +759,7 @@ class Test_routing(unittest.TestCase):
                      "2001:db8:dead::3"]
         # calculate pad
         self.pad = (8 - ((len(self.adrs) - 1) * (16 - self.cmpi) +
-                   (16 - self.cmpe) % 8)) % 8
+                    (16 - self.cmpe) % 8)) % 8
         # create buf
         self.form = '!BBBBBB2x16s16s16s'
         self.buf = struct.pack(self.form, self.nxt, self.size,
@@ -818,7 +817,7 @@ class Test_routing_type3(unittest.TestCase):
                      "2001:db8:dead::3"]
         # calculate pad
         self.pad = (8 - ((len(self.adrs) - 1) * (16 - self.cmpi) +
-                   (16 - self.cmpe) % 8)) % 8
+                    (16 - self.cmpe) % 8)) % 8
 
         self.routing = ipv6.routing_type3(
             self.nxt, self.size, self.type_, self.seg, self.cmpi,
@@ -939,7 +938,7 @@ class Test_routing_type3(unittest.TestCase):
                 "2001:0db8:dead:0123:4567:89ab:cdef:0003"]
         # calculate pad
         pad = (8 - ((len(adrs) - 1) * (16 - cmpi) + (16 - cmpe) % 8)) % 8
-        form = '!BBBBBB2x%ds%ds%ds' % (16-cmpi, 16-cmpi, 16-cmpe)
+        form = '!BBBBBB2x%ds%ds%ds' % (16 - cmpi, 16 - cmpi, 16 - cmpe)
         slice_i = slice(cmpi, 16)
         slice_e = slice(cmpe, 16)
         buf = struct.pack(form, nxt, size, type_, seg,

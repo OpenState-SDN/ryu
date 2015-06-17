@@ -1,15 +1,29 @@
-#!/usr/bin/env python
+# Copyright (C) 2013,2014,2015 Nippon Telegraph and Telephone Corporation.
+# Copyright (C) 2013,2014,2015 YAMAMOTO Takashi <yamamoto at valinux co jp>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import gettext
 import os
 import unittest
 import sys
+import types
 import logging
 
 from nose import result
 from nose import core
 from nose import config
-from nose.plugins.skip import SkipTest
 
 
 class _AnsiColorizer(object):
@@ -44,7 +58,6 @@ class _AnsiColorizer(object):
                     curses.setupterm()
                     return curses.tigetnum("colors") > 2
             except:
-                raise
                 # guess false in case of error
                 return False
     supported = classmethod(supported)
@@ -207,9 +220,9 @@ class RyuTestResult(result.TextTestResult):
             if current_case != self._last_case:
                 self.stream.writeln(current_case)
                 self._last_case = current_case
-            #NOTE(salvatore-orlando):
-            #slightly changed in order to print test case class
-            #together with unit test name
+            # NOTE(salvatore-orlando):
+            # slightly changed in order to print test case class
+            # together with unit test name
             self.stream.write(
                 '    %s' % str(test.test).ljust(60))
             self.stream.flush()
@@ -243,3 +256,10 @@ def run_tests(c=None):
                            verbosity=c.verbosity,
                            config=c)
     return not core.run(config=c, testRunner=runner)
+
+
+def add_method(cls, method_name, method):
+    """Add the method to the class dynamically, keeping unittest/nose happy."""
+    method.func_name = method_name
+    method.__name__ = method_name
+    setattr(cls, method_name, types.MethodType(method, None, cls))

@@ -20,6 +20,8 @@ import logging
 import socket
 import struct
 import traceback
+from socket import IPPROTO_TCP, TCP_NODELAY
+from eventlet import semaphore
 
 from ryu.lib.packet import bgp
 from ryu.lib.packet.bgp import RouteFamily
@@ -38,6 +40,9 @@ from ryu.lib.packet.bgp import BGP_MSG_ROUTE_REFRESH
 from ryu.lib.packet.bgp import BGP_CAP_ENHANCED_ROUTE_REFRESH
 from ryu.lib.packet.bgp import BGP_CAP_MULTIPROTOCOL
 from ryu.lib.packet.bgp import BGP_CAP_ROUTE_REFRESH
+from ryu.lib.packet.bgp import BGP_ERROR_HOLD_TIMER_EXPIRED
+from ryu.lib.packet.bgp import BGP_ERROR_SUB_HOLD_TIMER_EXPIRED
+from ryu.lib.packet.bgp import get_rf
 
 from ryu.services.protocols.bgp.base import Activity
 from ryu.services.protocols.bgp.base import add_bgp_error_metadata
@@ -92,14 +97,18 @@ class BgpProtocol(Protocol, Activity):
         # Validate input.
         if socket is None:
             raise ValueError('Invalid arguments passed.')
-        activity_name = ('BgpProtocol %s, %s, %s' % (
-            is_reactive_conn, socket.getpeername(), socket.getsockname())
-        )
+        self._remotename = self.get_remotename(socket)
+        self._localname = self.get_localname(socket)
+        activity_name = ('BgpProtocol %s, %s, %s' % (is_reactive_conn,
+                                                     self._remotename,
+                                                     self._localname))
         Activity.__init__(self, name=activity_name)
         # Intialize instance variables.
         self._peer = None
         self._recv_buff = ''
         self._socket = socket
+        self._socket.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
+        self._sendlock = semaphore.Semaphore()
         self._signal_bus = signal_bus
         self._holdtime = None
         self._keepalive = None
@@ -115,12 +124,6 @@ class BgpProtocol(Protocol, Activity):
         self.sent_open_msg = None
         self.recv_open_msg = None
         self._is_bound = False
-
-    def get_peername(self):
-        return self._socket.getpeername()
-
-    def get_sockname(self):
-        return self._socket.getsockname()
 
     @property
     def is_reactive(self):
@@ -140,8 +143,8 @@ class BgpProtocol(Protocol, Activity):
                              '`BgpProtocol`')
 
         # Compare protocol connection end point's addresses
-        if (self.get_peername()[0] == other_protocol.get_peername()[0] and
-                self.get_sockname()[0] == other_protocol.get_sockname()[0]):
+        if (self._remotename[0] == other_protoco._remotename[0] and
+                self._localname[0] == other_protocol._localname[0]):
             return True
 
         return False
@@ -157,8 +160,8 @@ class BgpProtocol(Protocol, Activity):
         if not self.state == BGP_FSM_OPEN_CONFIRM:
             raise BgpProtocolException(desc='Can access remote router id only'
                                             ' after open message is received')
-        remote_id = self.recv_open_msg.bgpid
-        local_id = self.sent_open_msg.bgpid
+        remote_id = self.recv_open_msg.bgp_identifier
+        local_id = self.sent_open_msg.bgp_identifier
         return from_inet_ptoi(local_id) > from_inet_ptoi(remote_id)
 
     def is_enhanced_rr_cap_valid(self):
@@ -171,12 +174,17 @@ class BgpProtocol(Protocol, Activity):
             raise ValueError('Did not yet receive peers open message.')
 
         err_cap_enabled = False
-        local_cap = self.sent_open_msg.caps
-        peer_cap = self.recv_open_msg.caps
+        local_caps = self.sent_open_msg.opt_param
+        peer_caps = self.recv_open_msg.opt_param
+
+        local_cap = [cap for cap in local_caps
+                     if cap.cap_code == BGP_CAP_ENHANCED_ROUTE_REFRESH]
+        peer_cap = [cap for cap in peer_caps
+                    if cap.cap_code == BGP_CAP_ENHANCED_ROUTE_REFRESH]
+
         # Both local and peer should advertise ERR capability for it to be
         # enabled.
-        if (local_cap.get(BGP_CAP_ENHANCED_ROUTE_REFRESH) and
-                peer_cap.get(BGP_CAP_ENHANCED_ROUTE_REFRESH)):
+        if local_cap and peer_cap:
             err_cap_enabled = True
 
         return err_cap_enabled
@@ -215,28 +223,31 @@ class BgpProtocol(Protocol, Activity):
 
     @property
     def negotiated_afs(self):
-        local_caps = self.sent_open_msg.caps
-        remote_caps = self.recv_open_msg.caps
+        local_caps = self.sent_open_msg.opt_param
+        remote_caps = self.recv_open_msg.opt_param
 
-        local_mbgp_cap = local_caps.get(BGP_CAP_MULTIPROTOCOL)
-        remote_mbgp_cap = remote_caps.get(BGP_CAP_MULTIPROTOCOL)
+        local_mbgp_cap = [cap for cap in local_caps
+                          if cap.cap_code == BGP_CAP_MULTIPROTOCOL]
+        remote_mbgp_cap = [cap for cap in remote_caps
+                           if cap.cap_code == BGP_CAP_MULTIPROTOCOL]
+
         # Check MP_BGP capabilities were advertised.
         if local_mbgp_cap and remote_mbgp_cap:
-            local_families = {
-                (peer_cap.route_family.afi, peer_cap.route_family.safi)
+            local_families = set([
+                (peer_cap.afi, peer_cap.safi)
                 for peer_cap in local_mbgp_cap
-            }
-            remote_families = {
-                (peer_cap.route_family.afi, peer_cap.route_family.safi)
+            ])
+            remote_families = set([
+                (peer_cap.afi, peer_cap.safi)
                 for peer_cap in remote_mbgp_cap
-            }
+            ])
             afi_safi = local_families.intersection(remote_families)
         else:
             afi_safi = set()
 
         afs = []
         for afi, safi in afi_safi:
-            afs.append(RouteFamily(afi, safi))
+            afs.append(get_rf(afi, safi))
         return afs
 
     def is_mbgp_cap_valid(self, route_family):
@@ -309,7 +320,7 @@ class BgpProtocol(Protocol, Activity):
             # We should get default marker since we are not supporting any
             # authentication.
             if (auth != BgpProtocol.MESSAGE_MARKER):
-                LOG.error('Invalid message marker received: %s' % auth)
+                LOG.error('Invalid message marker received: %s', auth)
                 raise bgp.NotSync()
 
             # Check if we have valid bgp message length.
@@ -358,31 +369,35 @@ class BgpProtocol(Protocol, Activity):
         """
         notification = BGPNotification(code, subcode)
         reason = notification.reason
-        self._socket.sendall(notification.serialize())
+        self._send_with_lock(notification)
         self._signal_bus.bgp_error(self._peer, code, subcode, reason)
-        LOG.error(
-            'Sent notification to %r >> %s' %
-            (self._socket.getpeername(), notification)
-        )
+        if len(self._localname):
+            LOG.error('Sent notification to %r >> %s', self._localname,
+                      notification)
         self._socket.close()
+
+    def _send_with_lock(self, msg):
+        self._sendlock.acquire()
+        try:
+            self._socket.sendall(msg.serialize())
+        except socket.error as err:
+            self.connection_lost('failed to write to socket')
+        finally:
+            self._sendlock.release()
 
     def send(self, msg):
         if not self.started:
             raise BgpProtocolException('Tried to send message to peer when '
                                        'this protocol instance is not started'
                                        ' or is no longer is started state.')
-        # get peername before senging msg because sending msg can occur
-        # conncetion lost
-        peername = self.get_peername()
-        self._socket.sendall(msg.serialize())
+        self._send_with_lock(msg)
 
         if msg.type == BGP_MSG_NOTIFICATION:
-            LOG.error('Sent notification to %s >> %s' %
-                      (peername, msg))
+            LOG.error('Sent notification to %s >> %s', self._remotename, msg)
 
             self._signal_bus.bgp_notification_sent(self._peer, msg)
         else:
-            LOG.debug('Sent msg to %s >> %s' % (peername, msg))
+            LOG.debug('Sent msg to %s >> %s', self._remotename, msg)
 
     def stop(self):
         Activity.stop(self)
@@ -407,20 +422,6 @@ class BgpProtocol(Protocol, Activity):
         if open_msg.version != BGP_VERSION_NUM:
             raise bgp.UnsupportedVersion(BGP_VERSION_NUM)
 
-        adv_caps = open_msg.opt_param
-        for cap in adv_caps:
-            if cap.cap_code == BGP_CAP_ROUTE_REFRESH:
-                rr_cap_adv = cap
-            elif cap.cap_code == BGP_CAP_ENHANCED_ROUTE_REFRESH:
-                err_cap_adv = cap
-        # If either RTC or RR/ERR are MUST capability if peer does not support
-        # either one of them we have to end session as we have to request peer
-        # to send prefixes for new VPNs that may be created automatically.
-        # TODO(PH): Check with experts if error is suitable in this case
-        if not (rr_cap_adv or err_cap_adv or
-                self._check_route_fmly_adv(open_msg, RF_RTC_UC)):
-            raise bgp.UnsupportedOptParam()
-
     def _handle_msg(self, msg):
         """When a BGP message is received, send it to peer.
 
@@ -428,8 +429,7 @@ class BgpProtocol(Protocol, Activity):
         message except for *Open* and *Notification* message. On receiving
         *Notification* message we close connection with peer.
         """
-        LOG.debug('Received msg from %s << %s' % (str(self.get_peername()),
-                                                  msg))
+        LOG.debug('Received msg from %s << %s', self._remotename, msg)
 
         # If we receive open message we try to bind to protocol
         if (msg.type == BGP_MSG_OPEN):
@@ -477,7 +477,7 @@ class BgpProtocol(Protocol, Activity):
                 self._signal_bus.bgp_notification_received(self._peer, msg)
             # If we receive notification message
             LOG.error('Received notification message, hence closing '
-                      'connection %s' % msg)
+                      'connection %s', msg)
             self._socket.close()
             return
 
@@ -503,7 +503,7 @@ class BgpProtocol(Protocol, Activity):
         neg_timer = min(self._holdtime, peer_holdtime)
         if neg_timer < self._holdtime:
             LOG.info('Negotiated hold time (%s) is lower then '
-                     'configured/default (%s).' % (neg_timer, self._holdtime))
+                     'configured/default (%s).', neg_timer, self._holdtime)
         # We use negotiated timer value.
         self._holdtime = neg_timer
         self._keepalive = self._create_timer('Keepalive Timer',
@@ -514,12 +514,12 @@ class BgpProtocol(Protocol, Activity):
         self._expiry = self._create_timer('Holdtime Timer', self._expired)
         self._expiry.start(self._holdtime, now=False)
         LOG.debug('Started keep-alive and expire timer for negotiated hold'
-                  'time %s' % self._holdtime)
+                  'time %s', self._holdtime)
 
     def _expired(self):
         """Hold timer expired event handler.
         """
-        LOG.info('Negotiated hold time %s expired.' % self._holdtime)
+        LOG.info('Negotiated hold time %s expired.', self._holdtime)
         code = BGP_ERROR_HOLD_TIMER_EXPIRED
         subcode = BGP_ERROR_SUB_HOLD_TIMER_EXPIRED
         self.send_notification(code, subcode)
@@ -568,7 +568,6 @@ class BgpProtocol(Protocol, Activity):
         self.sent_open_msg = open_msg
         self.send(open_msg)
         self._peer.connection_made()
-        LOG.debug('Sent open message %s' % open_msg)
 
     def connection_lost(self, reason):
         """Stops all timers and notifies peer that connection is lost.

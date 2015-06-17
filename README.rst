@@ -24,16 +24,28 @@ If you prefer to install Ryu from the source code::
    % cd ryu; python ./setup.py install
 
 If you want to use Ryu with `OpenStack <http://openstack.org/>`_,
-please refer `detailed documents <http://ryu.readthedocs.org/en/latest/using_with_openstack.html>`_.
-You can create tens of thousands of isolated virtual networks without
-using VLAN.  The Ryu application is included in OpenStack mainline as
-of Essex release.
+please refer `networking-ofagent project <https://github.com/stackforge/networking-ofagent>`_.
 
 If you want to write your Ryu application, have a look at
 `Writing ryu application <http://ryu.readthedocs.org/en/latest/writing_ryu_app.html>`_ document.
 After writing your application, just type::
 
    % ryu-manager yourapp.py
+
+
+Optional Requirements
+=====================
+
+Some functionalities of ryu requires extra packages:
+
+- OF-Config requires lxml
+- NETCONF requires paramiko
+- BGP speaker (ssh console) requires paramiko
+
+If you want to use the functionalities, please install requirements::
+
+    % pip install lxml
+    % pip install paramiko
 
 
 Support

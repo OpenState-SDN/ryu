@@ -94,7 +94,7 @@ class RpcSession(Activity):
     """
 
     def __init__(self, socket, outgoing_msg_sink_iter):
-        super(RpcSession, self).__init__()
+        super(RpcSession, self).__init__("RpcSession(%s)" % socket)
         import msgpack
 
         self._packer = msgpack.Packer()
@@ -170,7 +170,7 @@ class RpcSession(Activity):
             # Wait for request/response/notification from peer.
             msg_buff = self._recv()
             if len(msg_buff) == 0:
-                LOG.info('Peer %r disconnected.' % self._socket)
+                LOG.info('Peer %r disconnected.', self._socket)
                 break
             messages = self.feed_and_get_messages(msg_buff)
             for msg in messages:
@@ -186,7 +186,7 @@ class RpcSession(Activity):
                 elif msg[0] == RPC_MSG_NOTIFY:
                     _handle_notification(msg)
                 else:
-                    LOG.error('Invalid message type: %r' % msg)
+                    LOG.error('Invalid message type: %r', msg)
                 self.pause(0)
 
     def _process_outgoing_msg(self, sink_iter):
@@ -255,7 +255,7 @@ def _create_prefix_notif(outgoing_msg, rpc_session):
     assert path.source is not None
     if path.source != VRF_TABLE:
         # Extract relevant info for update-add/update-delete.
-        params = [{ROUTE_DISTINGUISHER: outgoing_msg.route_disc,
+        params = [{ROUTE_DISTINGUISHER: outgoing_msg.route_dist,
                    PREFIX: vpn_nlri.prefix,
                    NEXT_HOP: path.nexthop,
                    VPN_LABEL: path.label_list[0],
@@ -270,7 +270,7 @@ def _create_prefix_notif(outgoing_msg, rpc_session):
                                                       params)
     else:
         # Extract relevant info for update-add/update-delete.
-        params = [{ROUTE_DISTINGUISHER: outgoing_msg.route_disc,
+        params = [{ROUTE_DISTINGUISHER: outgoing_msg.route_dist,
                    PREFIX: vpn_nlri.prefix,
                    NEXT_HOP: path.nexthop,
                    VRF_RF: VrfConf.rf_2_vrf_rf(path.route_family),
@@ -300,7 +300,7 @@ def _validate_rpc_port(port):
     """
     if not port:
         raise NetworkControllerError(desc='Invalid rpc port number.')
-    if not isinstance(port, (int, long)) and isinstance(port, str):
+    if isinstance(port, str):
         port = int(port)
 
     if port <= 0:
@@ -336,7 +336,8 @@ class _NetworkController(FlexinetPeer, Activity):
         sock_addr = (apgw_rpc_bind_ip, apgw_rpc_bind_port)
         LOG.debug('NetworkController started listening for connections...')
 
-        server_thread = self._listen_tcp(sock_addr, self._start_rpc_session)
+        server_thread, socket = self._listen_tcp(sock_addr,
+                                                 self._start_rpc_session)
         self.pause(0)
         server_thread.wait()
 
@@ -361,15 +362,15 @@ def _handle_response(response):
 
 
 def _handle_notification(notification):
-    LOG.debug('Notification from NetworkController<<: %s %s' %
-              (notification[RPC_IDX_NTF_SYM], notification[RPC_IDX_NTF_PARAM]))
+    LOG.debug('Notification from NetworkController<<: %s %s',
+              notification[RPC_IDX_NTF_SYM], notification[RPC_IDX_NTF_PARAM])
     operation, params = notification[1], notification[2]
     return api.base.call(operation, **params[0])
 
 
 def _handle_request(request):
-    LOG.debug('Request from NetworkController<<: %s %s' %
-              (request[RPC_IDX_REQ_SYM], request[RPC_IDX_REQ_PARAM]))
+    LOG.debug('Request from NetworkController<<: %s %s',
+              request[RPC_IDX_REQ_SYM], request[RPC_IDX_REQ_PARAM])
     operation, params = request[2], request[3]
     kwargs = {}
     if len(params) > 0:

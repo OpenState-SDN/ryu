@@ -19,6 +19,7 @@
  sessions.
 """
 import logging
+from time import gmtime
 
 
 LOG = logging.getLogger('bgpspeaker.model')
@@ -44,11 +45,11 @@ class OutgoingRoute(object):
     """Holds state about a route that is queued for being sent to a given sink.
     """
 
-    __slots__ = ('_path', '_for_route_refresh', 'bgp4_format',
+    __slots__ = ('_path', '_for_route_refresh',
                  'sink', 'next_outgoing_route', 'prev_outgoing_route',
                  'next_sink_out_route', 'prev_sink_out_route')
 
-    def __init__(self, path, for_route_refresh=False, bgp4_format=False):
+    def __init__(self, path, for_route_refresh=False):
         assert(path)
 
         self.sink = None
@@ -58,9 +59,6 @@ class OutgoingRoute(object):
         # Is this update in response for route-refresh request.
         # No sent-route is queued for the destination for this update.
         self._for_route_refresh = for_route_refresh
-
-        # Construct UPDATE msg using bgp4 format
-        self.bgp4_format = bgp4_format
 
         # Automatically generated, for list off of Destination.
         #
@@ -93,9 +91,9 @@ class FlexinetOutgoingRoute(object):
     """
 
     __slots__ = ('_path', 'sink', 'next_outgoing_route', 'prev_outgoing_route',
-                 'next_sink_out_route', 'prev_sink_out_route', '_route_disc')
+                 'next_sink_out_route', 'prev_sink_out_route', '_route_dist')
 
-    def __init__(self, path, route_disc):
+    def __init__(self, path, route_dist):
         from ryu.services.protocols.bgp.info_base.vrf4 import Vrf4Path
         from ryu.services.protocols.bgp.info_base.vrf6 import Vrf6Path
         assert path.route_family in (Vrf4Path.ROUTE_FAMILY,
@@ -103,7 +101,7 @@ class FlexinetOutgoingRoute(object):
 
         self.sink = None
         self._path = path
-        self._route_disc = route_disc
+        self._route_dist = route_dist
 
         # Automatically generated, for list off of Destination.
         #
@@ -120,12 +118,12 @@ class FlexinetOutgoingRoute(object):
         return self._path
 
     @property
-    def route_disc(self):
-        return self._route_disc
+    def route_dist(self):
+        return self._route_dist
 
     def __str__(self):
-        return ('FlexinetOutgoingRoute(path: %s, route_disc: %s)' %
-                (self.path, self.route_disc))
+        return ('FlexinetOutgoingRoute(path: %s, route_dist: %s)' %
+                (self.path, self.route_dist))
 
 
 class SentRoute(object):
@@ -133,13 +131,20 @@ class SentRoute(object):
     about a particular BGP destination.
     """
 
-    def __init__(self, path, peer):
+    def __init__(self, path, peer, filtered=None, timestamp=None):
         assert(path and hasattr(peer, 'version_num'))
 
         self.path = path
 
         # Peer to which this path was sent.
         self._sent_peer = peer
+
+        self.filtered = filtered
+
+        if timestamp:
+            self.timestamp = timestamp
+        else:
+            self.timestamp = gmtime()
 
         # Automatically generated.
         #
@@ -149,3 +154,28 @@ class SentRoute(object):
     @property
     def sent_peer(self):
         return self._sent_peer
+
+
+class ReceivedRoute(object):
+    """Holds the information that has been received to one sinks
+    about a particular BGP destination.
+    """
+
+    def __init__(self, path, peer, filtered=None, timestamp=None):
+        assert(path and hasattr(peer, 'version_num'))
+
+        self.path = path
+
+        # Peer to which this path was received.
+        self._received_peer = peer
+
+        self.filtered = filtered
+
+        if timestamp:
+            self.timestamp = timestamp
+        else:
+            self.timestamp = gmtime()
+
+    @property
+    def received_peer(self):
+        return self._received_peer

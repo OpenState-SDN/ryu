@@ -37,7 +37,13 @@ import inspect
 # grep __init__ *.py | grep '[^_]_\>' showed that
 # 'len', 'property', 'set', 'type'
 # A bit more generic way is adopted
-import __builtin__
+try:
+    # Python 2
+    import __builtin__
+except ImportError:
+    # Python 3
+    import builtins as __builtin__
+
 _RESERVED_KEYWORD = dir(__builtin__)
 
 
@@ -70,9 +76,28 @@ class Utf8StringType(TypeDescr):
         return v.encode('utf-8')
 
 
+class NXFlowSpecFieldType(TypeDescr):
+    # ("field_name", 0) <-> ["field_name", 0]
+
+    @staticmethod
+    def encode(v):
+        if not isinstance(v, tuple):
+            return v
+        field, ofs = v
+        return [AsciiStringType.encode(field), ofs]
+
+    @staticmethod
+    def decode(v):
+        if not isinstance(v, list):
+            return v
+        field, ofs = v
+        return (AsciiStringType.decode(field), ofs)
+
+
 _types = {
     'ascii': AsciiStringType,
     'utf-8': Utf8StringType,
+    'nx-flow-spec-field': NXFlowSpecFieldType,  # XXX this should not be here
 }
 
 
@@ -105,6 +130,7 @@ class StringifyMixin(object):
     """
 
     _class_prefixes = []
+    _class_suffixes = []
 
     def stringify_attrs(self):
         """an override point for sub classes"""
@@ -132,6 +158,9 @@ class StringifyMixin(object):
             return False
         for p in cls._class_prefixes:
             if k.startswith(p):
+                return True
+        for p in cls._class_suffixes:
+            if k.endswith(p):
                 return True
         return False
 
@@ -191,6 +220,8 @@ class StringifyMixin(object):
             { "ClassName": {"Param1": 100, "Param2": 200} }
 
         This method takes the following arguments.
+
+        .. tabularcolumns:: |l|L|
 
         =============  =====================================================
         Argument       Description
@@ -275,6 +306,8 @@ class StringifyMixin(object):
 
         This method takes the following arguments.
 
+        .. tabularcolumns:: |l|L|
+
         =============== =====================================================
         Argument        Descrpition
         =============== =====================================================
@@ -294,10 +327,10 @@ class StringifyMixin(object):
         try:
             return cls(**dict(kwargs, **additional_args))
         except TypeError:
-            #debug
-            print "CLS", cls
-            print "ARG", dict_
-            print "KWARG", kwargs
+            # debug
+            print("CLS %s" % cls)
+            print("ARG %s" % dict_)
+            print("KWARG %s" % kwargs)
             raise
 
     @classmethod

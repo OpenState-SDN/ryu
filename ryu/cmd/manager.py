@@ -17,7 +17,7 @@
 # limitations under the License.
 
 from ryu.lib import hub
-hub.patch()
+hub.patch(thread=False)
 
 # TODO:
 #   Right now, we have our own patched copy of ovs python bindings
@@ -25,8 +25,8 @@ hub.patch()
 #   use it
 #
 # NOTE: this modifies sys.path and thus affects the following imports.
-# eg. oslo.config.cfg.
 import ryu.contrib
+ryu.contrib.update_module_path()
 
 from ryu import cfg
 import logging
@@ -48,7 +48,11 @@ CONF.register_cli_opts([
     cfg.ListOpt('app-lists', default=[],
                 help='application module name to run'),
     cfg.MultiStrOpt('app', positional=True, default=[],
-                    help='application module name to run')
+                    help='application module name to run'),
+    cfg.StrOpt('pid-file', default=None, help='pid file name'),
+    cfg.BoolOpt('enable-debugger', default=False,
+                help='don\'t overwrite Python standard threading library'
+                '(use only for debugging)'),
 ])
 
 
@@ -62,6 +66,18 @@ def main(args=None, prog=None):
              project='ryu', version='ryu-manager %s' % version)
 
     log.init_log()
+
+    if CONF.enable_debugger:
+        LOG = logging.getLogger('ryu.cmd.manager')
+        msg = 'debugging is available (--enable-debugger option is turned on)'
+        LOG.info(msg)
+    else:
+        hub.patch(thread=True)
+
+    if CONF.pid_file:
+        import os
+        with open(CONF.pid_file, 'w') as pid_file:
+            pid_file.write(str(os.getpid()))
 
     app_lists = CONF.app_lists + CONF.app
     # keep old behaivor, run ofp if no application is specified.

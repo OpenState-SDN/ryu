@@ -103,15 +103,11 @@ def validate_export_rts(export_rts):
 
 
 @validate(name=ROUTE_DISTINGUISHER)
-def valdiate_rd(route_disc):
-    if not isinstance(route_disc, str):
-        raise ConfigTypeError(conf_name=ROUTE_DISTINGUISHER,
-                              conf_value=route_disc)
-
-    if not validation.is_valid_route_disc(route_disc):
+def validate_rd(route_dist):
+    if not validation.is_valid_route_dist(route_dist):
         raise ConfigValueError(conf_name=ROUTE_DISTINGUISHER,
-                               conf_value=route_disc)
-    return route_disc
+                               conf_value=route_dist)
+    return route_dist
 
 
 @validate(name=VRF_RF)
@@ -134,7 +130,7 @@ class VrfConf(ConfWithId, ConfWithStats):
                                    EXPORT_RTS])
 
     OPTIONAL_SETTINGS = frozenset(
-        [MULTI_EXIT_DISC, SITE_OF_ORIGINS, VRF_RF, IMPORT_MAPS]
+        [VRF_NAME, MULTI_EXIT_DISC, SITE_OF_ORIGINS, VRF_RF, IMPORT_MAPS]
     )
 
     def __init__(self, **kwargs):
@@ -392,7 +388,7 @@ class VrfConf(ConfWithId, ConfWithStats):
 class VrfsConf(BaseConf):
     """Container for all VRF configurations."""
 
-    ADD_VRF_CONF_EVT, REMOVE_VRF_CONF_EVT = xrange(2)
+    ADD_VRF_CONF_EVT, REMOVE_VRF_CONF_EVT = range(2)
 
     VALID_EVT = frozenset([ADD_VRF_CONF_EVT, REMOVE_VRF_CONF_EVT])
 

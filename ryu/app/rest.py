@@ -14,13 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This module provides a basic set of REST API.
-#   - Network registration
-#   - End-point port management
-#       - OpenFlow port number
-#       - MAC address (for anti-spoofing)
-#
-# Used by OpenStack Ryu plug-in.
+"""
+This module provides a basic set of REST API.
+
+- Network registration
+- End-point port management
+    - OpenFlow port number
+    - MAC address (for anti-spoofing)
+
+Used by OpenStack Ryu plug-in.
+"""
 
 import json
 from webob import Response
@@ -34,8 +37,8 @@ from ryu.exception import PortNotFound, PortAlreadyExist
 from ryu.lib import dpid as dpid_lib
 from ryu.lib import mac as mac_lib
 
-## TODO:XXX
-## define db interface and store those information into db
+# TODO:XXX
+# define db interface and store those information into db
 
 # REST API
 

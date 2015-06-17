@@ -18,6 +18,7 @@
 """
 from abc import ABCMeta
 from abc import abstractmethod
+import numbers
 import logging
 import uuid
 from types import BooleanType
@@ -40,6 +41,7 @@ LOG = logging.getLogger('bgpspeaker.rtconf.base')
 CAP_REFRESH = 'cap_refresh'
 CAP_ENHANCED_REFRESH = 'cap_enhanced_refresh'
 CAP_MBGP_IPV4 = 'cap_mbgp_ipv4'
+CAP_MBGP_IPV6 = 'cap_mbgp_ipv6'
 CAP_MBGP_VPNV4 = 'cap_mbgp_vpnv4'
 CAP_MBGP_VPNV6 = 'cap_mbgp_vpnv6'
 CAP_RTC = 'cap_rtc'
@@ -562,9 +564,9 @@ def validate_stats_log_enabled(stats_log_enabled):
 
 @validate(name=ConfWithStats.STATS_TIME)
 def validate_stats_time(stats_time):
-    if not isinstance(stats_time, (int, long)):
+    if not isinstance(stats_time, numbers.Integral):
         raise ConfigTypeError(desc='Statistics log timer value has to be of '
-                              'type int/long but got: %r' % stats_time)
+                              'integral type but got: %r' % stats_time)
     if stats_time < 10:
         raise ConfigValueError(desc='Statistics log timer cannot be set to '
                                'less then 10 sec, given timer value %s.' %
@@ -595,6 +597,15 @@ def validate_cap_mbgp_ipv4(cmv4):
                               'settings: %s boolean value expected' % cmv4)
 
     return cmv4
+
+
+@validate(name=CAP_MBGP_IPV6)
+def validate_cap_mbgp_ipv4(cmv6):
+    if cmv6 not in (True, False):
+        raise ConfigTypeError(desc='Invalid Enhanced Refresh capability '
+                              'settings: %s boolean value expected' % cmv4)
+
+    return cmv6
 
 
 @validate(name=CAP_MBGP_VPNV4)
@@ -701,7 +712,7 @@ def compute_optional_conf(conf_name, default_value, **all_config):
     conf_value = all_config.get(conf_name)
     if conf_value is not None:
         # Validate configuration value.
-        get_validator(conf_name)(conf_value)
+        conf_value = get_validator(conf_name)(conf_value)
     else:
         conf_value = default_value
     return conf_value

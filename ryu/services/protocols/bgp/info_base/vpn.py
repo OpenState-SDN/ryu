@@ -44,7 +44,7 @@ class VpnTable(Table):
         """Return a key that will uniquely identify this vpnvX NLRI inside
         this table.
         """
-        return vpn_nlri.route_disc + ':' + vpn_nlri.prefix
+        return vpn_nlri.route_dist + ':' + vpn_nlri.prefix
 
     def _create_dest(self, nlri):
         return self.VPN_DEST_CLASS(self, nlri)
@@ -70,7 +70,7 @@ class VpnPath(Path):
 
         vrf_path = self.VRF_PATH_CLASS(
             self.VRF_PATH_CLASS.create_puid(
-                self._nlri.route_disc,
+                self._nlri.route_dist,
                 self._nlri.prefix
             ),
             self.source, vrf_nlri,
@@ -90,6 +90,7 @@ class VpnDest(Destination, NonVrfPathProcessingMixin):
     def _best_path_lost(self):
         old_best_path = self._best_path
         NonVrfPathProcessingMixin._best_path_lost(self)
+        self._core_service._signal_bus.best_path_changed(old_best_path, True)
 
         # Best-path might have been imported into VRF tables, we have to
         # withdraw from them, if the source is a peer.
@@ -102,6 +103,7 @@ class VpnDest(Destination, NonVrfPathProcessingMixin):
 
     def _new_best_path(self, best_path):
         NonVrfPathProcessingMixin._new_best_path(self, best_path)
+        self._core_service._signal_bus.best_path_changed(best_path, False)
 
         # Extranet feature requires that we import new best path into VRFs.
         tm = self._core_service.table_manager

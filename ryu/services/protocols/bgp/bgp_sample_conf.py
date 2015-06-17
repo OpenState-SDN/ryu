@@ -20,10 +20,10 @@ BGP = {
             '10.0.0.1': {
                 'remote_as': 64513,
                 'multi_exit_disc': 100
-                },
+            },
             '10.10.0.2': {
                 'remote_as': 64514,
-                },
+            },
         },
 
         'networks': [
@@ -35,6 +35,15 @@ BGP = {
     },
 
 }
+
+
+# SSH = {
+#     'ssh_port': 4990,
+#     'ssh_host': 'localhost',
+#     'ssh_hostkey': '/etc/ssh_host_rsa_key',
+#     'ssh_username': 'ryu',
+#     'ssh_password': 'ryu'
+# }
 
 # =============================================================================
 # Logging configuration.

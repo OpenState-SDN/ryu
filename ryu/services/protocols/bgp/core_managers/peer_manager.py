@@ -1,8 +1,10 @@
 import logging
+import netaddr
 
 from ryu.services.protocols.bgp.base import SUPPORTED_GLOBAL_RF
 from ryu.services.protocols.bgp.model import OutgoingRoute
 from ryu.services.protocols.bgp.peer import Peer
+from ryu.lib.packet.bgp import BGPPathAttributeCommunities
 from ryu.lib.packet.bgp import BGP_ATTR_TYPE_MULTI_EXIT_DISC
 from ryu.lib.packet.bgp import BGP_ATTR_TYPE_COMMUNITIES
 from ryu.lib.packet.bgp import RF_IPv4_UC
@@ -10,6 +12,7 @@ from ryu.lib.packet.bgp import RF_IPv6_UC
 from ryu.lib.packet.bgp import RF_IPv4_VPN
 from ryu.lib.packet.bgp import RF_IPv6_VPN
 from ryu.lib.packet.bgp import RF_RTC_UC
+from ryu.lib.packet.bgp import RouteTargetMembershipNLRI
 from ryu.services.protocols.bgp.utils.bgp \
     import clone_path_and_update_med_for_target_neighbor
 LOG = logging.getLogger('bgpspeaker.core_managers.peer_manager')
@@ -52,15 +55,15 @@ class PeerManager(object):
         self._core_service.on_peer_removed(peer)
 
     def get_by_addr(self, addr):
-        return self._peers.get(addr)
+        return self._peers.get(str(netaddr.IPAddress(addr)))
 
     def on_peer_down(self, peer):
         """Peer down handler.
 
         Cleans up the paths in global tables that was received from this peer.
         """
-        LOG.debug('Cleaning obsolete paths whose source/version: %s/%s' %
-                  (peer.ip_address, peer.version_num))
+        LOG.debug('Cleaning obsolete paths whose source/version: %s/%s',
+                  peer.ip_address, peer.version_num)
         # Launch clean-up for each global tables.
         self._table_manager.clean_stale_routes(peer)
 
@@ -155,8 +158,8 @@ class PeerManager(object):
         requests are ignored. Raises appropriate error in other cases. If
         `peer_ip` is equal to 'all' makes refresh request to all valid peers.
         """
-        LOG.debug('Route refresh requested for peer %s and route families %s'
-                  % (peer_ip, route_families))
+        LOG.debug('Route refresh requested for peer %s and route families %s',
+                  peer_ip, route_families)
         if not SUPPORTED_GLOBAL_RF.intersection(route_families):
             raise ValueError('Given route family(s) % is not supported.' %
                              route_families)
@@ -253,7 +256,7 @@ class PeerManager(object):
             # UPDATE to any peers
             if comm_attr_na:
                 LOG.debug('New best path has community attr. NO_ADVERTISE = %s'
-                          '. Hence not advertising to any peer' % comm_attr_na)
+                          '. Hence not advertising to any peer', comm_attr_na)
                 return
 
         qualified_peers = self._collect_peers_of_interest(

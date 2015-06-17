@@ -14,6 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+The main component of OpenFlow controller.
+
+- Handle connections from switches
+- Generate and route events to appropriate entities like Ryu applications
+
+"""
+
 import contextlib
 from ryu import cfg
 import logging
@@ -23,6 +31,7 @@ import traceback
 import random
 import ssl
 from socket import IPPROTO_TCP, TCP_NODELAY
+import warnings
 
 import ryu.base.app_manager
 
@@ -58,7 +67,7 @@ class OpenFlowController(object):
 
     # entry point
     def __call__(self):
-        LOG.debug('call')
+        # LOG.debug('call')
         self.server_loop()
 
     def server_loop(self):
@@ -84,7 +93,7 @@ class OpenFlowController(object):
                                    CONF.ofp_tcp_listen_port),
                                   datapath_connection_factory)
 
-        #LOG.debug('loop')
+        # LOG.debug('loop')
         server.serve_forever()
 
 
@@ -112,10 +121,29 @@ class Datapath(ofproto_protocol.ProtocolDesc):
 
         self.xid = random.randint(0, self.ofproto.MAX_XID)
         self.id = None  # datapath_id is unknown yet
-        self.ports = None
+        self._ports = None
         self.flow_format = ofproto_v1_0.NXFF_OPENFLOW10
         self.ofp_brick = ryu.base.app_manager.lookup_service_brick('ofp_event')
         self.set_state(handler.HANDSHAKE_DISPATCHER)
+
+    def _get_ports(self):
+        if (self.ofproto_parser is not None and
+                self.ofproto_parser.ofproto.OFP_VERSION >= 0x04):
+            message = (
+                'Datapath#ports is kept for compatibility with the previous '
+                'openflow versions (< 1.3). '
+                'This not be updated by EventOFPPortStatus message. '
+                'If you want to be updated, you can use '
+                '\'ryu.controller.dpset\' or \'ryu.topology.switches\'.'
+            )
+            warnings.warn(message, stacklevel=2)
+        return self._ports
+
+    def _set_ports(self, ports):
+        self._ports = ports
+
+    # To show warning when Datapath#ports is read
+    ports = property(_get_ports, _set_ports)
 
     def close(self):
         self.set_state(handler.DEAD_DISPATCHER)
@@ -147,7 +175,7 @@ class Datapath(ofproto_protocol.ProtocolDesc):
 
                 msg = ofproto_parser.msg(self,
                                          version, msg_type, msg_len, xid, buf)
-                #LOG.debug('queue msg %s cls %s', msg, msg.__class__)
+                # LOG.debug('queue msg %s cls %s', msg, msg.__class__)
                 if msg:
                     ev = ofp_event.ofp_msg_to_ev(msg)
                     self.ofp_brick.send_event_to_observers(ev, self.state)

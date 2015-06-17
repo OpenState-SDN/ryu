@@ -40,7 +40,7 @@ class VRRPCommon(app_manager.RyuApp):
     def _main(self):
         self._main_version(vrrp.VRRP_VERSION_V3)
         self._main_version(vrrp.VRRP_VERSION_V2)
-        print "done!"
+        print("done!")
 
     def _main_version(self, vrrp_version):
         self._main_version_priority(vrrp_version,
@@ -65,12 +65,15 @@ class VRRPCommon(app_manager.RyuApp):
                            for i in rep.instance_list):
                         continue
                     break
-                print len(rep.instance_list), '/', len(instances) * 2
+                print('%s / %s' % (len(rep.instance_list), len(instances) * 2))
                 time.sleep(1)
 
 #                for i in rep.instance_list:
-#                    print i.instance_name, i.monitor_name, i.config, \
-#                          i.interface, i.state
+#                    print('%s %s %s %s %s' % (i.instance_name,
+#                          i.monitor_name,
+#                          i.config,
+#                          i.interface,
+#                          i.state))
             assert len(rep.instance_list) == len(instances) * 2
             num_of_master = 0
             d = dict(((i.instance_name, i) for i in rep.instance_list))
@@ -87,22 +90,22 @@ class VRRPCommon(app_manager.RyuApp):
                    (vr[0].config.priority < vr[1].config.priority and
                         i.instance_name == vr[0].instance_name):
                     if i.state == vrrp_event.VRRP_STATE_MASTER:
-                        print "bad master:"
-                        print d[vr[0].instance_name].state, \
-                            d[vr[0].instance_name].config.priority
-                        print d[vr[1].instance_name].state, \
-                            d[vr[1].instance_name].config.priority
+                        print("bad master:")
+                        print('%s %s' % (d[vr[0].instance_name].state,
+                              d[vr[0].instance_name].config.priority))
+                        print('%s %s' % (d[vr[1].instance_name].state,
+                              d[vr[1].instance_name].config.priority))
                         bad += 1
 #                       assert i.state != vrrp_event.VRRP_STATE_MASTER
             if bad > 0:
                 # this could be a transient state
-                print bad, "bad masters"
+                print("%s bad masters" % bad)
                 time.sleep(1)
                 continue
             if num_of_master >= len(instances):
                 assert num_of_master == len(instances)
                 break
-            print num_of_master, '/', len(instances)
+            print('%s / %s' % (num_of_master, len(instances)))
             time.sleep(1)
             continue
 
@@ -113,10 +116,10 @@ class VRRPCommon(app_manager.RyuApp):
 
         step = 5
         instances = {}
-        for vrid in xrange(1, 256, step):
+        for vrid in range(1, 256, step):
             if vrid == _VRID:
                 continue
-            print "vrid", vrid
+            print("vrid %s" % vrid)
             l = {}
             prio = max(vrrp.VRRP_PRIORITY_BACKUP_MIN,
                        min(vrrp.VRRP_PRIORITY_BACKUP_MAX, vrid))
@@ -125,7 +128,7 @@ class VRRPCommon(app_manager.RyuApp):
                                                _PRIMARY_IP_ADDRESS0,
                                                self._IFNAME0,
                                                vrid)
-            assert not rep0.instance_name is None
+            assert rep0.instance_name is not None
             l[0] = rep0
             prio = max(vrrp.VRRP_PRIORITY_BACKUP_MIN,
                        min(vrrp.VRRP_PRIORITY_BACKUP_MAX, 256 - vrid))
@@ -134,29 +137,29 @@ class VRRPCommon(app_manager.RyuApp):
                                                _PRIMARY_IP_ADDRESS1,
                                                self._IFNAME1,
                                                vrid)
-            assert not rep1.instance_name is None
+            assert rep1.instance_name is not None
             l[1] = rep1
             instances[vrid] = l
 
-        print "vrid", _VRID
+        print("vrid %s" % _VRID)
         l = {}
         rep0 = self._configure_vrrp_router(vrrp_version, priority,
                                            _PRIMARY_IP_ADDRESS0,
                                            self._IFNAME0, _VRID)
-        assert not rep0.instance_name is None
+        assert rep0.instance_name is not None
         l[0] = rep0
         rep1 = self._configure_vrrp_router(
             vrrp_version, vrrp.VRRP_PRIORITY_BACKUP_DEFAULT,
             _PRIMARY_IP_ADDRESS1, self._IFNAME1, _VRID)
-        assert not rep1.instance_name is None
+        assert rep1.instance_name is not None
         l[1] = rep1
         instances[_VRID] = l
 
         self.logger.debug('%s', vrrp_mgr._instances)
 
         if do_sleep:
-            print "priority", priority
-            print "waiting for instances starting"
+            print("priority %s" % priority)
+            print("waiting for instances starting")
 
             self._check(vrrp_api, instances)
 
@@ -172,7 +175,7 @@ class VRRPCommon(app_manager.RyuApp):
             i.config.priority = new_priority
 
         if do_sleep:
-            print "priority shuffled"
+            print("priority shuffled")
 
             self._check(vrrp_api, instances)
 
@@ -184,15 +187,15 @@ class VRRPCommon(app_manager.RyuApp):
         vrrp_api.vrrp_shutdown(self, instances[_VRID][0].instance_name)
 
         if do_sleep:
-            print "shutting down instances"
+            print("shutting down instances")
             while True:
                 rep = vrrp_api.vrrp_list(self)
                 if len(rep.instance_list) <= len(instances):
                     break
-                print "left", len(rep.instance_list)
+                print("left %s" % len(rep.instance_list))
                 time.sleep(1)
             assert len(rep.instance_list) == len(instances)
-            print "waiting for the rest becoming master"
+            print("waiting for the rest becoming master")
             while True:
                 rep = vrrp_api.vrrp_list(self)
                 if all(i.state == vrrp_event.VRRP_STATE_MASTER
@@ -207,10 +210,10 @@ class VRRPCommon(app_manager.RyuApp):
             which = 1 - (vrid & 1)
             vrrp_api.vrrp_shutdown(self, instances[vrid][which].instance_name)
 
-        print "waiting for instances shutting down"
+        print("waiting for instances shutting down")
         while True:
             rep = vrrp_api.vrrp_list(self)
             if not rep.instance_list:
                 break
-            print "left", len(rep.instance_list)
+            print("left %s" % len(rep.instance_list))
             time.sleep(1)

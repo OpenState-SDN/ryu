@@ -1,7 +1,5 @@
-#!/usr/bin/env python
-#
-# Copyright (C) 2013 Nippon Telegraph and Telephone Corporation.
-# Copyright (C) 2013 YAMAMOTO Takashi <yamamoto at valinux co jp>
+# Copyright (C) 2013-2015 Nippon Telegraph and Telephone Corporation.
+# Copyright (C) 2013-2015 YAMAMOTO Takashi <yamamoto at valinux co jp>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,10 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+import numbers
 import time
 import unittest
 from nose.tools import raises
+import six
 
 from ryu.lib import hub
 hub.patch()
@@ -110,7 +109,7 @@ class Test_rpc(unittest.TestCase):
 
     def test_0_call_int2(self):
         c = rpc.Client(self._client_sock)
-        obj = sys.maxint
+        obj = six.MAXSIZE
         assert isinstance(obj, int)
         result = c.call("resp", [obj])
         assert result == obj
@@ -118,7 +117,7 @@ class Test_rpc(unittest.TestCase):
 
     def test_0_call_int3(self):
         c = rpc.Client(self._client_sock)
-        obj = - sys.maxint - 1
+        obj = - six.MAXSIZE - 1
         assert isinstance(obj, int)
         result = c.call("resp", [obj])
         assert result == obj
@@ -127,7 +126,8 @@ class Test_rpc(unittest.TestCase):
     def test_0_call_long(self):
         c = rpc.Client(self._client_sock)
         obj = 0xffffffffffffffff  # max value for msgpack
-        assert isinstance(obj, long)
+        _long = int if six.PY3 else long
+        assert isinstance(obj, _long)
         result = c.call("resp", [obj])
         assert result == obj
         assert isinstance(result, type(obj))
@@ -136,7 +136,7 @@ class Test_rpc(unittest.TestCase):
         c = rpc.Client(self._client_sock)
         # NOTE: the python type of this value is int for 64-bit arch
         obj = -0x8000000000000000  # min value for msgpack
-        assert isinstance(obj, (int, long))
+        assert isinstance(obj, numbers.Integral)
         result = c.call("resp", [obj])
         assert result == obj
         assert isinstance(result, type(obj))
@@ -249,7 +249,7 @@ class Test_rpc(unittest.TestCase):
         c.receive_notification()
         assert len(l) == 1
         n = l.pop(0)
-        assert not n is None
+        assert n is not None
         method, params = n
         assert method == "notify_hoge"
         assert params[0] == obj
@@ -265,7 +265,7 @@ class Test_rpc(unittest.TestCase):
         c.receive_notification()
         assert len(l) == 1
         n = l.pop(0)
-        assert not n is None
+        assert n is not None
         method, params = n
         assert method == "notify_hoge"
         assert params[0] == obj
@@ -276,7 +276,7 @@ class Test_rpc(unittest.TestCase):
         try:
             c.call("err", [obj])
             raise Exception("unexpected")
-        except rpc.RPCError, e:
+        except rpc.RPCError as e:
             assert e.get_value() == obj
 
     def test_0_call_error_notification(self):
@@ -291,7 +291,7 @@ class Test_rpc(unittest.TestCase):
         try:
             c.call("err", [obj])
             raise Exception("unexpected")
-        except rpc.RPCError, e:
+        except rpc.RPCError as e:
             assert e.get_value() == obj
         assert len(l) == 1
         n = l.pop(0)
@@ -355,14 +355,14 @@ class Test_rpc(unittest.TestCase):
                 assert done.issubset(s)
                 s -= done
                 r = e.get_request()
-                if not r is None:
+                if r is not None:
                     msgid, method, params = r
                     assert method == "ourcallback"
                     omsgid, n, cb, v = params
                     assert omsgid in s
                     assert cb == "ourcallback"
                     assert n > 0
-                    e.send_response(msgid, result=[omsgid, n-1, cb, v+1])
+                    e.send_response(msgid, result=[omsgid, n - 1, cb, v + 1])
             assert sum == (1 + num_calls) * num_calls / 2
         finally:
             self._client_sock.setblocking(old_blocking)

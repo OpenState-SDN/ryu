@@ -70,14 +70,14 @@ VRRP v3 packet format
 import struct
 
 from ryu.lib.packet import ethernet
+from ryu.lib.packet import ether_types as ether
+from ryu.lib.packet import in_proto as inet
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import packet
 from ryu.lib.packet import packet_base
 from ryu.lib.packet import packet_utils
 from ryu.lib.packet import vlan
-from ryu.ofproto import ether
-from ryu.ofproto import inet
 from ryu.lib import addrconv
 
 
@@ -275,12 +275,12 @@ class vrrp(packet_base.PacketBase):
 
         self.checksum = checksum
         self.ip_addresses = ip_addresses
-        assert len(ip_addresses) == self.count_ip
+        assert len(list(ip_addresses)) == self.count_ip
 
         self.auth_type = auth_type
         self.auth_data = auth_data
 
-        self._is_ipv6 = is_ipv6(self.ip_addresses[0])
+        self._is_ipv6 = is_ipv6(list(self.ip_addresses)[0])
         self.identification = 0         # used for ipv4 identification
 
     def checksum_ok(self, ipvx, vrrp_buf):

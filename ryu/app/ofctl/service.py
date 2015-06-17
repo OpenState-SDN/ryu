@@ -16,6 +16,8 @@
 
 # ofctl service
 
+import numbers
+
 from ryu.base import app_manager
 
 from ryu.controller import ofp_event
@@ -47,7 +49,7 @@ class OfctlService(app_manager.RyuApp):
         ev_cls = ofp_event.ofp_msg_to_ev_cls(msg_cls)
         self._observing_events.setdefault(ev_cls, 0)
         if self._observing_events[ev_cls] == 0:
-            self.logger.debug('ofctl: start observing %s' % (ev_cls,))
+            self.logger.debug('ofctl: start observing %s', ev_cls)
             self.register_handler(ev_cls, self._handle_reply)
             self.observe_event(ev_cls)
         self._observing_events[ev_cls] += 1
@@ -60,7 +62,7 @@ class OfctlService(app_manager.RyuApp):
         if self._observing_events[ev_cls] == 0:
             self.unregister_handler(ev_cls, self._handle_reply)
             self.unobserve_event(ev_cls)
-            self.logger.debug('ofctl: stop observing %s' % (ev_cls,))
+            self.logger.debug('ofctl: stop observing %s', ev_cls)
 
     @staticmethod
     def _is_error(msg):
@@ -71,18 +73,18 @@ class OfctlService(app_manager.RyuApp):
     def _switch_features_handler(self, ev):
         datapath = ev.msg.datapath
         id = datapath.id
-        assert isinstance(id, (int, long))
+        assert isinstance(id, numbers.Integral)
         old_info = self._switches.get(id, None)
         new_info = _SwitchInfo(datapath=datapath)
-        self.logger.debug('add dpid %s datapath %s new_info %s old_info %s' %
-                          (id, datapath, new_info, old_info))
+        self.logger.debug('add dpid %s datapath %s new_info %s old_info %s',
+                          id, datapath, new_info, old_info)
         self._switches[id] = new_info
 
     @set_ev_cls(ofp_event.EventOFPStateChange, DEAD_DISPATCHER)
     def _handle_dead(self, ev):
         datapath = ev.datapath
         id = datapath.id
-        self.logger.debug('del dpid %s datapath %s' % (id, datapath))
+        self.logger.debug('del dpid %s datapath %s', id, datapath)
         if id is None:
             return
         try:
@@ -90,38 +92,46 @@ class OfctlService(app_manager.RyuApp):
         except KeyError:
             return
         if info.datapath is datapath:
-            self.logger.debug('forget info %s' % (info,))
+            self.logger.debug('forget info %s', info)
             self._switches.pop(id)
 
     @set_ev_cls(event.GetDatapathRequest, MAIN_DISPATCHER)
     def _handle_get_datapath(self, req):
         id = req.dpid
-        assert isinstance(id, (int, long))
+        assert isinstance(id, numbers.Integral)
         try:
             datapath = self._switches[id].datapath
         except KeyError:
             datapath = None
-        self.logger.debug('dpid %s -> datapath %s' % (id, datapath))
+        self.logger.debug('dpid %s -> datapath %s', id, datapath)
         rep = event.Reply(result=datapath)
         self.reply_to_request(req, rep)
 
     @set_ev_cls(event.SendMsgRequest, MAIN_DISPATCHER)
     def _handle_send_msg(self, req):
-        if not req.reply_cls is None:
-            self._observe_msg(req.reply_cls)
-
         msg = req.msg
         datapath = msg.datapath
+
+        try:
+            si = self._switches[datapath.id]
+        except KeyError:
+            self.logger.error('unknown dpid %s' % (datapath.id,))
+            rep = event.Reply(exception=exception.
+                              InvalidDatapath(result=datapath.id))
+            self.reply_to_request(req, rep)
+            return
+
+        if req.reply_cls is not None:
+            self._observe_msg(req.reply_cls)
+
         datapath.set_xid(msg)
         xid = msg.xid
         barrier = datapath.ofproto_parser.OFPBarrierRequest(datapath)
         datapath.set_xid(barrier)
         barrier_xid = barrier.xid
-
-        si = self._switches[datapath.id]
-        assert not xid in si.results
-        assert not xid in si.xids
-        assert not barrier_xid in si.barriers
+        assert xid not in si.results
+        assert xid not in si.xids
+        assert barrier_xid not in si.barriers
         si.results[xid] = []
         si.xids[xid] = req
         si.barriers[barrier_xid] = xid
@@ -136,16 +146,16 @@ class OfctlService(app_manager.RyuApp):
         try:
             si = self._switches[datapath.id]
         except KeyError:
-            self.logger.error('unknown dpid %s' % (datapath.id,))
+            self.logger.error('unknown dpid %s', datapath.id)
             return
         try:
             xid = si.barriers.pop(msg.xid)
         except KeyError:
-            self.logger.error('unknown barrier xid %s' % (msg.xid,))
+            self.logger.error('unknown barrier xid %s', msg.xid)
             return
         result = si.results.pop(xid)
         req = si.xids.pop(xid)
-        if not req.reply_cls is None:
+        if req.reply_cls is not None:
             self._unobserve_msg(req.reply_cls)
         if any(self._is_error(r) for r in result):
             rep = event.Reply(exception=exception.OFError(result=result))
@@ -167,19 +177,18 @@ class OfctlService(app_manager.RyuApp):
         try:
             si = self._switches[datapath.id]
         except KeyError:
-            self.logger.error('unknown dpid %s' % (datapath.id,))
+            self.logger.error('unknown dpid %s', datapath.id)
             return
         try:
             req = si.xids[msg.xid]
         except KeyError:
-            self.logger.error('unknown error xid %s' % (msg.xid,))
+            self.logger.error('unknown error xid %s', msg.xid)
             return
         if ((not isinstance(ev, ofp_event.EventOFPErrorMsg)) and
            (req.reply_cls is None or not isinstance(ev.msg, req.reply_cls))):
-            self.logger.error('unexpected reply %s for xid %s' %
-                              (ev, msg.xid,))
+            self.logger.error('unexpected reply %s for xid %s', ev, msg.xid)
             return
         try:
             si.results[msg.xid].append(ev.msg)
         except KeyError:
-            self.logger.error('unknown error xid %s' % (msg.xid,))
+            self.logger.error('unknown error xid %s', msg.xid)

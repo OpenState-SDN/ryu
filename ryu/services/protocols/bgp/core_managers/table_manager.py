@@ -1,10 +1,13 @@
 import logging
+import netaddr
 from collections import OrderedDict
 
 from ryu.services.protocols.bgp.base import SUPPORTED_GLOBAL_RF
 from ryu.services.protocols.bgp.info_base.rtc import RtcTable
 from ryu.services.protocols.bgp.info_base.ipv4 import Ipv4Path
 from ryu.services.protocols.bgp.info_base.ipv4 import Ipv4Table
+from ryu.services.protocols.bgp.info_base.ipv6 import Ipv6Path
+from ryu.services.protocols.bgp.info_base.ipv6 import Ipv6Table
 from ryu.services.protocols.bgp.info_base.vpnv4 import Vpnv4Path
 from ryu.services.protocols.bgp.info_base.vpnv4 import Vpnv4Table
 from ryu.services.protocols.bgp.info_base.vpnv6 import Vpnv6Path
@@ -20,7 +23,6 @@ from ryu.lib.packet.bgp import RF_IPv6_UC
 from ryu.lib.packet.bgp import RF_IPv4_VPN
 from ryu.lib.packet.bgp import RF_IPv6_VPN
 from ryu.lib.packet.bgp import RF_RTC_UC
-from ryu.lib.packet.bgp import BGPPathAttributeNextHop
 from ryu.lib.packet.bgp import BGPPathAttributeOrigin
 from ryu.lib.packet.bgp import BGPPathAttributeAsPath
 from ryu.lib.packet.bgp import BGP_ATTR_TYPE_ORIGIN
@@ -89,7 +91,7 @@ class TableCoreManager(object):
                 vpn_clone = best_path.clone_to_vpn(vrf_conf.route_dist,
                                                    for_withdrawal=True)
                 self.learn_path(vpn_clone)
-        LOG.debug('VRF with RD %s marked for removal' % vrf_conf.route_dist)
+        LOG.debug('VRF with RD %s marked for removal', vrf_conf.route_dist)
 
     def import_all_vpn_paths_to_vrf(self, vrf_table, import_rts=None):
         """Imports Vpnv4/6 paths from Global/VPN table into given Vrfv4/6
@@ -165,7 +167,8 @@ class TableCoreManager(object):
         global_table = None
         if route_family == RF_IPv4_UC:
             global_table = self.get_ipv4_table()
-
+        elif route_family == RF_IPv6_UC:
+            global_table = self.get_ipv6_table()
         elif route_family == RF_IPv4_VPN:
             global_table = self.get_vpn4_table()
 
@@ -205,6 +208,14 @@ class TableCoreManager(object):
             self._tables[(None, RF_IPv4_UC)] = vpn_table
 
         return vpn_table
+
+    def get_ipv6_table(self):
+        table = self._global_tables.get(RF_IPv6_UC)
+        if not table:
+            table = Ipv6Table(self._core_service, self._signal_bus)
+            self._global_tables[RF_IPv6_UC] = table
+            self._tables[(None, RF_IPv6_UC)] = table
+        return table
 
     def get_vpn6_table(self):
         """Returns global VPNv6 table.
@@ -291,8 +302,8 @@ class TableCoreManager(object):
                         path.nexthop,
                         gen_lbl=True
                     )
-        LOG.debug('Re-installed NC paths with current policy for table %s.' %
-                  str(vrf_table))
+        LOG.debug('Re-installed NC paths with current policy for table %s.',
+                  vrf_table)
 
     def _remove_links_to_vrf_table(self, vrf_table):
         """Removes any links to given `vrf_table`."""
@@ -314,7 +325,7 @@ class TableCoreManager(object):
                     rt_specific_tables.remove(vrf_table)
                 except KeyError:
                     LOG.debug('Did not find table listed as interested '
-                              'for its import RT: %s' % rt)
+                              'for its import RT: %s', rt)
                 if len(rt_specific_tables) == 0:
                     rts_with_no_table.add(rt)
 
@@ -350,8 +361,8 @@ class TableCoreManager(object):
             self._tables[table_id] = vrf_table
 
         assert vrf_table is not None
-        LOG.debug('Added new VrfTable with rd: %s and add_fmly: %s' %
-                  (vrf_conf.route_dist, route_family))
+        LOG.debug('Added new VrfTable with rd: %s and add_fmly: %s',
+                  vrf_conf.route_dist, route_family)
 
         import_rts = vrf_conf.import_rts
         # If VRF is configured with import RT, we put this table
@@ -370,8 +381,8 @@ class TableCoreManager(object):
                 table_set = set()
                 self._tables_for_rt[rt_rf_id] = table_set
             table_set.add(vrf_table)
-            LOG.debug('Added VrfTable %s to import RT table list: %s' %
-                      (vrf_table, rt))
+            LOG.debug('Added VrfTable %s to import RT table list: %s',
+                      vrf_table, rt)
 
     def _clean_global_uninteresting_paths(self):
         """Marks paths that do not have any route targets of interest
@@ -387,9 +398,9 @@ class TableCoreManager(object):
         """
         uninteresting_dest_count = 0
         interested_rts = self._rt_mgr.global_interested_rts
-        LOG.debug('Cleaning uninteresting paths. Global interested RTs %s' %
+        LOG.debug('Cleaning uninteresting paths. Global interested RTs %s',
                   interested_rts)
-        for route_family in SUPPORTED_GLOBAL_RF:
+        for route_family in [RF_IPv4_VPN, RF_IPv6_VPN, RF_RTC_UC]:
             # TODO(PH): We currently do not install RT_NLRI paths based on
             # extended path attributes (RT)
             if route_family == RF_RTC_UC:
@@ -398,8 +409,8 @@ class TableCoreManager(object):
             uninteresting_dest_count += \
                 table.clean_uninteresting_paths(interested_rts)
 
-        LOG.debug('Found %s number of destinations had uninteresting paths.' %
-                  str(uninteresting_dest_count))
+        LOG.debug('Found %s number of destinations had uninteresting paths.',
+                  uninteresting_dest_count)
 
     def import_single_vpn_path_to_all_vrfs(self, vpn_path, path_rts=None):
         """Imports *vpnv4_path* to qualifying VRF tables.
@@ -409,11 +420,11 @@ class TableCoreManager(object):
         """
         assert (vpn_path.route_family in
                 (Vpnv4Path.ROUTE_FAMILY, Vpnv6Path.ROUTE_FAMILY))
-        LOG.debug('Importing path %s to qualifying VRFs' % vpn_path)
+        LOG.debug('Importing path %s to qualifying VRFs', vpn_path)
 
         # If this path has no RTs we are done.
         if not path_rts:
-            LOG.info('Encountered a path with no RTs: %s' % vpn_path)
+            LOG.info('Encountered a path with no RTs: %s', vpn_path)
             return
 
         # We match path RTs with all VRFs that are interested in them.
@@ -432,10 +443,10 @@ class TableCoreManager(object):
         if interested_tables:
             # We iterate over all VRF tables that are interested in the RT
             # of the given path and import this path into them.
-            route_disc = vpn_path.nlri.route_disc
+            route_dist = vpn_path.nlri.route_dist
             for vrf_table in interested_tables:
                 if not (vpn_path.source is None
-                        and route_disc == vrf_table.vrf_conf.route_dist):
+                        and route_dist == vrf_table.vrf_conf.route_dist):
                     update_vrf_dest = vrf_table.import_vpn_path(vpn_path)
                     # Queue the destination for further processing.
                     if update_vrf_dest is not None:
@@ -443,7 +454,7 @@ class TableCoreManager(object):
                             dest_changed(update_vrf_dest)
         else:
             # If we do not have any VRF with import RT that match with path RT
-            LOG.debug('No VRF table found that imports RTs: %s' % path_rts)
+            LOG.debug('No VRF table found that imports RTs: %s', path_rts)
 
     def add_to_vrf(self, route_dist, prefix, next_hop, route_family):
         """Adds `prefix` to VRF identified by `route_dist` with given
@@ -478,18 +489,17 @@ class TableCoreManager(object):
                 raise BgpCoreError(desc='Invalid Ipv6 prefix or nexthop.')
             ip6, masklen = prefix.split('/')
             prefix = IP6AddrPrefix(int(masklen), ip6)
+
         return vrf_table.insert_vrf_path(
             prefix, next_hop=next_hop,
             gen_lbl=True
         )
 
-    def add_to_ipv4_global_table(self, prefix):
-        ip, masklen = prefix.split('/')
-        _nlri = IPAddrPrefix(int(masklen), ip)
+    def add_to_global_table(self, prefix, nexthop=None,
+                            is_withdraw=False):
         src_ver_num = 1
         peer = None
         # set mandatory path attributes
-        nexthop = BGPPathAttributeNextHop("0.0.0.0")
         origin = BGPPathAttributeOrigin(BGP_ATTR_ORIGIN_IGP)
         aspath = BGPPathAttributeAsPath([[]])
 
@@ -497,8 +507,24 @@ class TableCoreManager(object):
         pathattrs[BGP_ATTR_TYPE_ORIGIN] = origin
         pathattrs[BGP_ATTR_TYPE_AS_PATH] = aspath
 
-        new_path = Ipv4Path(peer, _nlri, src_ver_num,
-                            pattrs=pathattrs, nexthop=nexthop)
+        net = netaddr.IPNetwork(prefix)
+        ip = str(net.ip)
+        masklen = net.prefixlen
+        if netaddr.valid_ipv4(ip):
+            _nlri = IPAddrPrefix(masklen, ip)
+            if nexthop is None:
+                nexthop = '0.0.0.0'
+            p = Ipv4Path
+        else:
+            _nlri = IP6AddrPrefix(masklen, ip)
+            if nexthop is None:
+                nexthop = '::'
+            p = Ipv6Path
+
+        new_path = p(peer, _nlri, src_ver_num,
+                     pattrs=pathattrs, nexthop=nexthop,
+                     is_withdraw=is_withdraw)
+
         # add to global ipv4 table and propagates to neighbors
         self.learn_path(new_path)
 
@@ -534,7 +560,7 @@ class TableCoreManager(object):
                 raise BgpCoreError(desc='Vrf for route distinguisher %s does '
                                         'not exist.' % route_dist)
             ip6, masklen = prefix.split('/')
-            prefix = IP6AddrPrefix(int(masklen), ip)
+            prefix = IP6AddrPrefix(int(masklen), ip6)
             # We do not check if we have a path to given prefix, we issue
         # withdrawal. Hence multiple withdrawals have not side effect.
         return vrf_table.insert_vrf_path(prefix, is_withdraw=True)

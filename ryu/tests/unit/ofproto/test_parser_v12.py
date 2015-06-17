@@ -20,7 +20,6 @@ import logging
 import socket
 from struct import *
 from nose.tools import *
-from nose.plugins.skip import Skip, SkipTest
 from ryu.ofproto.ofproto_v1_2_parser import *
 from ryu.ofproto import ofproto_v1_2_parser
 from ryu.ofproto import ofproto_v1_2
@@ -29,6 +28,7 @@ from ryu.ofproto import ether
 from ryu.ofproto.ofproto_parser import MsgBase
 from ryu import utils
 from ryu.lib import addrconv
+from ryu.lib import pack_utils
 
 LOG = logging.getLogger('test_ofproto_v12')
 
@@ -83,7 +83,7 @@ class TestMsgParser(unittest.TestCase):
         msg_type = ofproto.OFPT_HELLO
 
         fmt = ofproto.OFP_HEADER_PACK_STR
-        buf = pack(fmt, version,  msg_type, msg_len, xid)
+        buf = pack(fmt, version, msg_type, msg_len, xid)
 
         c = msg_parser(_Datapath, version, msg_type, msg_len, xid, buf)
 
@@ -742,7 +742,7 @@ class TestOFPErrorMsg(unittest.TestCase):
 
     def test_parser_p10_2(self):
         type_ = ofproto.OFPET_SWITCH_CONFIG_FAILED
-        code = ofproto.OFPQCFC_EPERM
+        code = ofproto.OFPSCFC_EPERM
         data = 'Error Message.'
         self._test_parser(type_, code, data)
 
@@ -1196,7 +1196,7 @@ class TestOFPErrorMsg(unittest.TestCase):
 
     def test_serialize_p10_2(self):
         self._test_serialize_p(ofproto.OFPET_SWITCH_CONFIG_FAILED,
-                               ofproto.OFPQCFC_EPERM)
+                               ofproto.OFPSCFC_EPERM)
 
     def test_serialize_p11_0(self):
         self._test_serialize_p(ofproto.OFPET_ROLE_REQUEST_FAILED,
@@ -1454,7 +1454,7 @@ class TestOFPExperimenter(unittest.TestCase):
         msg_len = ofproto.OFP_EXPERIMENTER_HEADER_SIZE
 
         fmt = ofproto.OFP_HEADER_PACK_STR
-        buf = pack(fmt, version,  msg_type, msg_len, xid)
+        buf = pack(fmt, version, msg_type, msg_len, xid)
 
         # OFP_EXPERIMENTER_HEADER_PACK_STR
         # '!II'...experimenter, exp_type
@@ -6505,7 +6505,7 @@ class TestOFPRoleReply(unittest.TestCase):
 
     # OFP_ROLE_REQUEST_PACK_STR
     # '!I4xQ'...role, pad(4), generation_id
-    #role = ofproto.OFPCR_ROLE_NOCHANGE
+    # role = ofproto.OFPCR_ROLE_NOCHANGE
     role = 2147483648
     generation_id = 1270985291017894273
 
@@ -6673,12 +6673,11 @@ class TestOFPMatch(unittest.TestCase):
 
     def test_parse_unknown_field(self):
         buf = bytearray()
-        ofproto_parser.msg_pack_into('!HH', buf, 0, ofproto.OFPMT_OXM,
-                                     4 + 6)
+        pack_utils.msg_pack_into('!HH', buf, 0, ofproto.OFPMT_OXM, 4 + 6)
         header = ofproto.oxm_tlv_header(36, 2)
-        ofproto_parser.msg_pack_into('!IH', buf, 4, header, 1)
+        pack_utils.msg_pack_into('!IH', buf, 4, header, 1)
         header = ofproto.OXM_OF_ETH_TYPE
-        ofproto_v1_2_parser.msg_pack_into('!IH', buf, 10, header, 1)
+        pack_utils.msg_pack_into('!IH', buf, 10, header, 1)
 
         match = OFPMatch()
         res = match.parser(str(buf), 0)
@@ -6853,6 +6852,40 @@ class TestOFPMatch(unittest.TestCase):
             match.set_vlan_vid_masked(vid, mask)
         self._test_serialize_and_parser(match, header, vid, mask)
 
+    def _test_set_vlan_vid_none(self):
+        header = ofproto.OXM_OF_VLAN_VID
+        match = OFPMatch()
+        match.set_vlan_vid_none()
+        value = ofproto.OFPVID_NONE
+        cls_ = OFPMatchField._FIELDS_HEADERS.get(header)
+        pack_str = cls_.pack_str.replace('!', '')
+        fmt = '!HHI' + pack_str
+
+        # serialize
+        buf = bytearray()
+        length = match.serialize(buf, 0)
+        eq_(length, len(buf))
+
+        res = list(unpack_from(fmt, str(buf), 0)[3:])
+        res_value = res.pop(0)
+        eq_(res_value, value)
+
+        # parser
+        res = match.parser(str(buf), 0)
+        eq_(res.type, ofproto.OFPMT_OXM)
+        eq_(res.fields[0].header, header)
+        eq_(res.fields[0].value, value)
+
+        # to_jsondict
+        jsondict = match.to_jsondict()
+
+        # from_jsondict
+        match2 = match.from_jsondict(jsondict["OFPMatch"])
+        buf2 = bytearray()
+        match2.serialize(buf2, 0)
+        eq_(str(match), str(match2))
+        eq_(buf, buf2)
+
     def test_set_vlan_vid_mid(self):
         self._test_set_vlan_vid(2047)
 
@@ -6870,6 +6903,9 @@ class TestOFPMatch(unittest.TestCase):
 
     def test_set_vlan_vid_masked_min(self):
         self._test_set_vlan_vid(2047, 0)
+
+    def test_set_vlan_vid_none(self):
+        self._test_set_vlan_vid_none()
 
     # set_vlan_pcp
     def _test_set_vlan_pcp(self, pcp):
