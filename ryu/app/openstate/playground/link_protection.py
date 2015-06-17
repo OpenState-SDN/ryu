@@ -20,18 +20,20 @@ from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import MAIN_DISPATCHER, CONFIG_DISPATCHER, HANDSHAKE_DISPATCHER
 from ryu.controller.handler import set_ev_cls
-from ryu.ofproto import ofproto_v1_3
+import ryu.ofproto.ofproto_v1_3 as ofp
+import ryu.ofproto.ofproto_v1_3_parser as ofparser
+import ryu.ofproto.openstate_v1_0 as osp
+import ryu.ofproto.openstate_v1_0_parser as osparser
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.topology import event
 import time
 
-
 LOG = logging.getLogger('app.openstate.masked_match')
 
 
 class OSLinkProtection(app_manager.RyuApp):
-    OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
+    OFP_VERSIONS = [ofp.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
         super(OSLinkProtection, self).__init__(*args, **kwargs)
@@ -41,7 +43,7 @@ class OSLinkProtection(app_manager.RyuApp):
     def switch_features_handler(self, ev):
         msg = ev.msg
         datapath = msg.datapath
-        ofproto = datapath.ofproto
+        
         self.send_features_request(datapath)
         self.add_flow(datapath)
 
@@ -55,110 +57,103 @@ class OSLinkProtection(app_manager.RyuApp):
 
 
     def add_flow(self, datapath, table_miss=False):
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-           
-        match = parser.OFPMatch(in_port=1,eth_type=0x800,flags=parser.maskedflags("0"))
+        match = ofparser.OFPMatch(in_port=1,eth_type=0x800,flags=osparser.maskedflags("0"))
         actions = [
-            parser.OFPActionOutput(2,0)]
-        inst = [parser.OFPInstructionActions(
-            datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        mod = parser.OFPFlowMod(
+            ofparser.OFPActionOutput(2,0)]
+        inst = [ofparser.OFPInstructionActions(
+            ofp.OFPIT_APPLY_ACTIONS, actions)]
+        mod = ofparser.OFPFlowMod(
             datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
-            priority=32760, buffer_id=ofproto.OFP_NO_BUFFER,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
+            command=ofp.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+            priority=32760, buffer_id=ofp.OFP_NO_BUFFER,
+            out_port=ofp.OFPP_ANY,
+            out_group=ofp.OFPG_ANY,
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
         
-        match = parser.OFPMatch(in_port=1,eth_type=0x800,flags=parser.maskedflags("1"))
+        match = ofparser.OFPMatch(in_port=1,eth_type=0x800,flags=osparser.maskedflags("1"))
         actions = [
-            parser.OFPActionOutput(3,0)]
-        inst = [parser.OFPInstructionActions(
-            datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        mod = parser.OFPFlowMod(
+            ofparser.OFPActionOutput(3,0)]
+        inst = [ofparser.OFPInstructionActions(
+            ofp.OFPIT_APPLY_ACTIONS, actions)]
+        mod = ofparser.OFPFlowMod(
             datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
-            priority=32760, buffer_id=ofproto.OFP_NO_BUFFER,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
+            command=ofp.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+            priority=32760, buffer_id=ofp.OFP_NO_BUFFER,
+            out_port=ofp.OFPP_ANY,
+            out_group=ofp.OFPG_ANY,
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
         
-        match = parser.OFPMatch(in_port=2,eth_type=0x0800,ip_proto=6, tcp_dst=33333)
-        (flag, flag_mask) = parser.maskedflags("1")
+        match = ofparser.OFPMatch(in_port=2,eth_type=0x0800,ip_proto=6, tcp_dst=33333)
+        (flag, flag_mask) = osparser.maskedflags("1")
         actions = [
-            parser.OFPExpActionSetFlag(flag, flag_mask)]
-        inst = [parser.OFPInstructionActions(
-            datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        mod = parser.OFPFlowMod(
+            osparser.OFPExpActionSetFlag(flag, flag_mask)]
+        inst = [ofparser.OFPInstructionActions(
+            ofp.OFPIT_APPLY_ACTIONS, actions)]
+        mod = ofparser.OFPFlowMod(
             datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
-            priority=32760, buffer_id=ofproto.OFP_NO_BUFFER,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
+            command=ofp.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+            priority=32760, buffer_id=ofp.OFP_NO_BUFFER,
+            out_port=ofp.OFPP_ANY,
+            out_group=ofp.OFPG_ANY,
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
 
-        match = parser.OFPMatch(in_port=3,eth_type=0x0800,ip_proto=6, tcp_dst=22222)
-        (flag, flag_mask) = parser.maskedflags("0")
+        match = ofparser.OFPMatch(in_port=3,eth_type=0x0800,ip_proto=6, tcp_dst=22222)
+        (flag, flag_mask) = osparser.maskedflags("0")
         actions = [
-            parser.OFPExpActionSetFlag(flag, flag_mask)]
-        inst = [parser.OFPInstructionActions(
-            datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        mod = parser.OFPFlowMod(
+            osparser.OFPExpActionSetFlag(flag, flag_mask)]
+        inst = [ofparser.OFPInstructionActions(
+            ofp.OFPIT_APPLY_ACTIONS, actions)]
+        mod = ofparser.OFPFlowMod(
             datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
-            priority=32760, buffer_id=ofproto.OFP_NO_BUFFER,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
+            command=ofp.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+            priority=32760, buffer_id=ofp.OFP_NO_BUFFER,
+            out_port=ofp.OFPP_ANY,
+            out_group=ofp.OFPG_ANY,
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
 
-        match = parser.OFPMatch(in_port=2,eth_type=0x800)
+        match = ofparser.OFPMatch(in_port=2,eth_type=0x800)
         actions = [
-            parser.OFPActionOutput(1,0)]
-        inst = [parser.OFPInstructionActions(
-            datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        mod = parser.OFPFlowMod(
+            ofparser.OFPActionOutput(1,0)]
+        inst = [ofparser.OFPInstructionActions(
+            ofp.OFPIT_APPLY_ACTIONS, actions)]
+        mod = ofparser.OFPFlowMod(
             datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
-            priority=32760, buffer_id=ofproto.OFP_NO_BUFFER,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
+            command=ofp.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+            priority=32760, buffer_id=ofp.OFP_NO_BUFFER,
+            out_port=ofp.OFPP_ANY,
+            out_group=ofp.OFPG_ANY,
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
 
-        match = parser.OFPMatch(in_port=3,eth_type=0x800)
+        match = ofparser.OFPMatch(in_port=3,eth_type=0x800)
         actions = [
-            parser.OFPActionOutput(1,0)]
-        inst = [parser.OFPInstructionActions(
-            datapath.ofproto.OFPIT_APPLY_ACTIONS, actions)]
-        mod = parser.OFPFlowMod(
+            ofparser.OFPActionOutput(1,0)]
+        inst = [ofparser.OFPInstructionActions(
+            ofp.OFPIT_APPLY_ACTIONS, actions)]
+        mod = ofparser.OFPFlowMod(
             datapath=datapath, cookie=0, cookie_mask=0, table_id=0,
-            command=ofproto.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
-            priority=32760, buffer_id=ofproto.OFP_NO_BUFFER,
-            out_port=ofproto.OFPP_ANY,
-            out_group=ofproto.OFPG_ANY,
+            command=ofp.OFPFC_ADD, idle_timeout=0, hard_timeout=0,
+            priority=32760, buffer_id=ofp.OFP_NO_BUFFER,
+            out_port=ofp.OFPP_ANY,
+            out_group=ofp.OFPG_ANY,
             flags=0, match=match, instructions=inst)
         datapath.send_msg(mod)
 
     def send_features_request(self, datapath):
-        ofp_parser = datapath.ofproto_parser
-        req = ofp_parser.OFPFeaturesRequest(datapath)
+        req = ofparser.OFPFeaturesRequest(datapath)
         datapath.send_msg(req)
 
     def send_reset_flag_mod(self, datapath):
-        ofproto = datapath.ofproto
-        msg = datapath.ofproto_parser.OFPExpSetGlobalState(
-            datapath, ofproto.OFPSC_RESET_FLAGS)
+        msg = osparser.OFPExpSetGlobalState(
+            datapath, ofp.OFPSC_RESET_FLAGS)
         datapath.send_msg(msg)
 
     def send_modify_flag_mod(self, datapath, flags_string, offset_value=0):
-        ofproto = datapath.ofproto
-        ofp_parser = datapath.ofproto_parser
-        (flag, flag_mask) = ofp_parser.maskedflags(flags_string,offset_value)
-        msg = datapath.ofproto_parser.OFPExpSetGlobalState(
+        (flag, flag_mask) = osparser.maskedflags(flags_string,offset_value)
+        msg = osparser.OFPExpSetGlobalState(
             datapath, flag, flag_mask)
         datapath.send_msg(msg)
