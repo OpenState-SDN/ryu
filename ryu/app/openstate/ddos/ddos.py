@@ -37,21 +37,21 @@ class OSDDoS(app_manager.RyuApp):
 		
 		for table in range(0,2):
 			""" Set tables as stateful """
-			req = parser.OFPExpMsgConfigureStatefulTable(datapath=datapath, 
+			req = osparser.OFPExpMsgConfigureStatefulTable(datapath=datapath, 
 					table_id=table, 
 					stateful=1)
 			datapath.send_msg(req)
 
 			""" Set lookup extractor = {ip_src, ip_dst, tcp_src, tcp_dst} """
-			req = parser.OFPExpMsgKeyExtract(datapath=datapath, 									
-					command=ofp.OFPSC_EXP_SET_L_EXTRACTOR, 
+			req = osparser.OFPExpMsgKeyExtract(datapath=datapath, 									
+					command=osp.OFPSC_EXP_SET_L_EXTRACTOR, 
 					fields=[ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST], 
 					table_id=table)
 			datapath.send_msg(req)
 
 			""" Set update extractor = {ip_src, ip_dst, tcp_src, tcp_dst} (same as lookup) """
-			req = parser.OFPExpMsgKeyExtract(datapath=datapath, 
-					command=ofp.OFPSC_EXP_SET_U_EXTRACTOR, 
+			req = osparser.OFPExpMsgKeyExtract(datapath=datapath, 
+					command=osp.OFPSC_EXP_SET_U_EXTRACTOR, 
 					fields=[ofp.OXM_OF_IPV4_SRC,ofp.OXM_OF_IPV4_DST,ofp.OXM_OF_TCP_SRC,ofp.OXM_OF_TCP_DST],
 					table_id=table)
 			datapath.send_msg(req)
@@ -63,11 +63,11 @@ class OSDDoS(app_manager.RyuApp):
 		datapath.send_msg(req)
 
 		""" Table 0 """
-		match = parser.OFPMatch(eth_type=0x0800,ipv4_dst="10.0.0.2",state=0)
-		actions = [parser.OFPExpActionSetState(state=1, table_id=0, idle_timeout=30)]
-		inst = [parser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, actions), parser.OFPInstructionMeter(meter_id=1),
-				parser.OFPInstructionGotoTable(table_id=1)]
-		mod = parser.OFPFlowMod(datapath=datapath, table_id=0,
+		match = ofparser.OFPMatch(eth_type=0x0800,ipv4_dst="10.0.0.2",state=0)
+		actions = [osparser.OFPExpActionSetState(state=1, table_id=0, idle_timeout=30)]
+		inst = [ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, actions), ofparser.OFPInstructionMeter(meter_id=1),
+				ofparser.OFPInstructionGotoTable(table_id=1)]
+		mod = ofparser.OFPFlowMod(datapath=datapath, table_id=0,
 								priority=10, match=match, instructions=inst)
 		datapath.send_msg(mod)
 
@@ -92,10 +92,10 @@ class OSDDoS(app_manager.RyuApp):
 								priority=10, match=match, instructions=inst)
 		datapath.send_msg(mod)
 
-		match = parser.OFPMatch(eth_type=0x0800,ipv4_dst="10.0.0.2",ip_dscp=12)
-		actions = [parser.OFPExpActionSetState(state=1, table_id=1, idle_timeout=30)]
-		inst = [parser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, actions)]
-		mod = parser.OFPFlowMod(datapath=datapath, table_id=1,
+		match = ofparser.OFPMatch(eth_type=0x0800,ipv4_dst="10.0.0.2",ip_dscp=12)
+		actions = [osparser.OFPExpActionSetState(state=1, table_id=1, idle_timeout=30)]
+		inst = [ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, actions)]
+		mod = ofparser.OFPFlowMod(datapath=datapath, table_id=1,
 								priority=10, match=match, instructions=inst)
 		datapath.send_msg(mod)
 
