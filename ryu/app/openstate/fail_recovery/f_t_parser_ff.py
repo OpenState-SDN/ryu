@@ -432,8 +432,10 @@ def generate_flow_entries_dict(GUI=False):
     for i in range(len(net.hosts)):
         host_name = str(net.hosts[i])
         host_number = host_name[1:]
-        net.hosts[i].setMAC("00:00:00:00:00:"+'%0.2x' % int(host_number),'h'+host_number+'-eth0')
-        net.hosts[i].setIP("10.0.0."+host_number,8,'h'+host_number+'-eth0')
+        mac_str = int_to_mac_str(int(host_number))
+        ip_str = int_to_ip_str(int(host_number))
+        net.hosts[i].setMAC(mac_str,'h'+host_number+'-eth0')
+        net.hosts[i].setIP(ip_str,8,'h'+host_number+'-eth0')
         #makeTerm(net.hosts[i])
 
     if not GUI:
@@ -496,7 +498,7 @@ def generate_flow_entries_dict(GUI=False):
                 if x == 0: # first node in the primary path
                     flow_entry = dict()
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['h'+str(primary_path[x])],
-                        eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                        eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                         state=0)
                     flow_entry['actions']=[ofparser.OFPActionPushMpls()]
                     flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions']),ofparser.OFPInstructionGotoTable(1),ofparser.OFPInstructionWriteMetadata(16,0xffffffffffffffff)]
@@ -506,7 +508,7 @@ def generate_flow_entries_dict(GUI=False):
 
                     flow_entry = dict()
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['h'+str(primary_path[x])],
-                        eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                        eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                         eth_type=0x8847,metadata=16)
                     flow_entry['actions']=[ofparser.OFPActionSetField(mpls_label=16),
                         ofparser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
@@ -517,7 +519,7 @@ def generate_flow_entries_dict(GUI=False):
                 elif x == len(primary_path)-1: # last node in the primary path
                     flow_entry = dict()
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
-                        eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                        eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                         state=0,eth_type=0x8847)
                     flow_entry['actions']=[ofparser.OFPActionPopMpls(),
                         ofparser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['h'+str(primary_path[x])],0)]
@@ -529,7 +531,7 @@ def generate_flow_entries_dict(GUI=False):
                 else: # intermediate node in the primary path
                     flow_entry = dict()
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
-                        eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                        eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                         state=0,eth_type=0x8847)
                     flow_entry['actions']=[ofparser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
                     flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
@@ -542,7 +544,7 @@ def generate_flow_entries_dict(GUI=False):
                 if x == 0: # first node in the primary path
                     flow_entry = dict()
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['h'+str(primary_path[x])],
-                        eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                        eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                         state=0)
                     flow_entry['actions']=[ofparser.OFPActionPushMpls(),ofparser.OFPActionGroup(group_ID[(request,(primary_path[x],primary_path[x+1]))])]
                     flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
@@ -563,7 +565,7 @@ def generate_flow_entries_dict(GUI=False):
                 else:
                     flow_entry = dict()
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
-                        eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                        eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                         state=0,eth_type=0x8847)
                     flow_entry['actions']=[ofparser.OFPActionGroup(group_ID[(request,(primary_path[x],primary_path[x+1]))])]
                     flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
@@ -598,7 +600,7 @@ def generate_flow_entries_dict(GUI=False):
 
                 flow_entry = dict()
                 flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
-                    eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],eth_type=0x8847, state=0)
+                    eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),eth_type=0x8847, state=0)
                 flow_entry['actions']=[ofparser.OFPActionGroup(group_ID[(request,(primary_path[x],primary_path[x+1]))])]
                 flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                 flow_entry['table_id']=0
@@ -613,7 +615,7 @@ def generate_flow_entries_dict(GUI=False):
                 #REDIRECT ONLY
                 flow_entry = dict()
                 flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
-                    eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],eth_type=0x8847, state=0)
+                    eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),eth_type=0x8847, state=0)
                 flow_entry['actions']=[ofparser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
                 flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                 flow_entry['table_id']=0
@@ -636,7 +638,7 @@ def generate_flow_entries_dict(GUI=False):
 
                 flow_entry = dict()
                 flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(detour[z])]['s'+str(detour[z-1])],
-                    eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                    eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                     eth_type=0x8847, mpls_label=tag)
                 flow_entry['actions']=[ofparser.OFPActionOutput(mn_topo_ports['s'+str(detour[z])]['s'+str(detour[z+1])],0)]
                 flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
@@ -652,7 +654,7 @@ def generate_flow_entries_dict(GUI=False):
             
             flow_entry = dict()
             flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(detour[len(detour)-1])]['s'+str(detour[len(detour)-2])],
-                    eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                    eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                     eth_type=0x8847, mpls_label=tag)
             if l_d_n_index_in_p_p == len(primary_path)-1: # l.d.n. is an edge switch
                 flow_entry['actions']=[ofparser.OFPActionPopMpls(),
@@ -674,7 +676,7 @@ def generate_flow_entries_dict(GUI=False):
                     flow_entry = dict()
                     #print "Installing Forward back path rules in node", fw_back_path[z]
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(fw_back_path[z])]['s'+str(fw_back_path[z + 1])],
-                        eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                        eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                         eth_type=0x8847, mpls_label=tag)
                     flow_entry['actions']=[ofparser.OFPActionOutput(mn_topo_ports['s'+str(fw_back_path[z])]['s'+str(fw_back_path[z - 1])],0)]
                     flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
@@ -696,7 +698,7 @@ def generate_flow_entries_dict(GUI=False):
                 if node_index_in_p_p == 0: # Detect&Redirect node is an edge switch
                     flow_entry = dict()
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['h'+str(redirect_node)],
-                        eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                        eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                         state=tag)
                     flow_entry['actions']=[ofparser.OFPActionPushMpls()]
                     flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions']),
@@ -708,7 +710,7 @@ def generate_flow_entries_dict(GUI=False):
 
                     flow_entry = dict()
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['h'+str(redirect_node)],
-                        eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                        eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                         eth_type=0x8847,metadata=tag)
                     flow_entry['actions']=[ofparser.OFPActionSetField(mpls_label=tag),
                         ofparser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
@@ -719,7 +721,7 @@ def generate_flow_entries_dict(GUI=False):
                 else:
                     flow_entry = dict()
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['s'+str(primary_path[node_index_in_p_p - 1])],
-                        eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],eth_type=0x8847,
+                        eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),eth_type=0x8847,
                         state=tag)
                     flow_entry['actions']=[ofparser.OFPActionSetField(mpls_label=tag),
                         ofparser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
@@ -746,7 +748,7 @@ def generate_flow_entries_dict(GUI=False):
                 #match(SRC_MAC, DST_MAC, in_port, TAG=ID_BROKEN_LINK) -> action(SET_STATE(FAULT_x), OUTPUT(DETOUR_PATH))
                 flow_entry = dict()
                 flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['s'+str(primary_path[node_index_in_p_p+1])],
-                        eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                        eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                         eth_type=0x8847, mpls_label=tag)
                 flow_entry['actions']=[osparser.OFPExpActionSetState(state=tag, table_id=0),
                     ofparser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
@@ -759,7 +761,7 @@ def generate_flow_entries_dict(GUI=False):
                 flow_entry = dict()
                 if node_index_in_p_p == 0: # Redirect only node is an edge switch
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['h'+str(redirect_node)],
-                            eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                            eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                             state=tag)
                     flow_entry['actions']=[ofparser.OFPActionPushMpls()]
                     flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions']),
@@ -771,7 +773,7 @@ def generate_flow_entries_dict(GUI=False):
 
                     flow_entry = dict()
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['h'+str(redirect_node)],
-                            eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                            eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                             metadata=tag,eth_type=0x8847)
                     flow_entry['actions']=[ofparser.OFPActionSetField(mpls_label=tag),
                         ofparser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
@@ -780,7 +782,7 @@ def generate_flow_entries_dict(GUI=False):
                     flow_entries_dict = add_flow_entry(flow_entries_dict,redirect_node,flow_entry)
                 else:
                     flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['s'+str(primary_path[node_index_in_p_p-1])],
-                            eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
+                            eth_src=int_to_mac_str(request[0]),eth_dst=int_to_mac_str(request[1]),
                             eth_type=0x8847,state=tag)
                     flow_entry['actions']=[ofparser.OFPActionSetField(mpls_label=tag),
                         ofparser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
@@ -1113,3 +1115,13 @@ def draw_all():
     draw_requests()
     draw_faults()
     draw_detour_paths()
+
+# returns "xx:xx:xx:xx:xx:xx"
+def int_to_mac_str(host_number):
+    mac_str = "{0:0{1}x}".format(int(host_number),12) # converts to hex with zero pad to 48bit
+    return ':'.join(mac_str[i:i+2] for i in range(0, len(mac_str), 2)) # adds ':'
+
+# returns "10.x.x.x"
+def int_to_ip_str(host_number):
+    ip = (10<<24) + int(host_number)
+    return ".".join(map(lambda n: str(ip>>n & 0xFF), [24,16,8,0]))

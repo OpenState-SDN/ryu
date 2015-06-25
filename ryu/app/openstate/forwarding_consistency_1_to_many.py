@@ -88,8 +88,8 @@ class OSLoadBalancing(app_manager.RyuApp):
         # Action Bucket: <PWD port_i , SetState(i-1)
         for port in range(2,SWITCH_PORTS+1):
             max_len = 2000
-            dest_ip="10.0.0."+str(port)
-            dest_eth="00:00:00:00:00:0"+str(port)
+            dest_ip=self.int_to_ip_str(port)
+            dest_eth=self.int_to_mac_str(port)
             dest_tcp=(port)*100
             actions = [ osparser.OFPExpActionSetState(state=port, table_id=0),
                         ofparser.OFPActionSetField(ipv4_dst=dest_ip),
@@ -119,8 +119,8 @@ class OSLoadBalancing(app_manager.RyuApp):
 
         """ Reverse path flow """
         for in_port in range(2, SWITCH_PORTS + 1):
-            src_ip="10.0.0."+str(in_port)
-            src_eth="00:00:00:00:00:0"+str(in_port)
+            src_ip=self.int_to_ip_str(in_port)
+            src_eth=self.int_to_mac_str(in_port)
             src_tcp=in_port*100
             # we need to match an IPv4 (0x800) TCP (6) packet to do SetField()
             match = ofparser.OFPMatch(in_port=in_port, eth_type=0x800, ip_proto=6, ipv4_src=src_ip,eth_src=src_eth,tcp_src=src_tcp)
@@ -138,8 +138,8 @@ class OSLoadBalancing(app_manager.RyuApp):
                 match=match, actions=actions)
 
         for state in range(2,SWITCH_PORTS+1):
-            dest_ip="10.0.0."+str(state)
-            dest_eth="00:00:00:00:00:0"+str(state)
+            dest_ip=self.int_to_ip_str(state)
+            dest_eth=self.int_to_mac_str(state)
             dest_tcp=(state)*100
             match = ofparser.OFPMatch(in_port=1, state=state, eth_type=0x800, ip_proto=6)
             actions = [ osparser.OFPExpActionSetState(state=state, table_id=0),
@@ -156,3 +156,13 @@ class OSLoadBalancing(app_manager.RyuApp):
         mod = ofparser.OFPFlowMod(datapath=datapath, table_id=table_id,
                                 priority=priority, match=match, instructions=inst)
         datapath.send_msg(mod)
+
+    # returns "xx:xx:xx:xx:xx:xx"
+    def int_to_mac_str(self, host_number):
+        mac_str = "{0:0{1}x}".format(int(host_number),12) # converts to hex with zero pad to 48bit
+        return ':'.join(mac_str[i:i+2] for i in range(0, len(mac_str), 2)) # adds ':'
+
+    # returns "10.x.x.x"
+    def int_to_ip_str(self, host_number):
+        ip = (10<<24) + int(host_number)
+        return ".".join(map(lambda n: str(ip>>n & 0xFF), [24,16,8,0]))
