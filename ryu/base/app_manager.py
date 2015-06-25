@@ -14,13 +14,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+The central management of Ryu applications.
+
+- Load Ryu applications
+- Provide `contexts` to Ryu applications
+- Route messages among Ryu applications
+
+"""
+
 import inspect
 import itertools
 import logging
 import sys
+import os
+import gc
 
 from ryu import cfg
 from ryu import utils
+from ryu.app import wsgi
 from ryu.controller.handler import register_instance, get_dependent_services
 from ryu.controller.controller import Datapath
 from ryu.controller import event
@@ -47,7 +59,7 @@ def _lookup_service_brick_by_mod_name(mod_name):
 
 def register_app(app):
     assert isinstance(app, RyuApp)
-    assert not app.name in SERVICE_BRICKS
+    assert app.name not in SERVICE_BRICKS
     SERVICE_BRICKS[app.name] = app
     register_instance(app)
 
@@ -56,17 +68,23 @@ def unregister_app(app):
     SERVICE_BRICKS.pop(app.name)
 
 
-def require_app(app_name):
+def require_app(app_name, api_style=False):
     """
-    Request the application to be loaded.
+    Request the application to be automatically loaded.
 
-    This is used for "api" style modules, which is imported by a client
-    application, to automatically load the corresponding server application.
+    If this is used for "api" style modules, which is imported by a client
+    application, set api_style=True.
+
+    If this is used for client application module, set api_style=False.
     """
-    frm = inspect.stack()[2]  # skip a frame for "api" module
+    if api_style:
+        frm = inspect.stack()[2]  # skip a frame for "api" module
+    else:
+        frm = inspect.stack()[1]
     m = inspect.getmodule(frm[0])  # client module
     m._REQUIRED_APP = getattr(m, '_REQUIRED_APP', [])
     m._REQUIRED_APP.append(app_name)
+    LOG.debug('require_app: %s is required by %s', app_name, m.__name__)
 
 
 class RyuApp(object):
@@ -169,8 +187,8 @@ class RyuApp(object):
     def unregister_handler(self, ev_cls, handler):
         assert callable(handler)
         self.event_handlers[ev_cls].remove(handler)
-        if not event_handlers[ev_cls]:
-            del event_handlers[ev_cls]
+        if not self.event_handlers[ev_cls]:
+            del self.event_handlers[ev_cls]
 
     def register_observer(self, ev_cls, name, states=None):
         states = states or set()
@@ -211,9 +229,10 @@ class RyuApp(object):
             return handlers
 
         def test(h):
-            if not ev_cls in h.callers:
-                # this handler does not listen the event.
-                return False
+            if not hasattr(h, 'callers') or ev_cls not in h.callers:
+                # dynamically registered handlers does not have
+                # h.callers element for the event.
+                return True
             states = h.callers[ev_cls].dispatchers
             if not states:
                 # empty states means all states
@@ -266,12 +285,12 @@ class RyuApp(object):
         if name in SERVICE_BRICKS:
             if isinstance(ev, EventRequestBase):
                 ev.src = self.name
-            LOG.debug("EVENT %s->%s %s" %
-                      (self.name, name, ev.__class__.__name__))
+            LOG.debug("EVENT %s->%s %s",
+                      self.name, name, ev.__class__.__name__)
             SERVICE_BRICKS[name]._send_event(ev, state)
         else:
-            LOG.debug("EVENT LOST %s->%s %s" %
-                      (self.name, name, ev.__class__.__name__))
+            LOG.debug("EVENT LOST %s->%s %s",
+                      self.name, name, ev.__class__.__name__)
 
     def send_event_to_observers(self, ev, state=None):
         """
@@ -309,6 +328,29 @@ class AppManager(object):
     _instance = None
 
     @staticmethod
+    def run_apps(app_lists):
+        """Run a set of Ryu applications
+
+        A convenient method to load and instantiate apps.
+        This blocks until all relevant apps stop.
+        """
+        app_mgr = AppManager.get_instance()
+        app_mgr.load_apps(app_lists)
+        contexts = app_mgr.create_contexts()
+        services = app_mgr.instantiate_apps(**contexts)
+        webapp = wsgi.start_service(app_mgr)
+        if webapp:
+            services.append(hub.spawn(webapp))
+        try:
+            hub.joinall(services)
+        finally:
+            app_mgr.close()
+            for t in services:
+                t.kill()
+            hub.joinall(services)
+            gc.collect()
+
+    @staticmethod
     def get_instance():
         if not AppManager._instance:
             AppManager._instance = AppManager()
@@ -322,8 +364,11 @@ class AppManager(object):
 
     def load_app(self, name):
         mod = utils.import_module(name)
-        clses = inspect.getmembers(mod, lambda cls: (inspect.isclass(cls) and
-                                                     issubclass(cls, RyuApp)))
+        clses = inspect.getmembers(mod,
+                                   lambda cls: (inspect.isclass(cls) and
+                                                issubclass(cls, RyuApp) and
+                                                mod.__name__ ==
+                                                cls.__module__))
         if clses:
             return clses[0][1]
         return None
@@ -334,6 +379,11 @@ class AppManager(object):
                                                       for app in app_lists)]
         while len(app_lists) > 0:
             app_cls_name = app_lists.pop(0)
+
+            context_modules = map(lambda x: x.__module__,
+                                  self.contexts_cls.values())
+            if app_cls_name in context_modules:
+                continue
 
             LOG.info('loading app %s', app_cls_name)
 
@@ -347,19 +397,19 @@ class AppManager(object):
             for key, context_cls in cls.context_iteritems():
                 v = self.contexts_cls.setdefault(key, context_cls)
                 assert v == context_cls
+                context_modules.append(context_cls.__module__)
 
                 if issubclass(context_cls, RyuApp):
                     services.extend(get_dependent_services(context_cls))
 
             # we can't load an app that will be initiataed for
             # contexts.
-            context_modules = map(lambda x: x.__module__,
-                                  self.contexts_cls.values())
             for i in get_dependent_services(cls):
-                if not i in context_modules:
+                if i not in context_modules:
                     services.append(i)
             if services:
-                app_lists.extend(services)
+                app_lists.extend([s for s in set(services)
+                                  if s not in app_lists])
 
     def create_contexts(self):
         for key, cls in self.contexts_cls.items():
@@ -369,7 +419,7 @@ class AppManager(object):
             else:
                 context = cls()
             LOG.info('creating context %s', key)
-            assert not key in self.contexts
+            assert key not in self.contexts
             self.contexts[key] = context
         return self.contexts
 
@@ -395,11 +445,11 @@ class AppManager(object):
 
     @staticmethod
     def _report_brick(name, app):
-        LOG.debug("BRICK %s" % name)
+        LOG.debug("BRICK %s", name)
         for ev_cls, list_ in app.observers.items():
-            LOG.debug("  PROVIDES %s TO %s" % (ev_cls.__name__, list_))
+            LOG.debug("  PROVIDES %s TO %s", ev_cls.__name__, list_)
         for ev_cls in app.event_handlers.keys():
-            LOG.debug("  CONSUMES %s" % (ev_cls.__name__,))
+            LOG.debug("  CONSUMES %s", ev_cls.__name__)
 
     @staticmethod
     def report_bricks():
@@ -412,7 +462,7 @@ class AppManager(object):
         # Yes, maybe for slicing.
         LOG.info('instantiating app %s of %s', app_name, cls.__name__)
 
-        if hasattr(cls, 'OFP_VERSIONS') and not cls.OFP_VERSIONS is None:
+        if hasattr(cls, 'OFP_VERSIONS') and cls.OFP_VERSIONS is not None:
             ofproto_protocol.set_app_supported_versions(cls.OFP_VERSIONS)
 
         if app_name is not None:
@@ -466,5 +516,7 @@ class AppManager(object):
                 self._close(app)
             close_dict.clear()
 
-        close_all(self.applications)
+        for app_name in list(self.applications.keys()):
+            self.uninstantiate(app_name)
+        assert not self.applications
         close_all(self.contexts)

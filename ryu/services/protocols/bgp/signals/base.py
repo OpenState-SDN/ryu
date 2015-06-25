@@ -8,14 +8,14 @@ class SignalBus(object):
 
     def emit_signal(self, identifier, data):
         identifier = _to_tuple(identifier)
-        LOG.debug('SIGNAL: %s emited with data: %s ' % (identifier, data))
+        LOG.debug('SIGNAL: %s emited with data: %s ', identifier, data)
         for func, filter_func in self._listeners.get(identifier, []):
             if not filter_func or filter_func(data):
                 func(identifier, data)
 
     def register_listener(self, identifier, func, filter_func=None):
         identifier = _to_tuple(identifier)
-        substrings = (identifier[:i] for i in xrange(1, len(identifier) + 1))
+        substrings = (identifier[:i] for i in range(1, len(identifier) + 1))
         for partial_id in substrings:
             self._listeners.setdefault(
                 partial_id,

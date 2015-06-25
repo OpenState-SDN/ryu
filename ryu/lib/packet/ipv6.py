@@ -21,7 +21,7 @@ from . import icmpv6
 from . import tcp
 from . import udp
 from . import sctp
-from ryu.ofproto import inet
+from . import in_proto as inet
 from ryu.lib import addrconv
 from ryu.lib import stringify
 
@@ -76,7 +76,7 @@ class ipv6(packet_base.PacketBase):
 
     def __init__(self, version=6, traffic_class=0, flow_label=0,
                  payload_length=0, nxt=inet.IPPROTO_TCP, hop_limit=255,
-                 src='::', dst='::', ext_hdrs=None):
+                 src='10::10', dst='20::20', ext_hdrs=None):
         super(ipv6, self).__init__()
         self.version = version
         self.traffic_class = traffic_class
@@ -115,7 +115,7 @@ class ipv6(packet_base.PacketBase):
                   nxt, hop_limit, addrconv.ipv6.bin_to_text(src),
                   addrconv.ipv6.bin_to_text(dst), ext_hdrs)
         return (msg, ipv6.get_packet_type(last),
-                buf[offset:offset+payload_length])
+                buf[offset:offset + payload_length])
 
     def serialize(self, payload, prev):
         hdr = bytearray(40)
@@ -426,7 +426,7 @@ class routing_type3(header):
         assert isinstance(adrs, list)
         self.adrs = adrs
         self._pad = (8 - ((len(self.adrs) - 1) * (16 - self.cmpi) +
-                    (16 - self.cmpe) % 8)) % 8
+                     (16 - self.cmpe) % 8)) % 8
 
     @classmethod
     def _get_size(cls, size):
@@ -462,7 +462,7 @@ class routing_type3(header):
     def serialize(self):
         if self.size == 0:
             self.size = ((len(self.adrs) - 1) * (16 - self.cmpi) +
-                        (16 - self.cmpe) + self._pad) / 8
+                         (16 - self.cmpe) + self._pad) / 8
         buf = struct.pack(self._PACK_STR, self.nxt, self.size,
                           self.type_, self.seg, (self.cmpi << 4) | self.cmpe,
                           self._pad << 4)

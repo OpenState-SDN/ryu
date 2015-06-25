@@ -16,6 +16,13 @@
 
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
+try:
+    # Python 3
+    from imp import reload
+except ImportError:
+    # Python 2
+    pass
+
 import unittest
 import logging
 from nose.tools import eq_
@@ -45,16 +52,19 @@ class TestOfprotCommon(unittest.TestCase):
         import ryu.ofproto.ofproto_v1_2
         import ryu.ofproto.ofproto_v1_3
         import ryu.ofproto.ofproto_v1_4
+        import ryu.ofproto.ofproto_v1_5
         eq_(set(ofp_modules.keys()), set([ryu.ofproto.ofproto_v1_0.OFP_VERSION,
                                           ryu.ofproto.ofproto_v1_2.OFP_VERSION,
                                           ryu.ofproto.ofproto_v1_3.OFP_VERSION,
                                           ryu.ofproto.ofproto_v1_4.OFP_VERSION,
+                                          ryu.ofproto.ofproto_v1_5.OFP_VERSION,
                                           ]))
         consts_mods = set([ofp_mod[0] for ofp_mod in ofp_modules.values()])
         eq_(consts_mods, set([ryu.ofproto.ofproto_v1_0,
                               ryu.ofproto.ofproto_v1_2,
                               ryu.ofproto.ofproto_v1_3,
                               ryu.ofproto.ofproto_v1_4,
+                              ryu.ofproto.ofproto_v1_5,
                               ]))
 
         parser_mods = set([ofp_mod[1] for ofp_mod in ofp_modules.values()])
@@ -62,8 +72,10 @@ class TestOfprotCommon(unittest.TestCase):
         import ryu.ofproto.ofproto_v1_2_parser
         import ryu.ofproto.ofproto_v1_3_parser
         import ryu.ofproto.ofproto_v1_4_parser
+        import ryu.ofproto.ofproto_v1_5_parser
         eq_(parser_mods, set([ryu.ofproto.ofproto_v1_0_parser,
                               ryu.ofproto.ofproto_v1_2_parser,
                               ryu.ofproto.ofproto_v1_3_parser,
                               ryu.ofproto.ofproto_v1_4_parser,
+                              ryu.ofproto.ofproto_v1_5_parser,
                               ]))

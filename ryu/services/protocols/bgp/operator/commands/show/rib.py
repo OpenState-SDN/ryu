@@ -11,7 +11,7 @@ from ryu.services.protocols.bgp.operator.commands.responses import \
 
 
 class RibBase(Command, RouteFormatterMixin):
-    supported_families = ['ipv4', 'vpnv4', 'rtfilter', 'vpnv6']
+    supported_families = ['ipv4', 'ipv6', 'vpnv4', 'rtfilter', 'vpnv6']
 
 
 class Rib(RibBase):
@@ -55,7 +55,7 @@ class Rib(RibBase):
                 for family in self.supported_families:
                     ret[family] = self.api.get_single_rib_routes(family)
                 return CommandsResponse(STATUS_OK, ret)
-            except ActivityException, e:
+            except ActivityException as e:
                 return CommandsResponse(STATUS_ERROR, e)
 
         @classmethod

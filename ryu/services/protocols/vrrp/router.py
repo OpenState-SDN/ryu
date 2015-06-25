@@ -310,8 +310,9 @@ class VRRPV2StateMaster(VRRPState):
         # should not reach here.
         # In fact this can be happned due to event scheduling
         vrrp_router = self.vrrp_router
-        vrrp_router.logger.debug('%s master_down %s %s' % (
-            self.__class__.__name__, ev.__class__.__name__, vrrp_router.state))
+        vrrp_router.logger.debug('%s master_down %s %s',
+                                 self.__class__.__name__,
+                                 ev.__class__.__name__, vrrp_router.state)
 
     def _adver(self):
         vrrp_router = self.vrrp_router
@@ -398,8 +399,9 @@ class VRRPV2StateBackup(VRRPState):
         # should not reach here
         # In fact this can be happned due to event scheduling
         vrrp_router = self.vrrp_router
-        vrrp_router.logger.debug('%s adver %s %s' % (
-            self.__class__.__name__, ev.__class__.__name__, vrrp_router.state))
+        vrrp_router.logger.debug('%s adver %s %s',
+                                 self.__class__.__name__,
+                                 ev.__class__.__name__, vrrp_router.state)
 
     def preempt_delay(self, ev):
         self.vrrp_router.logger.warn('%s preempt_delay',
@@ -513,8 +515,9 @@ class VRRPV3StateMaster(VRRPState):
         # should not reach here
         # In fact this can be happned due to event scheduling
         vrrp_router = self.vrrp_router
-        vrrp_router.logger.debug('%s master_down %s %s' % (
-            self.__class__.__name__, ev.__class__.__name__, vrrp_router.state))
+        vrrp_router.logger.debug('%s master_down %s %s',
+                                 self.__class__.__name__,
+                                 ev.__class__.__name__, vrrp_router.state)
 
     def _adver(self):
         vrrp_router = self.vrrp_router
@@ -579,11 +582,11 @@ class VRRPV3StateBackup(VRRPState):
         # EventStateChange(VRRP_SATE_BACKUP -> VRRP_STATE_MASTER)
         #
         # RFC 5795 6.4.2
-        #(375) + If the protected IPvX address is an IPv4 address, then:
+        # (375) + If the protected IPvX address is an IPv4 address, then:
         #   (380) * Broadcast a gratuitous ARP request on that interface
         #   containing the virtual router MAC address for each IPv4
         #   address associated with the virtual router.
-        #(385) + else // ipv6
+        # (385) + else // ipv6
         #   (390) * Compute and join the Solicited-Node multicast
         #   address [RFC4291] for the IPv6 address(es) associated with
         #   the virtual router.
@@ -613,8 +616,9 @@ class VRRPV3StateBackup(VRRPState):
         # should not reach here
         # In fact this can be happned due to event scheduling
         vrrp_router = self.vrrp_router
-        vrrp_router.logger.debug('adver %s %s %s' % (
-            self.__class__.__name__, ev.__class__.__name__, vrrp_router.state))
+        vrrp_router.logger.debug('adver %s %s %s',
+                                 self.__class__.__name__,
+                                 ev.__class__.__name__, vrrp_router.state)
 
     def preempt_delay(self, ev):
         self.vrrp_router.logger.warn('%s preempt_delay',
@@ -684,11 +688,11 @@ class VRRPRouterV3(VRRPRouter):
             # EventVRRPStateChanged(None->VRRP_STATE_MASTER)
             #
             # RFC 5795 6.4.1
-            #(115) + If the protected IPvX address is an IPv4 address, then:
+            # (115) + If the protected IPvX address is an IPv4 address, then:
             #   (120) * Broadcast a gratuitous ARP request containing the
             #   virtual router MAC address for each IP address associated
             #   with the virtual router.
-            #(125) + else // IPv6
+            # (125) + else // IPv6
             #   (130) * For each IPv6 address associated with the virtual
             #   router, send an unsolicited ND Neighbor Advertisement with
             #   the Router Flag (R) set, the Solicited Flag (S) unset, the

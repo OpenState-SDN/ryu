@@ -323,7 +323,7 @@ class TestOfprot12(unittest.TestCase):
     def test_enum_ofp_flow_mod_flags(self):
         eq_(OFPFF_SEND_FLOW_REM, 1 << 0)
         eq_(OFPFF_CHECK_OVERLAP, 1 << 1)
-        eq_(OFPFF_RESET_COUNT, 1 << 2)
+        eq_(OFPFF_RESET_COUNTS, 1 << 2)
 
     def test_struct_ofp_group_mod(self):
         eq_(OFP_GROUP_MOD_PACK_STR, '!HBxI')
@@ -630,7 +630,7 @@ class TestOfprot12(unittest.TestCase):
     def test_enum_ofp_switch_config_failed_code(self):
         eq_(OFPSCFC_BAD_FLAGS, 0)
         eq_(OFPSCFC_BAD_LEN, 1)
-        eq_(OFPQCFC_EPERM, 2)
+        eq_(OFPSCFC_EPERM, 2)
 
     def test_enum_ofp_role_request_failed_code(self):
         eq_(OFPRRFC_STALE, 0)

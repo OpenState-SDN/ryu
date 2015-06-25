@@ -14,6 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+try:
+    # Python 3
+    from functools import reduce
+except ImportError:
+    # Python 2
+    pass
+
 import sys
 import unittest
 from nose.tools import eq_
@@ -23,6 +30,7 @@ from ryu.ofproto import ofproto_v1_2
 from ryu.ofproto import ofproto_v1_3
 from ryu.ofproto import ofproto_v1_2_parser
 from ryu.ofproto import ofproto_v1_3_parser
+from ryu.tests import test_lib
 
 
 class Test_Parser_OFPMatch(unittest.TestCase):
@@ -30,7 +38,7 @@ class Test_Parser_OFPMatch(unittest.TestCase):
             ofproto_v1_3_parser: ofproto_v1_3}
 
     def __init__(self, methodName):
-        print 'init', methodName
+        print('init %s' % methodName)
         super(Test_Parser_OFPMatch, self).__init__(methodName)
 
     def setUp(self):
@@ -62,7 +70,6 @@ class Test_Parser_OFPMatch(unittest.TestCase):
 
 
 def _add_tests():
-    import new
     import functools
     import itertools
 
@@ -194,7 +201,7 @@ def _add_tests():
     flatten = lambda l: reduce(flatten_one, l, [])
 
     for ofpp in ofpps:
-        for n in xrange(1, 3):
+        for n in range(1, 3):
             for C in itertools.combinations(L[ofpp], n):
                 l = [1]
                 keys = []
@@ -209,8 +216,8 @@ def _add_tests():
                         if domask:
                             values = [(value, cls.generate_mask())
                                       for (cls, value)
-                                      in itertools.izip(clss, values)]
-                        d = dict(itertools.izip(keys, values))
+                                      in zip(clss, values)]
+                        d = dict(zip(keys, values))
                         mod = ofpp.__name__.split('.')[-1]
                         method_name = 'test_' + mod
                         if domask:
@@ -227,15 +234,12 @@ def _add_tests():
                         method_name = method_name.replace(' ', '_')
 
                         def _run(self, name, ofpp, d, domask):
-                            print ('processing %s ...' % name)
+                            print('processing %s ...' % name)
                             self._test(name, ofpp, d, domask)
-                        print ('adding %s ...' % method_name)
+                        print('adding %s ...' % method_name)
                         f = functools.partial(_run, name=method_name,
                                               ofpp=ofpp, d=d, domask=domask)
-                        f.func_name = method_name
-                        f.__name__ = method_name
-                        cls = Test_Parser_OFPMatch
-                        im = new.instancemethod(f, None, cls)
-                        setattr(cls, method_name, im)
+                        test_lib.add_method(Test_Parser_OFPMatch,
+                                            method_name, f)
 
 _add_tests()

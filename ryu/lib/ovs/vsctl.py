@@ -22,6 +22,9 @@ import os
 import sys
 import weakref
 
+import ryu.contrib
+ryu.contrib.update_module_path()
+
 import ovs.db.data
 import ovs.db.types
 import ovs.poller
@@ -307,7 +310,7 @@ class VSCtlContext(object):
     @staticmethod
     def port_is_fake_bridge(ovsrec_port):
         return (ovsrec_port.fake_bridge and
-                ovsrec_port.tag >= 0 and ovsrec_port.tab <= 4095)
+                ovsrec_port.tag >= 0 and ovsrec_port.tag <= 4095)
 
     def _populate_cache(self, ovsrec_bridges):
         if self.cache_valid:
@@ -690,7 +693,7 @@ class VSCtlContext(object):
             ovsrec_port.name = br_name
             ovsrec_port.interfaces = [ovsrec_iface]
             ovsrec_port.fake_bridge = True
-            ovsrec_port.tag = [vlan]
+            ovsrec_port.tag = vlan
 
             self.bridge_insert_port(parent.br_cfg, ovsrec_port)
 
@@ -1876,27 +1879,27 @@ def schema_print(schema_location, prefix):
     json = ovs.json.from_file(schema_location)
     schema = ovs.db.schema.DbSchema.from_json(json)
 
-    print '# Do NOT edit.'
-    print '# This is automatically generated.'
-    print '# created based on version %s' % (schema.version or 'unknown')
-    print ''
-    print ''
-    print '%s_DB_NAME = \'%s\'' % (prefix, schema.name)
+    print('# Do NOT edit.')
+    print('# This is automatically generated.')
+    print('# created based on version %s' % (schema.version or 'unknown'))
+    print('')
+    print('')
+    print('%s_DB_NAME = \'%s\'' % (prefix, schema.name))
     for table in sorted(schema.tables.values(),
                         key=operator.attrgetter('name')):
-        print ''
-        print '%s_TABLE_%s = \'%s\'' % (prefix,
-                                        table.name.upper(), table.name)
+        print('')
+        print('%s_TABLE_%s = \'%s\'' % (prefix,
+                                        table.name.upper(), table.name))
         for column in sorted(table.columns.values(),
                              key=operator.attrgetter('name')):
-            print '%s_%s_COL_%s = \'%s\'' % (prefix, table.name.upper(),
+            print('%s_%s_COL_%s = \'%s\'' % (prefix, table.name.upper(),
                                              column.name.upper(),
-                                             column.name)
+                                             column.name))
 
 
 def main():
     if len(sys.argv) <= 2:
-        print 'Usage: %s <schema file> <prefix>' % sys.argv[0]
+        print('Usage: %s <schema file> <prefix>' % sys.argv[0])
 
     location = sys.argv[1]
     prefix = sys.argv[2]

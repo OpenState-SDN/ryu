@@ -4,7 +4,6 @@ import struct
 import netaddr
 from struct import *
 from nose.tools import *
-from nose.plugins.skip import Skip, SkipTest
 
 from ryu.lib import ip
 
@@ -56,5 +55,5 @@ class Test_ip(unittest.TestCase):
         val = '2013:da8:215:8f2:aa20:66ff:fe4c:9c3c'
 
         res = ip.ipv6_to_str(ipv6_bin)
-        print val, res
+        print('%s %s' % (val, res))
         eq_(val, res)

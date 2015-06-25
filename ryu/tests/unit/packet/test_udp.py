@@ -20,7 +20,6 @@ import logging
 import struct
 from struct import *
 from nose.tools import *
-from nose.plugins.skip import Skip, SkipTest
 from ryu.ofproto import ether, inet
 from ryu.lib.packet.packet import Packet
 from ryu.lib.packet.udp import udp
@@ -101,8 +100,8 @@ class Test_udp(unittest.TestCase):
         buf = u.serialize(bytearray(), prev)
         res = struct.unpack(udp._PACK_STR, buf)
 
-        eq_(res[0], 0)
-        eq_(res[1], 0)
+        eq_(res[0], 1)
+        eq_(res[1], 1)
         eq_(res[2], udp._MIN_LEN)
 
     def test_json(self):

@@ -32,7 +32,7 @@ LOG = logging.getLogger('ryu.ofproto.ofproto_parser')
 
 def header(buf):
     assert len(buf) >= ofproto_common.OFP_HEADER_SIZE
-    #LOG.debug('len %d bufsize %d', len(buf), ofproto.OFP_HEADER_SIZE)
+    # LOG.debug('len %d bufsize %d', len(buf), ofproto.OFP_HEADER_SIZE)
     return struct.unpack_from(ofproto_common.OFP_HEADER_PACK_STR, buffer(buf))
 
 
@@ -60,7 +60,7 @@ def msg(datapath, version, msg_type, msg_len, xid, buf):
             'Encounter an error during parsing OpenFlow packet from switch.'
             'This implies switch sending a malformed OpenFlow packet.'
             'version 0x%02x msg_type %d msg_len %d xid %d buf %s',
-            version, msg_type, msg_len, xid, utils.bytearray_to_hex(buf))
+            version, msg_type, msg_len, xid, utils.hex_array(buf))
         return None
 
 
@@ -111,7 +111,7 @@ def ofp_msg_from_jsondict(dp, jsondict):
 
 
 class StringifyMixin(stringify.StringifyMixin):
-    _class_prefixes = ["OFP", "ONF", "MT"]
+    _class_prefixes = ["OFP", "ONF", "MT", "NX"]
 
     @classmethod
     def cls_from_jsondict_key(cls, k):
@@ -163,9 +163,11 @@ class MsgBase(StringifyMixin):
         self.buf = buffer(buf)
 
     def __str__(self):
-        buf = 'version: 0x%x msg_type 0x%x xid 0x%x ' % (self.version,
-                                                         self.msg_type,
-                                                         self.xid)
+        def hexify(x):
+            return str(None) if x is None else '0x%x' % x
+        buf = 'version: %s msg_type %s xid %s ' % (hexify(self.version),
+                                                   hexify(self.msg_type),
+                                                   hexify(self.xid))
         return buf + StringifyMixin.__str__(self)
 
     @classmethod
@@ -210,21 +212,6 @@ class MsgInMsgBase(MsgBase):
                       **additional_args):
         return cls._get_decoder(k, decode_string)(json_value,
                                                   **additional_args)
-
-
-def msg_pack_into(fmt, buf, offset, *args):
-    if len(buf) < offset:
-        buf += bytearray(offset - len(buf))
-
-    if len(buf) == offset:
-        buf += struct.pack(fmt, *args)
-        return
-
-    needed_len = offset + struct.calcsize(fmt)
-    if len(buf) < needed_len:
-        buf += bytearray(needed_len - len(buf))
-
-    struct.pack_into(fmt, buf, offset, *args)
 
 
 def namedtuple(typename, fields, **kwargs):

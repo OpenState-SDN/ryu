@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import ryu.contrib
+ryu.contrib.update_module_path()
 
 from ryu import cfg
 from ryu import utils
@@ -61,7 +62,7 @@ class SubCommand(object):
 def main():
     try:
         base_conf(project='ryu', version='ryu %s' % version)
-    except cfg.RequiredOptError, e:
+    except cfg.RequiredOptError as e:
         base_conf.print_help()
         raise SystemExit(1)
     subcmd_name = base_conf.subcommand

@@ -16,6 +16,7 @@
 """
  Module provides utilities for validation.
 """
+import numbers
 import socket
 
 
@@ -120,7 +121,7 @@ def is_valid_old_asn(asn):
     """
     valid = True
     # AS number should be a 16 bit number
-    if (not isinstance(asn, (int, long)) or (asn < 0) or
+    if (not isinstance(asn, numbers.Integral) or (asn < 0) or
             (asn > ((2 ** 16) - 1))):
         valid = False
 
@@ -165,7 +166,7 @@ def is_valid_med(med):
     """
     valid = True
 
-    if not isinstance(med, (int, long)):
+    if not isinstance(med, numbers.Integral):
         valid = False
     else:
         if med < 0 or med > (2 ** 32) - 1:
@@ -187,7 +188,7 @@ def is_valid_mpls_label(label):
     """
     valid = True
 
-    if (not isinstance(label, (int, long)) or
+    if (not isinstance(label, numbers.Integral) or
             (label >= 4 and label <= 15) or
             (label < 0 or label > 2 ** 20)):
         valid = False
@@ -195,10 +196,10 @@ def is_valid_mpls_label(label):
     return valid
 
 
-def is_valid_route_disc(route_disc):
-    """Validates *route_disc* as string representation of route distinguisher.
+def is_valid_route_dist(route_dist):
+    """Validates *route_dist* as string representation of route distinguisher.
 
-    Returns True if *route_disc* is as per our convention of RD, else False.
+    Returns True if *route_dist* is as per our convention of RD, else False.
     Our convention is to represent RD as a string in format:
     *admin_sub_field:assigned_num_field* and *admin_sub_field* can be valid
     IPv4 string representation.
@@ -206,7 +207,7 @@ def is_valid_route_disc(route_disc):
     Invalid examples: '1.11.1: 333'
     """
     # TODO(PH): Provide complete implementation.
-    return is_valid_ext_comm_attr(route_disc)
+    return is_valid_ext_comm_attr(route_dist)
 
 
 def is_valid_ext_comm_attr(attr):

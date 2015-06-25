@@ -4,7 +4,7 @@ import logging
 import pprint
 import re
 
-(STATUS_OK, STATUS_ERROR) = xrange(2)
+(STATUS_OK, STATUS_ERROR) = range(2)
 
 CommandsResponse = namedtuple('CommandsResponse', ['status', 'value'])
 
@@ -40,7 +40,7 @@ class Command(object):
     """
 
     help_msg = ''
-    param_help_msg = None
+    param_help_msg = ''
     command = ''
     cli_resp_line_template = '{0}: {1}\n'
 
@@ -257,8 +257,9 @@ class TextFilter(object):
                 resp = [resp[key] for key, value in enumerate(resp)
                         if key not in remove]
             else:
-                resp = {key: value for key, value in resp.iteritems()
-                        if key not in remove}
+                resp = dict([(key, value)
+                             for key, value in resp.iteritems()
+                             if key not in remove])
 
             return resp
         else:

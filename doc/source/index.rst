@@ -15,7 +15,9 @@ Contents:
    getting_started.rst
    developing.rst
    configuration.rst
+   tests.rst
    using_with_openstack.rst
+   app.rst
 
 Indices and tables
 ==================
