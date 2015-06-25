@@ -3,8 +3,10 @@ from webob import Response
 from ryu.app import wsgi as app_wsgi
 from ryu.app.wsgi import ControllerBase, WSGIApplication
 from ryu.base import app_manager
-from ryu.ofproto import ofproto_v1_3
-from ryu.ofproto import ofproto_v1_3_parser
+import ryu.ofproto.ofproto_v1_3 as ofp
+import ryu.ofproto.ofproto_v1_3_parser as ofparser
+import ryu.ofproto.openstate_v1_0 as osp
+import ryu.ofproto.openstate_v1_0_parser as osparser
 import fault_tolerance_ff_demo_probing as fault_tolerance
 import os
 
@@ -16,9 +18,9 @@ class NetworkController(ControllerBase):
 
     def body_top(self):
         body='<html><head><script src="/js/jquery.min.js"></script><script>$(document).ready(function(){$("#openxterm").click(function(){'
-        body+='$.post("/osfaulttolerance/maketerm/"+$("#hostname option:selected").text());});'
-        body+='$("#pingall").click(function(){$.post("/osfaulttolerance/pingall");});$("#killping").click(function(){'
-        body+='$.post("/osfaulttolerance/killping");});});</script>'
+        body+='$.post("http://localhost:8080/osfaulttolerance/maketerm/"+$("#hostname option:selected").text());});'
+        body+='$("#pingall").click(function(){$.post("http://localhost:8080/osfaulttolerance/pingall");});$("#killping").click(function(){'
+        body+='$.post("http://localhost:8080/osfaulttolerance/killping");});});</script>'
         body+='</head><body>'
         body+='<select id="hostname">'
         for i in range(len(self.f_t_parser.net.hosts)):
@@ -30,7 +32,7 @@ class NetworkController(ControllerBase):
 
     def index(self,req,**_kwargs):
         body=self.body_top()
-        body+='<div style="text-align:center"><title>Failure Recovery App</title><h1>Failure Recovery</h1>'
+        body+='<div style="text-align:center"><title>Fault Tolerance App</title><h1>Fault Tolerance</h1>'
         body+='<img src="../figs/network.png" alt="network">'
         body+='<br><select onchange="this.options[this.selectedIndex].value && (window.location = this.options[this.selectedIndex].value);">'
         body+='<option value="">Select a Request</option>'
@@ -50,7 +52,6 @@ class NetworkController(ControllerBase):
         return Response(status=200,content_type='application/javascript',body=body)    
 
     def maketerm(self,req,hostname,**_kwargs):
-        print "here, make term"
         self.f_t_parser.openXterm(hostname)
 
     def pingall(self,req,**_kwargs):
@@ -63,14 +64,14 @@ class NetworkController(ControllerBase):
         body=self.body_top()
 
         if not (int(req1),int(req2)) in self.f_t_parser.requests.keys() and not (int(req2),int(req1)) in self.f_t_parser.requests.keys():
-           body+='<div style="text-align:center"><title>Failure Recovery App</title><h1>Failure Recovery</h1>'
+           body+='<div style="text-align:center"><title>Fault Tolerance App</title><h1>Fault Tolerance</h1>'
            body+='<font color="red"><h1>Request ('+req1+','+req2+') does not exist</h1></font></div>'
            return Response(status=400,content_type='text/html',body=body)
 
         if not os.path.isfile("figs/r-"+str(req1)+"-"+str(req2)+".png"):
            self.f_t_parser.draw_requests((int(req1),int(req2)))
 
-        body+='<div style="text-align:center"><title>Failure Recovery App</title><h1>Failure Recovery</h1>'
+        body+='<div style="text-align:center"><title>Fault Tolerance App</title><h1>Fault Tolerance</h1>'
         body+='<h1>Request ('+req1+','+req2+')</h1>'
         body+='<img src="/figs/r-'+str(req1)+'-'+str(req2)+'.png" alt="network">'
         request=(int(req1),int(req2))
@@ -84,19 +85,19 @@ class NetworkController(ControllerBase):
         body=self.body_top()
 
         if not (int(req1),int(req2)) in self.f_t_parser.requests.keys() and not (int(req2),int(req1)) in self.f_t_parser.requests.keys():
-           body+='<div style="text-align:center"><title>Failure Recovery App</title><h1>Failure Recovery</h1>'
+           body+='<div style="text-align:center"><title>Fault Tolerance App</title><h1>Fault Tolerance</h1>'
            body+='<font color="red"><h1>Request ('+req1+','+req2+') does not exist</h1></font></div>'
            return Response(status=400,content_type='text/html',body=body)
         
         if not (int(node1),int(node2)) in self.f_t_parser.G.edges() and not (int(node2),int(node1)) in self.f_t_parser.G.edges():
-           body+='<div style="text-align:center"><title>Failure Recovery App</title><h1>Failure Recovery</h1>'
+           body+='<div style="text-align:center"><title>Fault Tolerance App</title><h1>Fault Tolerance</h1>'
            body+='<font color="red"><h1>Set Link Up Function - Link ('+node1+','+node2+') does not exist</h1></font></div>'
            return Response(status=400,content_type='text/html',body=body)
         
         self.fault_tolerance.set_link_up(int(node1),int(node2))
         if not os.path.isfile("figs/r-"+str(req1)+"-"+str(req2)+".png"):
            self.f_t_parser.draw_requests((int(req1),int(req2)))
-        body+='<div style="text-align:center"><title>Failure Recovery App</title><h1>Failure Recovery</h1>'
+        body+='<div style="text-align:center"><title>Fault Tolerance App</title><h1>Fault Tolerance</h1>'
         body+='<h1>Set link ('+node1+','+node2+') Up</h1>'
         body+='<img src="/figs/r-'+str(req1)+'-'+str(req2)+'.png" alt="network">'
         request=(int(req1),int(req2))
@@ -110,19 +111,19 @@ class NetworkController(ControllerBase):
         body=self.body_top()
 
         if not (int(req1),int(req2)) in self.f_t_parser.requests.keys() and not (int(req2),int(req1)) in self.f_t_parser.requests.keys():
-           body+='<div style="text-align:center"><title>Failure Recovery App</title><h1>Failure Recovery</h1>'
+           body+='<div style="text-align:center"><title>Fault Tolerance App</title><h1>Fault Tolerance</h1>'
            body+='<font color="red"><h1>Request ('+req1+','+req2+') does not exist</h1></font></div>'
            return Response(status=400,content_type='text/html',body=body)
         
         if not (int(node1),int(node2)) in self.f_t_parser.G.edges() and not (int(node2),int(node1)) in self.f_t_parser.G.edges():
-           body+='<div style="text-align:center"><title>Failure Recovery App</title><h1>Failure Recovery</h1>'
+           body+='<div style="text-align:center"><title>Fault Tolerance App</title><h1>Fault Tolerance</h1>'
            body+='<font color="red"><h1>Set Link Down Function - Link ('+node1+','+node2+') does not exist</h1></font></div>'
            return Response(status=400,content_type='text/html',body=body)
         
         self.fault_tolerance.set_link_down(int(node1),int(node2))
         if not os.path.isfile("figs/r-"+str(req1)+"-"+str(req2)+".png"):
            self.f_t_parser.draw_requests((int(req1),int(req2)))
-        body+='<div style="text-align:center"><title>Failure Recovery App</title><h1>Failure Recovery</h1>'
+        body+='<div style="text-align:center"><title>Fault Tolerance App</title><h1>Fault Tolerance</h1>'
         body+='<h1>Set link ('+node1+','+node2+') Down</h1>'
         body+='<img src="/figs/r-'+str(req1)+'-'+str(req2)+'-f-'+str(node1)+'-'+str(node2)+'.png" alt="network">'
         body+='<h3><a href="../up/'+str(node1)+'_'+str(node2)+'">SetLinkUp('+str(node1)+','+str(node2)+')</a></h3>'
@@ -130,7 +131,7 @@ class NetworkController(ControllerBase):
         return Response(status=200,content_type='text/html',body=body)
 
 class OSFaultToleranceRestAPI(app_manager.RyuApp):
-    OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
+    OFP_VERSIONS = [ofp.OFP_VERSION]
     _CONTEXTS = {
         'wsgi': WSGIApplication,
         'fault_tolerance' : fault_tolerance.OSFaultTolerance

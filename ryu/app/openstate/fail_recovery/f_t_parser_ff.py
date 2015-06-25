@@ -27,8 +27,10 @@ from mininet.log import setLogLevel
 from mininet.cli import CLI
 from mininet.node import RemoteController,UserSwitch
 from mininet.term import makeTerm
-from ryu.ofproto import ofproto_v1_3
-from ryu.ofproto import ofproto_v1_3_parser
+import ryu.ofproto.ofproto_v1_3 as ofp
+import ryu.ofproto.ofproto_v1_3_parser as ofparser
+import ryu.ofproto.openstate_v1_0 as osp
+import ryu.ofproto.openstate_v1_0_parser as osparser
 import time
 from sets import Set
 
@@ -419,8 +421,7 @@ def generate_flow_entries_dict(GUI=False):
         mn_topo_ports[k]={}
         for k2 in mn_topo.ports[k]:
             mn_topo_ports[k][ mn_topo.ports[k][k2][0] ] = k2
-
-
+    
     print "Cleaning previous Mininet instances..."
     os.system('sudo mn -c 2> /dev/null')
     net = Mininet(topo=mn_topo, link=TCLink, controller=RemoteController, switch=UserSwitch, cleanup=True,autoSetMacs=False,listenPort=6634)
@@ -458,8 +459,6 @@ def generate_flow_entries_dict(GUI=False):
     global group_ID
     # fault_ID is a dict() that associates faults with an ID
     fault_ID = dict()
-    ofproto = ofproto_v1_3
-    parser = ofproto_v1_3_parser
 
     # Associate req (A,B) and fault (X,Y) with a progressive number, starting from 1.
     # group_IDs are used as group entries index
@@ -496,44 +495,44 @@ def generate_flow_entries_dict(GUI=False):
                 #[NORMAL NODE]
                 if x == 0: # first node in the primary path
                     flow_entry = dict()
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['h'+str(primary_path[x])],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['h'+str(primary_path[x])],
                         eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                         state=0)
-                    flow_entry['actions']=[parser.OFPActionPushMpls()]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions']),parser.OFPInstructionGotoTable(1),parser.OFPInstructionWriteMetadata(16,0xffffffffffffffff)]
+                    flow_entry['actions']=[ofparser.OFPActionPushMpls()]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions']),ofparser.OFPInstructionGotoTable(1),ofparser.OFPInstructionWriteMetadata(16,0xffffffffffffffff)]
                     flow_entry['table_id']=0
                     flow_entries_dict = add_flow_entry(flow_entries_dict,primary_path[x],flow_entry)
                     flow_stats_dict = update_flow_stats(flow_stats_dict,primary_path[x],'primary')
 
                     flow_entry = dict()
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['h'+str(primary_path[x])],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['h'+str(primary_path[x])],
                         eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                         eth_type=0x8847,metadata=16)
-                    flow_entry['actions']=[parser.OFPActionSetField(mpls_label=16),
-                        parser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                    flow_entry['actions']=[ofparser.OFPActionSetField(mpls_label=16),
+                        ofparser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                     flow_entry['table_id']=1
                     flow_entries_dict = add_flow_entry(flow_entries_dict,primary_path[x],flow_entry)
 
                 elif x == len(primary_path)-1: # last node in the primary path
                     flow_entry = dict()
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
                         eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                         state=0,eth_type=0x8847)
-                    flow_entry['actions']=[parser.OFPActionPopMpls(),
-                        parser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['h'+str(primary_path[x])],0)]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                    flow_entry['actions']=[ofparser.OFPActionPopMpls(),
+                        ofparser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['h'+str(primary_path[x])],0)]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                     flow_entry['table_id']=0
                     flow_entries_dict = add_flow_entry(flow_entries_dict,primary_path[x],flow_entry)
                     flow_stats_dict = update_flow_stats(flow_stats_dict,primary_path[x],'primary')
 
                 else: # intermediate node in the primary path
                     flow_entry = dict()
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
                         eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                         state=0,eth_type=0x8847)
-                    flow_entry['actions']=[parser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                    flow_entry['actions']=[ofparser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                     flow_entry['table_id']=0
                     flow_entries_dict = add_flow_entry(flow_entries_dict,primary_path[x],flow_entry)
                     flow_stats_dict = update_flow_stats(flow_stats_dict,primary_path[x],'primary')
@@ -542,43 +541,43 @@ def generate_flow_entries_dict(GUI=False):
                 #[DETECT AND REDIRECT]
                 if x == 0: # first node in the primary path
                     flow_entry = dict()
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['h'+str(primary_path[x])],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['h'+str(primary_path[x])],
                         eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                         state=0)
-                    flow_entry['actions']=[parser.OFPActionPushMpls(),parser.OFPActionGroup(group_ID[(request,(primary_path[x],primary_path[x+1]))])]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                    flow_entry['actions']=[ofparser.OFPActionPushMpls(),ofparser.OFPActionGroup(group_ID[(request,(primary_path[x],primary_path[x+1]))])]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                     flow_entry['table_id']=0
                     flow_entries_dict = add_flow_entry(flow_entries_dict,primary_path[x],flow_entry)
                     flow_stats_dict = update_flow_stats(flow_stats_dict,primary_path[x],'primary')
 
                     #bucket creation (go to the next primary node)
                     max_len = 2000
-                    actions = [parser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0),
-                                parser.OFPActionSetField(mpls_label=16)]
+                    actions = [ofparser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0),
+                                ofparser.OFPActionSetField(mpls_label=16)]
                     weight = 0
                     watch_port = mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])]
-                    watch_group = ofproto.OFPG_ANY
-                    bucket = parser.OFPBucket(weight, watch_port, watch_group,actions)
+                    watch_group = ofp.OFPG_ANY
+                    bucket = ofparser.OFPBucket(weight, watch_port, watch_group,actions)
                     group_entries_dict = add_group_entry(group_entries_dict,primary_path[x],group_ID[(request,(primary_path[x],primary_path[x+1]))],bucket)
                     flow_stats_dict = update_flow_stats(flow_stats_dict,primary_path[x],'group')
                 else:
                     flow_entry = dict()
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
                         eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                         state=0,eth_type=0x8847)
-                    flow_entry['actions']=[parser.OFPActionGroup(group_ID[(request,(primary_path[x],primary_path[x+1]))])]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                    flow_entry['actions']=[ofparser.OFPActionGroup(group_ID[(request,(primary_path[x],primary_path[x+1]))])]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                     flow_entry['table_id']=0
                     flow_entries_dict = add_flow_entry(flow_entries_dict,primary_path[x],flow_entry)
                     flow_stats_dict = update_flow_stats(flow_stats_dict,primary_path[x],'primary')
 
                     #bucket creation (go to the next primary node)
                     max_len = 2000
-                    actions = [parser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
+                    actions = [ofparser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
                     weight = 0
                     watch_port = mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])]
-                    watch_group = ofproto.OFPG_ANY
-                    bucket = parser.OFPBucket(weight, watch_port, watch_group,actions)
+                    watch_group = ofp.OFPG_ANY
+                    bucket = ofparser.OFPBucket(weight, watch_port, watch_group,actions)
                     group_entries_dict = add_group_entry(group_entries_dict,primary_path[x],group_ID[(request,(primary_path[x],primary_path[x+1]))],bucket)
                     flow_stats_dict = update_flow_stats(flow_stats_dict,primary_path[x],'group')
             
@@ -589,19 +588,19 @@ def generate_flow_entries_dict(GUI=False):
                 '''
                 #bucket creation (go to the next primary node)
                 max_len = 2000
-                actions = [parser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
+                actions = [ofparser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
                 weight = 0
                 watch_port = mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])]
-                watch_group = ofproto.OFPG_ANY
-                bucket = parser.OFPBucket(weight, watch_port, watch_group,actions)
+                watch_group = ofp.OFPG_ANY
+                bucket = ofparser.OFPBucket(weight, watch_port, watch_group,actions)
                 group_entries_dict = add_group_entry(group_entries_dict,primary_path[x],group_ID[(request,(primary_path[x],primary_path[x+1]))],bucket)
                 flow_stats_dict = update_flow_stats(flow_stats_dict,primary_path[x],'group')
 
                 flow_entry = dict()
-                flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
+                flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
                     eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],eth_type=0x8847, state=0)
-                flow_entry['actions']=[parser.OFPActionGroup(group_ID[(request,(primary_path[x],primary_path[x+1]))])]
-                flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                flow_entry['actions']=[ofparser.OFPActionGroup(group_ID[(request,(primary_path[x],primary_path[x+1]))])]
+                flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                 flow_entry['table_id']=0
                 flow_entries_dict = add_flow_entry(flow_entries_dict,primary_path[x],flow_entry)
                 flow_stats_dict = update_flow_stats(flow_stats_dict,primary_path[x],'primary')
@@ -613,10 +612,10 @@ def generate_flow_entries_dict(GUI=False):
             elif primary_path[x] not in detect_nodes and primary_path[x] in redirect_nodes:
                 #REDIRECT ONLY
                 flow_entry = dict()
-                flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
+                flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x-1])],
                     eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],eth_type=0x8847, state=0)
-                flow_entry['actions']=[parser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
-                flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                flow_entry['actions']=[ofparser.OFPActionOutput(mn_topo_ports['s'+str(primary_path[x])]['s'+str(primary_path[x+1])],0)]
+                flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                 flow_entry['table_id']=0
                 flow_entries_dict = add_flow_entry(flow_entries_dict,primary_path[x],flow_entry)
                 flow_stats_dict = update_flow_stats(flow_stats_dict,primary_path[x],'primary')
@@ -636,11 +635,11 @@ def generate_flow_entries_dict(GUI=False):
                 #print "Installing Detour Node rules in node", detour[z]
 
                 flow_entry = dict()
-                flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(detour[z])]['s'+str(detour[z-1])],
+                flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(detour[z])]['s'+str(detour[z-1])],
                     eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                     eth_type=0x8847, mpls_label=tag)
-                flow_entry['actions']=[parser.OFPActionOutput(mn_topo_ports['s'+str(detour[z])]['s'+str(detour[z+1])],0)]
-                flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                flow_entry['actions']=[ofparser.OFPActionOutput(mn_topo_ports['s'+str(detour[z])]['s'+str(detour[z+1])],0)]
+                flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                 flow_entry['table_id']=0
                 flow_entries_dict = add_flow_entry(flow_entries_dict,detour[z],flow_entry)
                 flow_stats_dict = update_flow_stats(flow_stats_dict,detour[z],'detour')
@@ -652,16 +651,16 @@ def generate_flow_entries_dict(GUI=False):
             l_d_n_index_in_p_p = primary_path.index(detour[len(detour)-1])
             
             flow_entry = dict()
-            flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(detour[len(detour)-1])]['s'+str(detour[len(detour)-2])],
+            flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(detour[len(detour)-1])]['s'+str(detour[len(detour)-2])],
                     eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                     eth_type=0x8847, mpls_label=tag)
             if l_d_n_index_in_p_p == len(primary_path)-1: # l.d.n. is an edge switch
-                flow_entry['actions']=[parser.OFPActionPopMpls(),
-                    parser.OFPActionOutput(mn_topo_ports['s'+str(detour[len(detour)-1])]['h'+str(detour[len(detour)-1])],0)]
+                flow_entry['actions']=[ofparser.OFPActionPopMpls(),
+                    ofparser.OFPActionOutput(mn_topo_ports['s'+str(detour[len(detour)-1])]['h'+str(detour[len(detour)-1])],0)]
             else:
-                flow_entry['actions']=[parser.OFPActionSetField(mpls_label=16),
-                    parser.OFPActionOutput(mn_topo_ports['s'+str(detour[len(detour)-1])]['s'+str(primary_path[l_d_n_index_in_p_p + 1])],0)]
-            flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                flow_entry['actions']=[ofparser.OFPActionSetField(mpls_label=16),
+                    ofparser.OFPActionOutput(mn_topo_ports['s'+str(detour[len(detour)-1])]['s'+str(primary_path[l_d_n_index_in_p_p + 1])],0)]
+            flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
             flow_entry['table_id']=0
             flow_entries_dict = add_flow_entry(flow_entries_dict,detour[len(detour)-1],flow_entry)
             flow_stats_dict = update_flow_stats(flow_stats_dict,detour[len(detour)-1],'detour')
@@ -674,11 +673,11 @@ def generate_flow_entries_dict(GUI=False):
                 for z in range(1,len(fw_back_path)-1):
                     flow_entry = dict()
                     #print "Installing Forward back path rules in node", fw_back_path[z]
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(fw_back_path[z])]['s'+str(fw_back_path[z + 1])],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(fw_back_path[z])]['s'+str(fw_back_path[z + 1])],
                         eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                         eth_type=0x8847, mpls_label=tag)
-                    flow_entry['actions']=[parser.OFPActionOutput(mn_topo_ports['s'+str(fw_back_path[z])]['s'+str(fw_back_path[z - 1])],0)]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                    flow_entry['actions']=[ofparser.OFPActionOutput(mn_topo_ports['s'+str(fw_back_path[z])]['s'+str(fw_back_path[z - 1])],0)]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                     flow_entry['table_id']=0
                     flow_entries_dict = add_flow_entry(flow_entries_dict,fw_back_path[z],flow_entry)
                     flow_stats_dict = update_flow_stats(flow_stats_dict,fw_back_path[z],'fw_back')
@@ -696,47 +695,47 @@ def generate_flow_entries_dict(GUI=False):
 
                 if node_index_in_p_p == 0: # Detect&Redirect node is an edge switch
                     flow_entry = dict()
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['h'+str(redirect_node)],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['h'+str(redirect_node)],
                         eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                         state=tag)
-                    flow_entry['actions']=[parser.OFPActionPushMpls()]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions']),
-                        parser.OFPInstructionGotoTable(1),
-                        parser.OFPInstructionWriteMetadata(tag,0xffffffffffffffff)]
+                    flow_entry['actions']=[ofparser.OFPActionPushMpls()]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions']),
+                        ofparser.OFPInstructionGotoTable(1),
+                        ofparser.OFPInstructionWriteMetadata(tag,0xffffffffffffffff)]
                     flow_entry['table_id']=0
                     flow_entries_dict = add_flow_entry(flow_entries_dict,redirect_node,flow_entry)
                     flow_stats_dict = update_flow_stats(flow_stats_dict,redirect_node,'detect&red')
 
                     flow_entry = dict()
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['h'+str(redirect_node)],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['h'+str(redirect_node)],
                         eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                         eth_type=0x8847,metadata=tag)
-                    flow_entry['actions']=[parser.OFPActionSetField(mpls_label=tag),
-                        parser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                    flow_entry['actions']=[ofparser.OFPActionSetField(mpls_label=tag),
+                        ofparser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                     flow_entry['table_id']=1
                     flow_entries_dict = add_flow_entry(flow_entries_dict,redirect_node,flow_entry)                
 
                 else:
                     flow_entry = dict()
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['s'+str(primary_path[node_index_in_p_p - 1])],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['s'+str(primary_path[node_index_in_p_p - 1])],
                         eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],eth_type=0x8847,
                         state=tag)
-                    flow_entry['actions']=[parser.OFPActionSetField(mpls_label=tag),
-                        parser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                    flow_entry['actions']=[ofparser.OFPActionSetField(mpls_label=tag),
+                        ofparser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                     flow_entry['table_id']=0
                     flow_entries_dict = add_flow_entry(flow_entries_dict,redirect_node,flow_entry)
                     flow_stats_dict = update_flow_stats(flow_stats_dict,redirect_node,'detect&red')
 
                 #bucket creation (set state and redirect on detour path)
                 max_len = 2000
-                actions = [parser.OFPExpActionSetState(state=tag, table_id=0),parser.OFPActionSetField(mpls_label=tag),
-                    parser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
+                actions = [osparser.OFPExpActionSetState(state=tag, table_id=0),ofparser.OFPActionSetField(mpls_label=tag),
+                    ofparser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
                 weight = 0
                 watch_port = mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])]
-                watch_group = ofproto.OFPG_ANY
-                bucket = parser.OFPBucket(weight, watch_port, watch_group,actions)
+                watch_group = ofp.OFPG_ANY
+                bucket = ofparser.OFPBucket(weight, watch_port, watch_group,actions)
                 group_entries_dict = add_group_entry(group_entries_dict,primary_path[node_index_in_p_p],group_ID[(request,(primary_path[node_index_in_p_p],primary_path[node_index_in_p_p+1]))],bucket)
                 
             else:
@@ -746,12 +745,12 @@ def generate_flow_entries_dict(GUI=False):
 
                 #match(SRC_MAC, DST_MAC, in_port, TAG=ID_BROKEN_LINK) -> action(SET_STATE(FAULT_x), OUTPUT(DETOUR_PATH))
                 flow_entry = dict()
-                flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['s'+str(primary_path[node_index_in_p_p+1])],
+                flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['s'+str(primary_path[node_index_in_p_p+1])],
                         eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                         eth_type=0x8847, mpls_label=tag)
-                flow_entry['actions']=[parser.OFPExpActionSetState(state=tag, table_id=0),
-                    parser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
-                flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                flow_entry['actions']=[osparser.OFPExpActionSetState(state=tag, table_id=0),
+                    ofparser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
+                flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                 flow_entry['table_id']=0
                 flow_entries_dict = add_flow_entry(flow_entries_dict,redirect_node,flow_entry)
                 flow_stats_dict = update_flow_stats(flow_stats_dict,redirect_node,'redirect_only')
@@ -759,33 +758,33 @@ def generate_flow_entries_dict(GUI=False):
                 #match(SRC_MAC, DST_MAC, in_port, STATE=FAULT_X) -> action(output(DETOUR_PATH), TAG=ID_BROKEN_LINK)
                 flow_entry = dict()
                 if node_index_in_p_p == 0: # Redirect only node is an edge switch
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['h'+str(redirect_node)],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['h'+str(redirect_node)],
                             eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                             state=tag)
-                    flow_entry['actions']=[parser.OFPActionPushMpls()]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions']),
-                        parser.OFPInstructionGotoTable(1),
-                        parser.OFPInstructionWriteMetadata(tag,0xffffffffffffffff)]
+                    flow_entry['actions']=[ofparser.OFPActionPushMpls()]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions']),
+                        ofparser.OFPInstructionGotoTable(1),
+                        ofparser.OFPInstructionWriteMetadata(tag,0xffffffffffffffff)]
                     flow_entry['table_id']=0
                     flow_entries_dict = add_flow_entry(flow_entries_dict,redirect_node,flow_entry)
                     flow_stats_dict = update_flow_stats(flow_stats_dict,redirect_node,'redirect_only')
 
                     flow_entry = dict()
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['h'+str(redirect_node)],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['h'+str(redirect_node)],
                             eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                             metadata=tag,eth_type=0x8847)
-                    flow_entry['actions']=[parser.OFPActionSetField(mpls_label=tag),
-                        parser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                    flow_entry['actions']=[ofparser.OFPActionSetField(mpls_label=tag),
+                        ofparser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                     flow_entry['table_id']=1
                     flow_entries_dict = add_flow_entry(flow_entries_dict,redirect_node,flow_entry)
                 else:
-                    flow_entry['match']=parser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['s'+str(primary_path[node_index_in_p_p-1])],
+                    flow_entry['match']=ofparser.OFPMatch(in_port=mn_topo_ports['s'+str(redirect_node)]['s'+str(primary_path[node_index_in_p_p-1])],
                             eth_src="00:00:00:00:00:"+'%0.2x' % request[0],eth_dst="00:00:00:00:00:"+'%0.2x' % request[1],
                             eth_type=0x8847,state=tag)
-                    flow_entry['actions']=[parser.OFPActionSetField(mpls_label=tag),
-                        parser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
-                    flow_entry['inst']=[parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
+                    flow_entry['actions']=[ofparser.OFPActionSetField(mpls_label=tag),
+                        ofparser.OFPActionOutput(mn_topo_ports['s'+str(redirect_node)]['s'+str(detour[1])],0)]
+                    flow_entry['inst']=[ofparser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, flow_entry['actions'])]
                     flow_entry['table_id']=0
                     flow_entries_dict = add_flow_entry(flow_entries_dict,redirect_node,flow_entry)
                     flow_stats_dict = update_flow_stats(flow_stats_dict,redirect_node,'redirect_only')
@@ -797,12 +796,12 @@ def generate_flow_entries_dict(GUI=False):
 
                 #bucket creation (set mpls tag and forward back)
                 max_len = 2000
-                actions=[parser.OFPActionSetField(mpls_label=tag),
-                    parser.OFPActionOutput(ofproto.OFPP_IN_PORT,0)]
+                actions=[ofparser.OFPActionSetField(mpls_label=tag),
+                    ofparser.OFPActionOutput(ofp.OFPP_IN_PORT,0)]
                 weight = 0
                 watch_port = mn_topo_ports['s'+str(primary_path[node_index_in_p_p])]['s'+str(primary_path[node_index_in_p_p-1])]
-                watch_group = ofproto.OFPG_ANY
-                bucket = parser.OFPBucket(weight, watch_port, watch_group,actions)
+                watch_group = ofp.OFPG_ANY
+                bucket = ofparser.OFPBucket(weight, watch_port, watch_group,actions)
                 group_entries_dict = add_group_entry(group_entries_dict,primary_path[node_index_in_p_p],group_ID[(request,(primary_path[node_index_in_p_p],primary_path[node_index_in_p_p+1]))],bucket)
 
     time.sleep(3)
