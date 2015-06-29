@@ -142,8 +142,7 @@ class OSLoadBalancing(app_manager.RyuApp):
             dest_eth=self.int_to_mac_str(state)
             dest_tcp=(state)*100
             match = ofparser.OFPMatch(in_port=1, state=state, eth_type=0x800, ip_proto=6)
-            actions = [ osparser.OFPExpActionSetState(state=state, table_id=0),
-                        ofparser.OFPActionSetField(ipv4_dst=dest_ip),
+            actions = [ ofparser.OFPActionSetField(ipv4_dst=dest_ip),
                         ofparser.OFPActionSetField(eth_dst=dest_eth),
                         ofparser.OFPActionSetField(tcp_dst=dest_tcp),
                         ofparser.OFPActionOutput(port=state, max_len=0)]        
