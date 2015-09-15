@@ -90,8 +90,8 @@ def nofitication_factory(code, subcode):
 class BgpProtocol(Protocol, Activity):
     """Protocol that handles BGP messages.
     """
-    MESSAGE_MARKER = ('\xff\xff\xff\xff\xff\xff\xff\xff'
-                      '\xff\xff\xff\xff\xff\xff\xff\xff')
+    MESSAGE_MARKER = (b'\xff\xff\xff\xff\xff\xff\xff\xff'
+                      b'\xff\xff\xff\xff\xff\xff\xff\xff')
 
     def __init__(self, socket, signal_bus, is_reactive_conn=False):
         # Validate input.
@@ -508,7 +508,7 @@ class BgpProtocol(Protocol, Activity):
         self._holdtime = neg_timer
         self._keepalive = self._create_timer('Keepalive Timer',
                                              self._send_keepalive)
-        interval = self._holdtime / 3
+        interval = self._holdtime // 3
         self._keepalive.start(interval, now=False)
         # Setup the expire timer.
         self._expiry = self._create_timer('Holdtime Timer', self._expired)

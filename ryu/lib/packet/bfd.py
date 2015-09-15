@@ -80,6 +80,7 @@ BFD Control packet format
 import binascii
 import hashlib
 import random
+import six
 import struct
 
 from . import packet_base
@@ -240,7 +241,7 @@ class bfd(packet_base.PacketBase):
         flags = flags & 0x3f
 
         if flags & BFD_FLAG_AUTH_PRESENT:
-            (auth_type,) = struct.unpack_from('!B', buf[cls._PACK_STR_LEN])
+            auth_type = six.indexbytes(buf, cls._PACK_STR_LEN)
             auth_cls = cls._auth_parsers[auth_type].\
                 parser(buf[cls._PACK_STR_LEN:])[0]
         else:
@@ -396,8 +397,7 @@ class SimplePassword(BFDAuth):
         (auth_type, auth_len) = cls.parser_hdr(buf)
         assert auth_type == cls.auth_type
 
-        (auth_key_id,) = struct.unpack_from(cls._PACK_STR,
-                                            buf[cls._PACK_HDR_STR_LEN])
+        auth_key_id = six.indexbytes(buf, cls._PACK_HDR_STR_LEN)
 
         password = buf[cls._PACK_HDR_STR_LEN + cls._PACK_STR_LEN:auth_len]
 
@@ -511,8 +511,7 @@ class KeyedMD5(BFDAuth):
         auth_hdr_bin = self.serialize_hdr()
         auth_data_bin = struct.pack(self._PACK_STR, self.auth_key_id, 0,
                                     self.seq, self.auth_key +
-                                    ''.join(['\x00' *
-                                            (len(self.auth_key) - 16)]))
+                                    (b'\x00' * (len(self.auth_key) - 16)))
 
         h = hashlib.md5()
         h.update(bfd_bin + auth_hdr_bin + auth_data_bin)
@@ -551,7 +550,7 @@ class KeyedMD5(BFDAuth):
         auth_hdr_bin = self.serialize_hdr()
         auth_data_bin = struct.pack(self._PACK_STR, self.auth_key_id, 0,
                                     self.seq, auth_key +
-                                    ''.join(['\x00' * (len(auth_key) - 16)]))
+                                    (b'\x00' * (len(auth_key) - 16)))
 
         h = hashlib.md5()
         h.update(bfd_bin + auth_hdr_bin + auth_data_bin)
@@ -662,8 +661,7 @@ class KeyedSHA1(BFDAuth):
         auth_hdr_bin = self.serialize_hdr()
         auth_data_bin = struct.pack(self._PACK_STR, self.auth_key_id, 0,
                                     self.seq, self.auth_key +
-                                    ''.join(['\x00' *
-                                            (len(self.auth_key) - 20)]))
+                                    (b'\x00' * (len(self.auth_key) - 20)))
 
         h = hashlib.sha1()
         h.update(bfd_bin + auth_hdr_bin + auth_data_bin)
@@ -702,7 +700,7 @@ class KeyedSHA1(BFDAuth):
         auth_hdr_bin = self.serialize_hdr()
         auth_data_bin = struct.pack(self._PACK_STR, self.auth_key_id, 0,
                                     self.seq, auth_key +
-                                    ''.join(['\x00' * (len(auth_key) - 20)]))
+                                    (b'\x00' * (len(auth_key) - 20)))
 
         h = hashlib.sha1()
         h.update(bfd_bin + auth_hdr_bin + auth_data_bin)

@@ -16,6 +16,7 @@
 
 import inspect
 import logging
+import six
 import struct
 import unittest
 from nose.tools import eq_
@@ -41,17 +42,17 @@ class Test_dhcp_offer(unittest.TestCase):
     siaddr = '192.168.30.30'
     giaddr = '192.168.40.40'
     sname = 'abc'
-    boot_file = ''
+    boot_file = b''
 
     option_list = [
-        dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, '\x02', 1),
-        dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, '\xff\xff\xff\x00', 4),
-        dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT, '\xc0\xa8\x0a\x09', 4),
-        dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, '\xc0\xa8\x0a\x09', 4),
-        dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT, '\x00\x03\xf4\x80', 4),
-        dhcp.option(dhcp.DHCP_RENEWAL_TIME_OPT, '\x00\x01\xfa\x40', 4),
-        dhcp.option(dhcp.DHCP_REBINDING_TIME_OPT, '\x00\x03\x75\xf0', 4),
-        dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT, '\xc0\xa8\x0a\x09', 4)]
+        dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, b'\x02', 1),
+        dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, b'\xff\xff\xff\x00', 4),
+        dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT, b'\xc0\xa8\x0a\x09', 4),
+        dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, b'\xc0\xa8\x0a\x09', 4),
+        dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT, b'\x00\x03\xf4\x80', 4),
+        dhcp.option(dhcp.DHCP_RENEWAL_TIME_OPT, b'\x00\x01\xfa\x40', 4),
+        dhcp.option(dhcp.DHCP_REBINDING_TIME_OPT, b'\x00\x03\x75\xf0', 4),
+        dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT, b'\xc0\xa8\x0a\x09', 4)]
     magic_cookie = '99.130.83.99'
     options = dhcp.options(option_list=option_list, options_len=50,
                            magic_cookie=magic_cookie)
@@ -61,24 +62,24 @@ class Test_dhcp_offer(unittest.TestCase):
                    ciaddr=ciaddr, yiaddr=yiaddr, siaddr=siaddr,
                    giaddr=giaddr, sname=sname, boot_file=boot_file)
 
-    buf = "\x02\x01\x06\x00\x00\x00\x00\x01\x00\x00\x00\x01\xc0\xa8\x0a\x0a"\
-        + "\xc0\xa8\x14\x14\xc0\xa8\x1e\x1e\xc0\xa8\x28\x28\xaa\xaa\xaa\xaa"\
-        + "\xaa\xaa\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x61\x62\x63\x00"\
-        + "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
-        + "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
-        + "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
-        + "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
-        + "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
-        + "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
-        + "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
-        + "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
-        + "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
-        + "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
-        + "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
-        + "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x63\x82\x53\x63"\
-        + "\x35\x01\x02\x01\x04\xff\xff\xff\x00\x03\x04\xc0\xa8\x0a\x09\x06"\
-        + "\x04\xc0\xa8\x0a\x09\x33\x04\x00\x03\xf4\x80\x3a\x04\x00\x01\xfa"\
-        + "\x40\x3b\x04\x00\x03\x75\xf0\x36\x04\xc0\xa8\x0a\x09\xff"
+    buf = b"\x02\x01\x06\x00\x00\x00\x00\x01\x00\x00\x00\x01\xc0\xa8\x0a\x0a"\
+        + b"\xc0\xa8\x14\x14\xc0\xa8\x1e\x1e\xc0\xa8\x28\x28\xaa\xaa\xaa\xaa"\
+        + b"\xaa\xaa\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x61\x62\x63\x00"\
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"\
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x63\x82\x53\x63"\
+        + b"\x35\x01\x02\x01\x04\xff\xff\xff\x00\x03\x04\xc0\xa8\x0a\x09\x06"\
+        + b"\x04\xc0\xa8\x0a\x09\x33\x04\x00\x03\xf4\x80\x3a\x04\x00\x01\xfa"\
+        + b"\x40\x3b\x04\x00\x03\x75\xf0\x36\x04\xc0\xa8\x0a\x09\xff"
 
     def setUp(self):
         pass
@@ -104,7 +105,7 @@ class Test_dhcp_offer(unittest.TestCase):
         eq_(str(self.options), str(self.dh.options))
 
     def test_parser(self):
-        _res = self.dh.parser(str(self.buf))
+        _res = self.dh.parser(self.buf)
         if type(_res) is tuple:
             res = _res[0]
         else:
@@ -125,7 +126,7 @@ class Test_dhcp_offer(unittest.TestCase):
         # sname is 64 byte length. rest of data is filled by '\x00'.
         eq_(self.sname.ljust(64, '\x00'), res.sname)
         # boof_file is 128 byte length. rest of data is filled by '\x00'.
-        eq_(self.boot_file.ljust(128, '\x00'), res.boot_file)
+        eq_(self.boot_file.ljust(128, b'\x00'), res.boot_file)
         eq_(str(self.options), str(res.options))
 
     def test_parser_corrupted(self):
@@ -137,7 +138,7 @@ class Test_dhcp_offer(unittest.TestCase):
         prev = None
         buf = self.dh.serialize(data, prev)
 
-        res = struct.unpack_from(dhcp.dhcp._DHCP_PACK_STR, str(buf))
+        res = struct.unpack_from(dhcp.dhcp._DHCP_PACK_STR, six.binary_type(buf))
 
         eq_(self.op, res[0])
         eq_(self.htype, res[1])
@@ -152,9 +153,9 @@ class Test_dhcp_offer(unittest.TestCase):
         eq_(self.giaddr, addrconv.ipv4.bin_to_text(res[10]))
         eq_(self.chaddr, addrconv.mac.bin_to_text(res[11][:6]))
         # sname is 64 byte length. rest of data is filled by '\x00'.
-        eq_(self.sname.ljust(64, '\x00'), res[12])
+        eq_(self.sname.ljust(64, '\x00'), res[12].decode('ascii'))
         # boof_file is 128 byte length. rest of data is filled by '\x00'.
-        eq_(self.boot_file.ljust(128, '\x00'), res[13])
+        eq_(self.boot_file.ljust(128, b'\x00'), res[13])
         options = dhcp.options.parser(
             buf[struct.calcsize(dhcp.dhcp._DHCP_PACK_STR):])
         eq_(str(self.options), str(options))
@@ -225,14 +226,14 @@ class Test_dhcp_offer_with_hlen_zero(unittest.TestCase):
     boot_file = ''
 
     option_list = [
-        dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, '\x02', 1),
-        dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, '\xff\xff\xff\x00', 4),
-        dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT, '\xc0\xa8\x0a\x09', 4),
-        dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, '\xc0\xa8\x0a\x09', 4),
-        dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT, '\x00\x03\xf4\x80', 4),
-        dhcp.option(dhcp.DHCP_RENEWAL_TIME_OPT, '\x00\x01\xfa\x40', 4),
-        dhcp.option(dhcp.DHCP_REBINDING_TIME_OPT, '\x00\x03\x75\xf0', 4),
-        dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT, '\xc0\xa8\x0a\x09', 4)]
+        dhcp.option(dhcp.DHCP_MESSAGE_TYPE_OPT, b'\x02', 1),
+        dhcp.option(dhcp.DHCP_SUBNET_MASK_OPT, b'\xff\xff\xff\x00', 4),
+        dhcp.option(dhcp.DHCP_GATEWAY_ADDR_OPT, b'\xc0\xa8\x0a\x09', 4),
+        dhcp.option(dhcp.DHCP_DNS_SERVER_ADDR_OPT, b'\xc0\xa8\x0a\x09', 4),
+        dhcp.option(dhcp.DHCP_IP_ADDR_LEASE_TIME_OPT, b'\x00\x03\xf4\x80', 4),
+        dhcp.option(dhcp.DHCP_RENEWAL_TIME_OPT, b'\x00\x01\xfa\x40', 4),
+        dhcp.option(dhcp.DHCP_REBINDING_TIME_OPT, b'\x00\x03\x75\xf0', 4),
+        dhcp.option(dhcp.DHCP_SERVER_IDENTIFIER_OPT, b'\xc0\xa8\x0a\x09', 4)]
     magic_cookie = '99.130.83.99'
     options = dhcp.options(option_list=option_list, options_len=50,
                            magic_cookie=magic_cookie)

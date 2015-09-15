@@ -16,11 +16,11 @@
 # limitations under the License.
 
 import struct
-import itertools
 
 from ryu import exception
 from ryu.lib import mac
 from ryu.lib.pack_utils import msg_pack_into
+from . import ofproto_parser
 from . import ofproto_v1_0
 from . import inet
 
@@ -63,7 +63,7 @@ _MF_FIELDS = {}
 FLOW_N_REGS = 8  # ovs 1.5
 
 
-class Flow(object):
+class Flow(ofproto_parser.StringifyMixin):
     def __init__(self):
         self.in_port = 0
         self.dl_vlan = 0
@@ -90,9 +90,10 @@ class Flow(object):
         self.nw_frag = 0
         self.regs = [0] * FLOW_N_REGS
         self.ipv6_label = 0
+        self.pkt_mark = 0
 
 
-class FlowWildcards(object):
+class FlowWildcards(ofproto_parser.StringifyMixin):
     def __init__(self):
         self.dl_src_mask = 0
         self.dl_dst_mask = 0
@@ -111,14 +112,31 @@ class FlowWildcards(object):
         self.regs_bits = 0
         self.regs_mask = [0] * FLOW_N_REGS
         self.wildcards = ofproto_v1_0.OFPFW_ALL
+        self.pkt_mark_mask = 0
 
 
-class ClsRule(object):
+class ClsRule(ofproto_parser.StringifyMixin):
     """describe a matching rule for OF 1.0 OFPMatch (and NX).
     """
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.wc = FlowWildcards()
         self.flow = Flow()
+
+        for key, value in kwargs.items():
+            if key[:3] == 'reg':
+                register = int(key[3:] or -1)
+                self.set_reg(register, value)
+                continue
+
+            setter = getattr(self, 'set_' + key, None)
+            if not setter:
+                LOG.error('Invalid kwarg specified to ClsRule (%s)', key)
+                continue
+
+            if not isinstance(value, (tuple, list)):
+                value = (value, )
+
+            setter(*value)
 
     def set_in_port(self, port):
         self.wc.wildcards &= ~FWW_IN_PORT
@@ -257,20 +275,16 @@ class ClsRule(object):
         self.wc.wildcards &= ~FWW_IPV6_LABEL
         self.flow.ipv6_label = label
 
-    def set_ipv6_label(self, label):
-        self.wc.wildcards &= ~FWW_IPV6_LABEL
-        self.flow.ipv6_label = label
-
     def set_ipv6_src_masked(self, src, mask):
         self.wc.ipv6_src_mask = mask
-        self.flow.ipv6_src = [x & y for (x, y) in itertools.izip(src, mask)]
+        self.flow.ipv6_src = [x & y for (x, y) in zip(src, mask)]
 
     def set_ipv6_src(self, src):
         self.flow.ipv6_src = src
 
     def set_ipv6_dst_masked(self, dst, mask):
         self.wc.ipv6_dst_mask = mask
-        self.flow.ipv6_dst = [x & y for (x, y) in itertools.izip(dst, mask)]
+        self.flow.ipv6_dst = [x & y for (x, y) in zip(dst, mask)]
 
     def set_ipv6_dst(self, dst):
         self.flow.ipv6_dst = dst
@@ -278,7 +292,7 @@ class ClsRule(object):
     def set_nd_target_masked(self, target, mask):
         self.wc.nd_target_mask = mask
         self.flow.nd_target = [x & y for (x, y) in
-                               itertools.izip(target, mask)]
+                               zip(target, mask)]
 
     def set_nd_target(self, target):
         self.flow.nd_target = target
@@ -290,6 +304,10 @@ class ClsRule(object):
         self.wc.regs_mask[reg_idx] = mask
         self.flow.regs[reg_idx] = value
         self.wc.regs_bits |= (1 << reg_idx)
+
+    def set_pkt_mark_masked(self, pkt_mark, mask):
+        self.flow.pkt_mark = pkt_mark
+        self.wc.pkt_mark_mask = mask
 
     def flow_format(self):
         # Tunnel ID is only supported by NXM
@@ -914,6 +932,19 @@ class MFRegister(MFField):
                     return self._put(buf, offset, rule.flow.regs[i])
 
 
+@_register_make
+@_set_nxm_headers([ofproto_v1_0.NXM_NX_PKT_MARK,
+                   ofproto_v1_0.NXM_NX_PKT_MARK_W])
+class MFPktMark(MFField):
+    @classmethod
+    def make(cls, header):
+        return cls(header, MF_PACK_STRING_BE32)
+
+    def put(self, buf, offset, rule):
+        return self.putm(buf, offset, rule.flow.pkt_mark,
+                         rule.wc.pkt_mark_mask)
+
+
 def serialize_nxm_match(rule, buf, offset):
     old_offset = offset
 
@@ -1071,6 +1102,13 @@ def serialize_nxm_match(rule, buf, offset):
             header = ofproto_v1_0.NXM_NX_IP_FRAG_W
         offset += nxm_put(buf, offset, header, rule)
 
+    if rule.flow.pkt_mark != 0:
+        if rule.wc.pkt_mark_mask == UINT32_MAX:
+            header = ofproto_v1_0.NXM_NX_PKT_MARK
+        else:
+            header = ofproto_v1_0.NXM_NX_PKT_MARK_W
+        offset += nxm_put(buf, offset, header, rule)
+
     # Tunnel Id
     if rule.wc.tun_id_mask != 0:
         if rule.wc.tun_id_mask == UINT64_MAX:
@@ -1105,7 +1143,7 @@ def nxm_put(buf, offset, header, rule):
 
 
 def round_up(length):
-    return (length + 7) / 8 * 8  # Round up to a multiple of 8
+    return (length + 7) // 8 * 8  # Round up to a multiple of 8
 
 
 class NXMatch(object):

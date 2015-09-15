@@ -21,6 +21,7 @@ except ImportError:
     # Python 2
     pass
 
+import six
 import sys
 import unittest
 from nose.tools import eq_
@@ -51,12 +52,12 @@ class Test_Parser_OFPMatch(unittest.TestCase):
         if domask:
             d = dict(self._ofp[ofpp].oxm_normalize_user(k, uv)
                      for (k, uv)
-                     in d.iteritems())
+                     in d.items())
         match = ofpp.OFPMatch(**d)
         b = bytearray()
         match.serialize(b, 0)
-        match2 = match.parser(buffer(b), 0)
-        for k, v in d.iteritems():
+        match2 = match.parser(six.binary_type(b), 0)
+        for k, v in d.items():
             ok_(k in match)
             ok_(k in match2)
             eq_(match[k], v)
@@ -210,7 +211,7 @@ def _add_tests():
                     l = itertools.product(l, cls.generate())
                     keys.append(k)
                     clss.append(cls)
-                l = map(lambda x: flatten(x)[1:], l)
+                l = [flatten(x)[1:] for x in l]
                 for domask in [True, False]:
                     for values in l:
                         if domask:
@@ -235,7 +236,10 @@ def _add_tests():
 
                         def _run(self, name, ofpp, d, domask):
                             print('processing %s ...' % name)
-                            self._test(name, ofpp, d, domask)
+                            if six.PY3:
+                                self._test(self, name, ofpp, d, domask)
+                            else:
+                                self._test(name, ofpp, d, domask)
                         print('adding %s ...' % method_name)
                         f = functools.partial(_run, name=method_name,
                                               ofpp=ofpp, d=d, domask=domask)

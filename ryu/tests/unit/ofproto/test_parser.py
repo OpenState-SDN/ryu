@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import six
 import sys
 import unittest
 from nose.tools import eq_
@@ -146,6 +147,7 @@ implemented = {
         ofproto_v1_5.OFPT_REQUESTFORWARD: (False, True),
         ofproto_v1_5.OFPT_BUNDLE_CONTROL: (True, True),
         ofproto_v1_5.OFPT_BUNDLE_ADD_MESSAGE: (False, True),
+        ofproto_v1_5.OFPT_CONTROLLER_STATUS: (True, False),
     },
 }
 
@@ -173,6 +175,17 @@ class Test_Parser(unittest.TestCase):
         return ofproto_parser.ofp_msg_from_jsondict(dp, jsondict)
 
     def _test_msg(self, name, wire_msg, json_str):
+        def bytes_eq(buf1, buf2):
+            if buf1 != buf2:
+                msg = 'EOF in either data'
+                for i in range(0, min(len(buf1), len(buf2))):
+                    c1 = six.indexbytes(six.binary_type(buf1), i)
+                    c2 = six.indexbytes(six.binary_type(buf2), i)
+                    if c1 != c2:
+                        msg = 'differs at chr %d, %d != %d' % (i, c1, c2)
+                        break
+                assert buf1 == buf2, "%r != %r, %s" % (buf1, buf2, msg)
+
         json_dict = json.loads(json_str)
         # on-wire -> OFPxxx -> json
         (version, msg_type, msg_len, xid) = ofproto_parser.header(wire_msg)
@@ -188,25 +201,27 @@ class Test_Parser(unittest.TestCase):
                                      wire_msg)
             json_dict2 = self._msg_to_jsondict(msg)
             # XXXdebug code
-            open(('/tmp/%s.json' % name), 'wb').write(json.dumps(json_dict2))
+            open(('/tmp/%s.json' % name), 'w').write(json.dumps(json_dict2))
             eq_(json_dict, json_dict2)
 
         # json -> OFPxxx -> json
+        xid = json_dict[list(json_dict.keys())[0]].pop('xid', None)
         msg2 = self._jsondict_to_msg(dp, json_dict)
+        msg2.set_xid(xid)
         if has_serializer:
             msg2.serialize()
             eq_(self._msg_to_jsondict(msg2), json_dict)
-            eq_(wire_msg, msg2.buf)
+            bytes_eq(wire_msg, msg2.buf)
 
             # check if "len" "length" fields can be omitted
 
             def _remove(d, names):
                 f = lambda x: _remove(x, names)
                 if isinstance(d, list):
-                    return map(f, d)
+                    return list(map(f, d))
                 if isinstance(d, dict):
                     d2 = {}
-                    for k, v in d.iteritems():
+                    for k, v in d.items():
                         if k in names:
                             continue
                         d2[k] = f(v)
@@ -215,11 +230,12 @@ class Test_Parser(unittest.TestCase):
 
             json_dict3 = _remove(json_dict, ['len', 'length'])
             msg3 = self._jsondict_to_msg(dp, json_dict3)
+            msg3.set_xid(xid)
             msg3.serialize()
-            eq_(wire_msg, msg3.buf)
+            bytes_eq(wire_msg, msg3.buf)
 
             msg2.serialize()
-            eq_(wire_msg, msg2.buf)
+            bytes_eq(wire_msg, msg2.buf)
 
 
 def _add_tests():
@@ -247,12 +263,15 @@ def _add_tests():
             if not fnmatch.fnmatch(file, '*.packet'):
                 continue
             wire_msg = open(pdir + '/' + file, 'rb').read()
-            json_str = open(jdir + '/' + file + '.json', 'rb').read()
+            json_str = open(jdir + '/' + file + '.json', 'r').read()
             method_name = ('test_' + file).replace('-', '_').replace('.', '_')
 
             def _run(self, name, wire_msg, json_str):
                 print('processing %s ...' % name)
-                self._test_msg(name, wire_msg, json_str)
+                if six.PY3:
+                    self._test_msg(self, name, wire_msg, json_str)
+                else:
+                    self._test_msg(name, wire_msg, json_str)
             print('adding %s ...' % method_name)
             f = functools.partial(_run, name=method_name, wire_msg=wire_msg,
                                   json_str=json_str)

@@ -17,6 +17,7 @@
  */
 
 #include <lib/learn.h>
+#include <lib/list.h>
 #include <lib/ofpbuf.h>
 #include <lib/ofp-actions.h>
 #include <lib/ofp-msgs.h>
@@ -98,7 +99,7 @@ packet_in(enum ofputil_protocol proto)
     pin.buffer_id = 200;
 
     fill_match(&match);
-    flow_get_metadata(&match.flow, &pin.fmd);
+    flow_get_metadata(&match.flow, &pin.flow_metadata);
 
     return ofputil_encode_packet_in(&pin, proto, NXPIF_OPENFLOW10);
 }
@@ -208,6 +209,40 @@ flow_mod_conjunction(enum ofputil_protocol proto)
 }
 
 struct ofpbuf *
+group_mod(enum ofputil_protocol proto)
+{
+    struct ofputil_group_mod gm;
+    struct ofpbuf acts;
+    struct ofpact_ipv4 *a_set_field;
+    struct ofpact_goto_table *a_goto;
+    struct ofputil_bucket bckt;
+
+    memset(&gm, 0, sizeof(gm));
+    gm.command = OFPGC15_INSERT_BUCKET;
+    gm.type = OFPGT11_SELECT;
+    gm.group_id = 0xaaaaaaaa;
+    gm.command_bucket_id = 0xbbbbbbbb;
+
+    ofpbuf_init(&acts, 0x18);
+    ofpact_put_STRIP_VLAN(&acts);
+    a_set_field = ofpact_put_SET_IPV4_DST(&acts);
+    a_set_field->ipv4 = inet_addr("192.168.2.9");
+
+    bckt.weight = 0xcccc;
+    bckt.watch_port = 0xdddd;
+    bckt.watch_group = 0xeeeeeeee;
+    bckt.bucket_id = 0x12345678;
+    bckt.ofpacts = acts.data;
+    bckt.ofpacts_len = acts.size;
+
+    list_init(&(gm.buckets));
+    list_push_back(&(gm.buckets), &(bckt.list_node));
+
+    return ofputil_encode_group_mod(
+        ofputil_protocol_to_ofp_version(proto), &gm);
+}
+
+struct ofpbuf *
 bundle_ctrl(enum ofputil_protocol proto)
 {
     struct ofputil_bundle_ctrl_msg msg;
@@ -242,6 +277,22 @@ bundle_add(enum ofputil_protocol proto)
     return add;
 }
 
+struct ofpbuf *
+group_desc_request(enum ofputil_protocol proto)
+{
+    uint32_t group_id = 0xcdab;
+
+    return ofputil_encode_group_desc_request(0x06, group_id);
+}
+
+struct ofpbuf *
+port_desc_request(enum ofputil_protocol proto)
+{
+    uint32_t port_no = 0xbcda;
+
+    return ofputil_encode_port_desc_stats_request(0x06, port_no);
+}
+
 struct protocol_version {
     const char *name;
     const char *dir_name;
@@ -271,9 +322,15 @@ const struct message messages[] = {
       ((const struct protocol_version *[]){&p13, &p15, NULL})),
     M(flow_mod_conjunction,
       ((const struct protocol_version *[]){&p13, &p15, NULL})),
+    M(group_mod,
+      ((const struct protocol_version *[]){&p15, NULL})),
     M(bundle_ctrl,
       ((const struct protocol_version *[]){&p15, NULL})),
     M(bundle_add,
+      ((const struct protocol_version *[]){&p15, NULL})),
+    M(group_desc_request,
+      ((const struct protocol_version *[]){&p15, NULL})),
+    M(port_desc_request,
       ((const struct protocol_version *[]){&p15, NULL})),
 };
 

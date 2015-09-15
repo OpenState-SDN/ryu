@@ -34,6 +34,7 @@ Please note that:
 
 
 import logging
+import six
 import time
 import random
 
@@ -228,7 +229,7 @@ class BFDSession(object):
         BFD packet receiver.
         """
         LOG.debug("[BFD][%s][RECV] BFD Control received: %s",
-                  hex(self._local_discr), str(bfd_pkt))
+                  hex(self._local_discr), six.binary_type(bfd_pkt))
         self._remote_discr = bfd_pkt.my_discr
         self._remote_state = bfd_pkt.state
         self._remote_demand_mode = bfd_pkt.flags & bfd.BFD_FLAG_DEMAND
@@ -426,8 +427,8 @@ class BFDSession(object):
         # Authentication Section
         auth_cls = None
         if self._auth_type:
-            auth_key_id = self._auth_keys.keys()[
-                random.randint(0, len(self._auth_keys.keys()) - 1)]
+            auth_key_id = list(self._auth_keys.keys())[
+                random.randint(0, len(list(self._auth_keys.keys())) - 1)]
             auth_key = self._auth_keys[auth_key_id]
 
             if self._auth_type == bfd.BFD_AUTH_SIMPLE_PASS:

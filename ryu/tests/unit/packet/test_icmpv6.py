@@ -17,6 +17,7 @@
 
 import unittest
 import logging
+import six
 import struct
 import inspect
 
@@ -48,7 +49,7 @@ class Test_icmpv6_header(unittest.TestCase):
     type_ = 255
     code = 0
     csum = 207
-    buf = '\xff\x00\x00\xcf'
+    buf = b'\xff\x00\x00\xcf'
     icmp = icmpv6.icmpv6(type_, code, 0)
 
     def setUp(self):
@@ -77,7 +78,7 @@ class Test_icmpv6_header(unittest.TestCase):
         prev = ipv6(6, 0, 0, 4, 58, 255, src_ipv6, dst_ipv6)
 
         buf = self.icmp.serialize(bytearray(), prev)
-        (type_, code, csum) = struct.unpack(self.icmp._PACK_STR, buffer(buf))
+        (type_, code, csum) = struct.unpack(self.icmp._PACK_STR, six.binary_type(buf))
 
         eq_(type_, self.type_)
         eq_(code, self.code)
@@ -93,7 +94,7 @@ class Test_icmpv6_header(unittest.TestCase):
         ic = icmpv6.icmpv6()
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf))
 
         eq_(res[0], 0)
         eq_(res[1], 0)
@@ -111,8 +112,8 @@ class Test_icmpv6_echo_request(unittest.TestCase):
     csum = 0xa572
     id_ = 0x7620
     seq = 0
-    data = '\x01\xc9\xe7\x36\xd3\x39\x06\x00'
-    buf = '\x80\x00\xa5\x72\x76\x20\x00\x00'
+    data = b'\x01\xc9\xe7\x36\xd3\x39\x06\x00'
+    buf = b'\x80\x00\xa5\x72\x76\x20\x00\x00'
 
     def setUp(self):
         pass
@@ -127,7 +128,7 @@ class Test_icmpv6_echo_request(unittest.TestCase):
         eq_(echo.data, None)
 
     def _test_parser(self, data=None):
-        buf = self.buf + str(data or '')
+        buf = self.buf + (data or b'')
         msg, n, _ = icmpv6.icmpv6.parser(buf)
 
         eq_(msg.type_, self.type_)
@@ -145,7 +146,7 @@ class Test_icmpv6_echo_request(unittest.TestCase):
         self._test_parser(self.data)
 
     def _test_serialize(self, echo_data=None):
-        buf = self.buf + str(echo_data or '')
+        buf = self.buf + (echo_data or b'')
         src_ipv6 = '3ffe:507:0:1:200:86ff:fe05:80da'
         dst_ipv6 = '3ffe:501:0:1001::2'
         prev = ipv6(6, 0, 0, len(buf), 64, 255, src_ipv6, dst_ipv6)
@@ -153,7 +154,7 @@ class Test_icmpv6_echo_request(unittest.TestCase):
 
         echo = icmpv6.echo(self.id_, self.seq, echo_data)
         icmp = icmpv6.icmpv6(self.type_, self.code, 0, echo)
-        buf = buffer(icmp.serialize(bytearray(), prev))
+        buf = six.binary_type(icmp.serialize(bytearray(), prev))
 
         (type_, code, csum) = struct.unpack_from(icmp._PACK_STR, buf, 0)
         (id_, seq) = struct.unpack_from(echo._PACK_STR, buf, icmp._MIN_LEN)
@@ -203,13 +204,13 @@ class Test_icmpv6_echo_request(unittest.TestCase):
             type_=icmpv6.ICMPV6_ECHO_REQUEST, data=icmpv6.echo())
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ICMPV6_ECHO_REQUEST)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.echo._PACK_STR, str(buf[4:]))
+        res = struct.unpack(icmpv6.echo._PACK_STR, six.binary_type(buf[4:]))
 
         eq_(res[0], 0)
         eq_(res[1], 0)
@@ -226,7 +227,7 @@ class Test_icmpv6_echo_reply(Test_icmpv6_echo_request):
     def setUp(self):
         self.type_ = 129
         self.csum = 0xa472
-        self.buf = '\x81\x00\xa4\x72\x76\x20\x00\x00'
+        self.buf = b'\x81\x00\xa4\x72\x76\x20\x00\x00'
 
     def test_default_args(self):
         prev = ipv6(nxt=inet.IPPROTO_ICMPV6)
@@ -234,13 +235,13 @@ class Test_icmpv6_echo_reply(Test_icmpv6_echo_request):
             type_=icmpv6.ICMPV6_ECHO_REPLY, data=icmpv6.echo())
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ICMPV6_ECHO_REPLY)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.echo._PACK_STR, str(buf[4:]))
+        res = struct.unpack(icmpv6.echo._PACK_STR, six.binary_type(buf[4:]))
 
         eq_(res[0], 0)
         eq_(res[1], 0)
@@ -255,10 +256,10 @@ class Test_icmpv6_neighbor_solicit(unittest.TestCase):
     nd_type = 1
     nd_length = 1
     nd_hw_src = '00:60:97:07:69:ea'
-    data = '\x01\x01\x00\x60\x97\x07\x69\xea'
-    buf = '\x87\x00\x95\x2d\x00\x00\x00\x00' \
-        + '\x3f\xfe\x05\x07\x00\x00\x00\x01' \
-        + '\x02\x00\x86\xff\xfe\x05\x80\xda'
+    data = b'\x01\x01\x00\x60\x97\x07\x69\xea'
+    buf = b'\x87\x00\x95\x2d\x00\x00\x00\x00' \
+        + b'\x3f\xfe\x05\x07\x00\x00\x00\x01' \
+        + b'\x02\x00\x86\xff\xfe\x05\x80\xda'
     src_ipv6 = '3ffe:507:0:1:200:86ff:fe05:80da'
     dst_ipv6 = '3ffe:501:0:1001::2'
 
@@ -275,7 +276,7 @@ class Test_icmpv6_neighbor_solicit(unittest.TestCase):
         eq_(nd.option, None)
 
     def _test_parser(self, data=None):
-        buf = self.buf + str(data or '')
+        buf = self.buf + (data or b'')
         msg, n, _ = icmpv6.icmpv6.parser(buf)
 
         eq_(msg.type_, self.type_)
@@ -303,7 +304,7 @@ class Test_icmpv6_neighbor_solicit(unittest.TestCase):
         nd_csum = icmpv6_csum(prev, self.buf)
 
         icmp = icmpv6.icmpv6(self.type_, self.code, 0, nd)
-        buf = buffer(icmp.serialize(bytearray(), prev))
+        buf = six.binary_type(icmp.serialize(bytearray(), prev))
 
         (type_, code, csum) = struct.unpack_from(icmp._PACK_STR, buf, 0)
         (res, dst) = struct.unpack_from(nd._PACK_STR, buf, icmp._MIN_LEN)
@@ -314,7 +315,7 @@ class Test_icmpv6_neighbor_solicit(unittest.TestCase):
         eq_(csum, nd_csum)
         eq_(res >> 29, self.res)
         eq_(dst, addrconv.ipv6.text_to_bin(self.dst))
-        eq_(data, '')
+        eq_(data, b'')
 
     def test_serialize_with_data(self):
         nd_opt = icmpv6.nd_option_sla(self.nd_length, self.nd_hw_src)
@@ -323,7 +324,7 @@ class Test_icmpv6_neighbor_solicit(unittest.TestCase):
         nd_csum = icmpv6_csum(prev, self.buf + self.data)
 
         icmp = icmpv6.icmpv6(self.type_, self.code, 0, nd)
-        buf = buffer(icmp.serialize(bytearray(), prev))
+        buf = six.binary_type(icmp.serialize(bytearray(), prev))
 
         (type_, code, csum) = struct.unpack_from(icmp._PACK_STR, buf, 0)
         (res, dst) = struct.unpack_from(nd._PACK_STR, buf, icmp._MIN_LEN)
@@ -379,13 +380,13 @@ class Test_icmpv6_neighbor_solicit(unittest.TestCase):
             type_=icmpv6.ND_NEIGHBOR_SOLICIT, data=icmpv6.nd_neighbor())
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_NEIGHBOR_SOLICIT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_neighbor._PACK_STR, str(buf[4:]))
+        res = struct.unpack(icmpv6.nd_neighbor._PACK_STR, six.binary_type(buf[4:]))
 
         eq_(res[0], 0)
         eq_(res[1], addrconv.ipv6.text_to_bin('::'))
@@ -398,18 +399,20 @@ class Test_icmpv6_neighbor_solicit(unittest.TestCase):
                 option=icmpv6.nd_option_sla()))
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_NEIGHBOR_SOLICIT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_neighbor._PACK_STR, str(buf[4:24]))
+        res = struct.unpack(icmpv6.nd_neighbor._PACK_STR,
+                            six.binary_type(buf[4:24]))
 
         eq_(res[0], 0)
         eq_(res[1], addrconv.ipv6.text_to_bin('::'))
 
-        res = struct.unpack(icmpv6.nd_option_sla._PACK_STR, str(buf[24:]))
+        res = struct.unpack(icmpv6.nd_option_sla._PACK_STR,
+                            six.binary_type(buf[24:]))
 
         eq_(res[0], icmpv6.ND_OPTION_SLA)
         eq_(res[1], len(icmpv6.nd_option_sla()) // 8)
@@ -434,10 +437,10 @@ class Test_icmpv6_neighbor_advert(Test_icmpv6_neighbor_solicit):
         self.nd_length = 1
         self.nd_data = None
         self.nd_hw_src = '00:60:97:07:69:ea'
-        self.data = '\x02\x01\x00\x60\x97\x07\x69\xea'
-        self.buf = '\x88\x00\xb8\xba\xe0\x00\x00\x00' \
-            + '\x3f\xfe\x05\x07\x00\x00\x00\x01' \
-            + '\x02\x60\x97\xff\xfe\x07\x69\xea'
+        self.data = b'\x02\x01\x00\x60\x97\x07\x69\xea'
+        self.buf = b'\x88\x00\xb8\xba\xe0\x00\x00\x00' \
+            + b'\x3f\xfe\x05\x07\x00\x00\x00\x01' \
+            + b'\x02\x60\x97\xff\xfe\x07\x69\xea'
 
     def test_serialize_with_data(self):
         nd_opt = icmpv6.nd_option_tla(self.nd_length, self.nd_hw_src)
@@ -446,7 +449,7 @@ class Test_icmpv6_neighbor_advert(Test_icmpv6_neighbor_solicit):
         nd_csum = icmpv6_csum(prev, self.buf + self.data)
 
         icmp = icmpv6.icmpv6(self.type_, self.code, 0, nd)
-        buf = buffer(icmp.serialize(bytearray(), prev))
+        buf = six.binary_type(icmp.serialize(bytearray(), prev))
 
         (type_, code, csum) = struct.unpack_from(icmp._PACK_STR, buf, 0)
         (res, dst) = struct.unpack_from(nd._PACK_STR, buf, icmp._MIN_LEN)
@@ -502,13 +505,13 @@ class Test_icmpv6_neighbor_advert(Test_icmpv6_neighbor_solicit):
             type_=icmpv6.ND_NEIGHBOR_ADVERT, data=icmpv6.nd_neighbor())
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_NEIGHBOR_ADVERT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_neighbor._PACK_STR, str(buf[4:]))
+        res = struct.unpack(icmpv6.nd_neighbor._PACK_STR, six.binary_type(buf[4:]))
 
         eq_(res[0], 0)
         eq_(res[1], addrconv.ipv6.text_to_bin('::'))
@@ -521,18 +524,20 @@ class Test_icmpv6_neighbor_advert(Test_icmpv6_neighbor_solicit):
                 option=icmpv6.nd_option_tla()))
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_NEIGHBOR_ADVERT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_neighbor._PACK_STR, str(buf[4:24]))
+        res = struct.unpack(icmpv6.nd_neighbor._PACK_STR,
+                            six.binary_type(buf[4:24]))
 
         eq_(res[0], 0)
         eq_(res[1], addrconv.ipv6.text_to_bin('::'))
 
-        res = struct.unpack(icmpv6.nd_option_tla._PACK_STR, str(buf[24:]))
+        res = struct.unpack(icmpv6.nd_option_tla._PACK_STR,
+                            six.binary_type(buf[24:]))
 
         eq_(res[0], icmpv6.ND_OPTION_TLA)
         eq_(res[1], len(icmpv6.nd_option_tla()) // 8)
@@ -547,8 +552,8 @@ class Test_icmpv6_router_solicit(unittest.TestCase):
     nd_type = 1
     nd_length = 1
     nd_hw_src = '12:2d:a5:6d:bc:0f'
-    data = '\x00\x00\x00\x00\x01\x01\x12\x2d\xa5\x6d\xbc\x0f'
-    buf = '\x85\x00\x97\xd9'
+    data = b'\x00\x00\x00\x00\x01\x01\x12\x2d\xa5\x6d\xbc\x0f'
+    buf = b'\x85\x00\x97\xd9'
     src_ipv6 = '3ffe:507:0:1:200:86ff:fe05:80da'
     dst_ipv6 = '3ffe:501:0:1001::2'
 
@@ -564,7 +569,7 @@ class Test_icmpv6_router_solicit(unittest.TestCase):
         eq_(rs.option, None)
 
     def _test_parser(self, data=None):
-        buf = self.buf + str(data or '')
+        buf = self.buf + (data or b'')
         msg, n, _ = icmpv6.icmpv6.parser(buf)
 
         eq_(msg.type_, self.type_)
@@ -591,7 +596,7 @@ class Test_icmpv6_router_solicit(unittest.TestCase):
         rs_csum = icmpv6_csum(prev, self.buf)
 
         icmp = icmpv6.icmpv6(self.type_, self.code, 0, rs)
-        buf = buffer(icmp.serialize(bytearray(), prev))
+        buf = six.binary_type(icmp.serialize(bytearray(), prev))
 
         (type_, code, csum) = struct.unpack_from(icmp._PACK_STR, buf, 0)
         res = struct.unpack_from(rs._PACK_STR, buf, icmp._MIN_LEN)
@@ -601,7 +606,7 @@ class Test_icmpv6_router_solicit(unittest.TestCase):
         eq_(code, self.code)
         eq_(csum, rs_csum)
         eq_(res[0], self.res)
-        eq_(data, '')
+        eq_(data, b'')
 
     def test_serialize_with_data(self):
         nd_opt = icmpv6.nd_option_sla(self.nd_length, self.nd_hw_src)
@@ -610,7 +615,7 @@ class Test_icmpv6_router_solicit(unittest.TestCase):
         rs_csum = icmpv6_csum(prev, self.buf + self.data)
 
         icmp = icmpv6.icmpv6(self.type_, self.code, 0, rs)
-        buf = buffer(icmp.serialize(bytearray(), prev))
+        buf = six.binary_type(icmp.serialize(bytearray(), prev))
 
         (type_, code, csum) = struct.unpack_from(icmp._PACK_STR, buf, 0)
         res = struct.unpack_from(rs._PACK_STR, buf, icmp._MIN_LEN)
@@ -664,13 +669,14 @@ class Test_icmpv6_router_solicit(unittest.TestCase):
             type_=icmpv6.ND_ROUTER_SOLICIT, data=icmpv6.nd_router_solicit())
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_ROUTER_SOLICIT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_router_solicit._PACK_STR, str(buf[4:]))
+        res = struct.unpack(icmpv6.nd_router_solicit._PACK_STR,
+                            six.binary_type(buf[4:]))
 
         eq_(res[0], 0)
 
@@ -682,17 +688,19 @@ class Test_icmpv6_router_solicit(unittest.TestCase):
                 option=icmpv6.nd_option_sla()))
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_ROUTER_SOLICIT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_router_solicit._PACK_STR, str(buf[4:8]))
+        res = struct.unpack(icmpv6.nd_router_solicit._PACK_STR,
+                            six.binary_type(buf[4:8]))
 
         eq_(res[0], 0)
 
-        res = struct.unpack(icmpv6.nd_option_sla._PACK_STR, str(buf[8:]))
+        res = struct.unpack(icmpv6.nd_option_sla._PACK_STR,
+                            six.binary_type(buf[8:]))
 
         eq_(res[0], icmpv6.ND_OPTION_SLA)
         eq_(res[1], len(icmpv6.nd_option_sla()) // 8)
@@ -721,13 +729,14 @@ class Test_icmpv6_router_advert(unittest.TestCase):
             type_=icmpv6.ND_ROUTER_ADVERT, data=icmpv6.nd_router_advert())
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_ROUTER_ADVERT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_router_advert._PACK_STR, str(buf[4:]))
+        res = struct.unpack(icmpv6.nd_router_advert._PACK_STR,
+                            six.binary_type(buf[4:]))
 
         eq_(res[0], 0)
         eq_(res[1], 0)
@@ -743,13 +752,14 @@ class Test_icmpv6_router_advert(unittest.TestCase):
                 options=[icmpv6.nd_option_sla()]))
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_ROUTER_ADVERT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_router_advert._PACK_STR, str(buf[4:16]))
+        res = struct.unpack(icmpv6.nd_router_advert._PACK_STR,
+                            six.binary_type(buf[4:16]))
 
         eq_(res[0], 0)
         eq_(res[1], 0)
@@ -757,7 +767,8 @@ class Test_icmpv6_router_advert(unittest.TestCase):
         eq_(res[3], 0)
         eq_(res[4], 0)
 
-        res = struct.unpack(icmpv6.nd_option_sla._PACK_STR, str(buf[16:]))
+        res = struct.unpack(icmpv6.nd_option_sla._PACK_STR,
+                            six.binary_type(buf[16:]))
 
         eq_(res[0], icmpv6.ND_OPTION_SLA)
         eq_(res[1], len(icmpv6.nd_option_sla()) // 8)
@@ -771,13 +782,14 @@ class Test_icmpv6_router_advert(unittest.TestCase):
                 options=[icmpv6.nd_option_pi()]))
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_ROUTER_ADVERT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_router_advert._PACK_STR, str(buf[4:16]))
+        res = struct.unpack(icmpv6.nd_router_advert._PACK_STR,
+                            six.binary_type(buf[4:16]))
 
         eq_(res[0], 0)
         eq_(res[1], 0)
@@ -785,7 +797,8 @@ class Test_icmpv6_router_advert(unittest.TestCase):
         eq_(res[3], 0)
         eq_(res[4], 0)
 
-        res = struct.unpack(icmpv6.nd_option_pi._PACK_STR, str(buf[16:]))
+        res = struct.unpack(icmpv6.nd_option_pi._PACK_STR,
+                            six.binary_type(buf[16:]))
 
         eq_(res[0], icmpv6.ND_OPTION_PI)
         eq_(res[1], 4)
@@ -804,13 +817,14 @@ class Test_icmpv6_router_advert(unittest.TestCase):
                 options=[icmpv6.nd_option_sla(), icmpv6.nd_option_pi()]))
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_ROUTER_ADVERT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_router_advert._PACK_STR, str(buf[4:16]))
+        res = struct.unpack(icmpv6.nd_router_advert._PACK_STR,
+                            six.binary_type(buf[4:16]))
 
         eq_(res[0], 0)
         eq_(res[1], 0)
@@ -818,13 +832,15 @@ class Test_icmpv6_router_advert(unittest.TestCase):
         eq_(res[3], 0)
         eq_(res[4], 0)
 
-        res = struct.unpack(icmpv6.nd_option_sla._PACK_STR, str(buf[16:24]))
+        res = struct.unpack(icmpv6.nd_option_sla._PACK_STR,
+                            six.binary_type(buf[16:24]))
 
         eq_(res[0], icmpv6.ND_OPTION_SLA)
         eq_(res[1], len(icmpv6.nd_option_sla()) // 8)
         eq_(res[2], addrconv.mac.text_to_bin('00:00:00:00:00:00'))
 
-        res = struct.unpack(icmpv6.nd_option_pi._PACK_STR, str(buf[24:]))
+        res = struct.unpack(icmpv6.nd_option_pi._PACK_STR,
+                            six.binary_type(buf[24:]))
 
         eq_(res[0], icmpv6.ND_OPTION_PI)
         eq_(res[1], len(icmpv6.nd_option_pi()) // 8)
@@ -856,7 +872,7 @@ class Test_icmpv6_nd_option_la(unittest.TestCase):
     def test_default_args(self):
         la = icmpv6.nd_option_sla()
         buf = la.serialize()
-        res = struct.unpack(icmpv6.nd_option_sla._PACK_STR, str(buf))
+        res = struct.unpack(icmpv6.nd_option_sla._PACK_STR, six.binary_type(buf))
 
         eq_(res[0], icmpv6.ND_OPTION_SLA)
         eq_(res[1], len(icmpv6.nd_option_sla()) // 8)
@@ -870,18 +886,20 @@ class Test_icmpv6_nd_option_la(unittest.TestCase):
                 option=icmpv6.nd_option_tla()))
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_NEIGHBOR_ADVERT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_neighbor._PACK_STR, str(buf[4:24]))
+        res = struct.unpack(icmpv6.nd_neighbor._PACK_STR,
+                            six.binary_type(buf[4:24]))
 
         eq_(res[0], 0)
         eq_(res[1], addrconv.ipv6.text_to_bin('::'))
 
-        res = struct.unpack(icmpv6.nd_option_tla._PACK_STR, str(buf[24:]))
+        res = struct.unpack(icmpv6.nd_option_tla._PACK_STR,
+                            six.binary_type(buf[24:]))
 
         eq_(res[0], icmpv6.ND_OPTION_TLA)
         eq_(res[1], len(icmpv6.nd_option_tla()) // 8)
@@ -895,17 +913,19 @@ class Test_icmpv6_nd_option_la(unittest.TestCase):
                 option=icmpv6.nd_option_sla()))
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_ROUTER_SOLICIT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_router_solicit._PACK_STR, str(buf[4:8]))
+        res = struct.unpack(icmpv6.nd_router_solicit._PACK_STR,
+                            six.binary_type(buf[4:8]))
 
         eq_(res[0], 0)
 
-        res = struct.unpack(icmpv6.nd_option_sla._PACK_STR, str(buf[8:]))
+        res = struct.unpack(icmpv6.nd_option_sla._PACK_STR,
+                            six.binary_type(buf[8:]))
 
         eq_(res[0], icmpv6.ND_OPTION_SLA)
         eq_(res[1], len(icmpv6.nd_option_sla()) // 8)
@@ -923,7 +943,7 @@ class Test_icmpv6_nd_option_pi(unittest.TestCase):
     def test_default_args(self):
         pi = icmpv6.nd_option_pi()
         buf = pi.serialize()
-        res = struct.unpack(icmpv6.nd_option_pi._PACK_STR, str(buf))
+        res = struct.unpack(icmpv6.nd_option_pi._PACK_STR, six.binary_type(buf))
 
         eq_(res[0], icmpv6.ND_OPTION_PI)
         eq_(res[1], len(icmpv6.nd_option_pi()) // 8)
@@ -942,13 +962,14 @@ class Test_icmpv6_nd_option_pi(unittest.TestCase):
                 options=[icmpv6.nd_option_pi()]))
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.ND_ROUTER_ADVERT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.nd_router_advert._PACK_STR, str(buf[4:16]))
+        res = struct.unpack(icmpv6.nd_router_advert._PACK_STR,
+                            six.binary_type(buf[4:16]))
 
         eq_(res[0], 0)
         eq_(res[1], 0)
@@ -956,7 +977,8 @@ class Test_icmpv6_nd_option_pi(unittest.TestCase):
         eq_(res[3], 0)
         eq_(res[4], 0)
 
-        res = struct.unpack(icmpv6.nd_option_pi._PACK_STR, str(buf[16:]))
+        res = struct.unpack(icmpv6.nd_option_pi._PACK_STR,
+                            six.binary_type(buf[16:]))
 
         eq_(res[0], icmpv6.ND_OPTION_PI)
         eq_(res[1], 4)
@@ -974,9 +996,9 @@ class Test_icmpv6_membership_query(unittest.TestCase):
     csum = 0xb5a4
     maxresp = 10000
     address = 'ff08::1'
-    buf = '\x82\x00\xb5\xa4\x27\x10\x00\x00' \
-        + '\xff\x08\x00\x00\x00\x00\x00\x00' \
-        + '\x00\x00\x00\x00\x00\x00\x00\x01'
+    buf = b'\x82\x00\xb5\xa4\x27\x10\x00\x00' \
+        + b'\xff\x08\x00\x00\x00\x00\x00\x00' \
+        + b'\x00\x00\x00\x00\x00\x00\x00\x01'
 
     def setUp(self):
         pass
@@ -1007,7 +1029,7 @@ class Test_icmpv6_membership_query(unittest.TestCase):
 
         mld = icmpv6.mld(self.maxresp, self.address)
         icmp = icmpv6.icmpv6(self.type_, self.code, 0, mld)
-        buf = buffer(icmp.serialize(bytearray(), prev))
+        buf = six.binary_type(icmp.serialize(bytearray(), prev))
 
         (type_, code, csum) = struct.unpack_from(icmp._PACK_STR, buf, 0)
         (maxresp, address) = struct.unpack_from(
@@ -1048,13 +1070,13 @@ class Test_icmpv6_membership_query(unittest.TestCase):
             type_=icmpv6.MLD_LISTENER_QUERY, data=icmpv6.mld())
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.MLD_LISTENER_QUERY)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.mld._PACK_STR, str(buf[4:]))
+        res = struct.unpack(icmpv6.mld._PACK_STR, six.binary_type(buf[4:]))
 
         eq_(res[0], 0)
         eq_(res[1], addrconv.ipv6.text_to_bin('::'))
@@ -1074,9 +1096,9 @@ class Test_icmpv6_membership_report(Test_icmpv6_membership_query):
     csum = 0xb4a4
     maxresp = 10000
     address = 'ff08::1'
-    buf = '\x83\x00\xb4\xa4\x27\x10\x00\x00' \
-        + '\xff\x08\x00\x00\x00\x00\x00\x00' \
-        + '\x00\x00\x00\x00\x00\x00\x00\x01'
+    buf = b'\x83\x00\xb4\xa4\x27\x10\x00\x00' \
+        + b'\xff\x08\x00\x00\x00\x00\x00\x00' \
+        + b'\x00\x00\x00\x00\x00\x00\x00\x01'
 
     def test_json(self):
         ic1 = icmpv6.icmpv6(
@@ -1093,9 +1115,9 @@ class Test_icmpv6_membership_done(Test_icmpv6_membership_query):
     csum = 0xb3a4
     maxresp = 10000
     address = 'ff08::1'
-    buf = '\x84\x00\xb3\xa4\x27\x10\x00\x00' \
-        + '\xff\x08\x00\x00\x00\x00\x00\x00' \
-        + '\x00\x00\x00\x00\x00\x00\x00\x01'
+    buf = b'\x84\x00\xb3\xa4\x27\x10\x00\x00' \
+        + b'\xff\x08\x00\x00\x00\x00\x00\x00' \
+        + b'\x00\x00\x00\x00\x00\x00\x00\x01'
 
     def test_json(self):
         ic1 = icmpv6.icmpv6(
@@ -1122,10 +1144,10 @@ class Test_mldv2_query(unittest.TestCase):
     mld = icmpv6.mldv2_query(
         maxresp, address, s_flg, qrv, qqic, num, srcs)
 
-    buf = '\x82\x00\xb5\xa4\x27\x10\x00\x00' \
-        + '\xff\x08\x00\x00\x00\x00\x00\x00' \
-        + '\x00\x00\x00\x00\x00\x00\x00\x01' \
-        + '\x02\x0a\x00\x00'
+    buf = b'\x82\x00\xb5\xa4\x27\x10\x00\x00' \
+        + b'\xff\x08\x00\x00\x00\x00\x00\x00' \
+        + b'\x00\x00\x00\x00\x00\x00\x00\x01' \
+        + b'\x02\x0a\x00\x00'
 
     def setUp(self):
         pass
@@ -1136,14 +1158,14 @@ class Test_mldv2_query(unittest.TestCase):
         self.mld = icmpv6.mldv2_query(
             self.maxresp, self.address, self.s_flg, self.qrv, self.qqic,
             self.num, self.srcs)
-        self.buf = '\x82\x00\xb5\xa4\x27\x10\x00\x00' \
-            + '\xff\x08\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x01' \
-            + '\x02\x0a\x00\x02' \
-            + '\xff\x80\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x01' \
-            + '\xff\x80\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x02'
+        self.buf = b'\x82\x00\xb5\xa4\x27\x10\x00\x00' \
+            + b'\xff\x08\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x01' \
+            + b'\x02\x0a\x00\x02' \
+            + b'\xff\x80\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x01' \
+            + b'\xff\x80\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x02'
 
     def tearDown(self):
         pass
@@ -1194,9 +1216,10 @@ class Test_mldv2_query(unittest.TestCase):
         icmp = icmpv6.icmpv6(self.type_, self.code, 0, self.mld)
         buf = icmp.serialize(bytearray(), prev)
 
-        (type_, code, csum) = struct.unpack_from(icmp._PACK_STR, str(buf))
+        (type_, code, csum) = struct.unpack_from(icmp._PACK_STR,
+                                                 six.binary_type(buf))
         (maxresp, address, s_qrv, qqic, num) = struct.unpack_from(
-            self.mld._PACK_STR, str(buf), icmp._MIN_LEN)
+            self.mld._PACK_STR, six.binary_type(buf), icmp._MIN_LEN)
 
         eq_(type_, self.type_)
         eq_(code, self.code)
@@ -1220,11 +1243,12 @@ class Test_mldv2_query(unittest.TestCase):
         icmp = icmpv6.icmpv6(self.type_, self.code, 0, self.mld)
         buf = icmp.serialize(bytearray(), prev)
 
-        (type_, code, csum) = struct.unpack_from(icmp._PACK_STR, str(buf))
+        (type_, code, csum) = struct.unpack_from(icmp._PACK_STR,
+                                                 six.binary_type(buf))
         (maxresp, address, s_qrv, qqic, num) = struct.unpack_from(
-            self.mld._PACK_STR, str(buf), icmp._MIN_LEN)
+            self.mld._PACK_STR, six.binary_type(buf), icmp._MIN_LEN)
         (addr1, addr2) = struct.unpack_from(
-            '!16s16s', str(buf), icmp._MIN_LEN + self.mld._MIN_LEN)
+            '!16s16s', six.binary_type(buf), icmp._MIN_LEN + self.mld._MIN_LEN)
 
         eq_(type_, self.type_)
         eq_(code, self.code)
@@ -1339,13 +1363,13 @@ class Test_mldv2_query(unittest.TestCase):
             type_=icmpv6.MLD_LISTENER_QUERY, data=icmpv6.mldv2_query())
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.MLD_LISTENER_QUERY)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.mldv2_query._PACK_STR, str(buf[4:]))
+        res = struct.unpack(icmpv6.mldv2_query._PACK_STR, six.binary_type(buf[4:]))
 
         eq_(res[0], 0)
         eq_(res[1], addrconv.ipv6.text_to_bin('::'))
@@ -1358,7 +1382,7 @@ class Test_mldv2_query(unittest.TestCase):
         que = icmpv6.mldv2_query(srcs=srcs)
         buf = que.serialize()
         res = struct.unpack_from(
-            icmpv6.mldv2_query._PACK_STR, str(buf))
+            icmpv6.mldv2_query._PACK_STR, six.binary_type(buf))
 
         eq_(res[0], 0)
         eq_(res[1], addrconv.ipv6.text_to_bin('::'))
@@ -1367,7 +1391,7 @@ class Test_mldv2_query(unittest.TestCase):
         eq_(res[4], len(srcs))
 
         (src1, src2, src3) = struct.unpack_from(
-            '16s16s16s', str(buf), icmpv6.mldv2_query._MIN_LEN)
+            '16s16s16s', six.binary_type(buf), icmpv6.mldv2_query._MIN_LEN)
 
         eq_(src1, addrconv.ipv6.text_to_bin(srcs[0]))
         eq_(src2, addrconv.ipv6.text_to_bin(srcs[1]))
@@ -1392,7 +1416,7 @@ class Test_mldv2_report(unittest.TestCase):
 
     mld = icmpv6.mldv2_report(record_num, records)
 
-    buf = '\x8f\x00\xb5\xa4\x00\x00\x00\x00'
+    buf = b'\x8f\x00\xb5\xa4\x00\x00\x00\x00'
 
     def setUp(self):
         pass
@@ -1404,37 +1428,37 @@ class Test_mldv2_report(unittest.TestCase):
             icmpv6.MODE_IS_INCLUDE, 0, 2, 'ff00::2',
             ['fe80::1', 'fe80::2'])
         self.record3 = icmpv6.mldv2_report_group(
-            icmpv6.MODE_IS_INCLUDE, 1, 0, 'ff00::3', [], 'abc\x00')
+            icmpv6.MODE_IS_INCLUDE, 1, 0, 'ff00::3', [], b'abc\x00')
         self.record4 = icmpv6.mldv2_report_group(
             icmpv6.MODE_IS_INCLUDE, 2, 2, 'ff00::4',
-            ['fe80::1', 'fe80::2'], 'abcde\x00\x00\x00')
+            ['fe80::1', 'fe80::2'], b'abcde\x00\x00\x00')
         self.records = [self.record1, self.record2, self.record3,
                         self.record4]
         self.record_num = len(self.records)
         self.mld = icmpv6.mldv2_report(self.record_num, self.records)
-        self.buf = '\x8f\x00\xb5\xa4\x00\x00\x00\x04' \
-            + '\x01\x00\x00\x00' \
-            + '\xff\x00\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x01' \
-            + '\x01\x00\x00\x02' \
-            + '\xff\x00\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x02' \
-            + '\xfe\x80\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x01' \
-            + '\xfe\x80\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x02' \
-            + '\x01\x01\x00\x00' \
-            + '\xff\x00\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x03' \
-            + '\x61\x62\x63\x00' \
-            + '\x01\x02\x00\x02' \
-            + '\xff\x00\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x04' \
-            + '\xfe\x80\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x01' \
-            + '\xfe\x80\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x02' \
-            + '\x61\x62\x63\x64\x65\x00\x00\x00'
+        self.buf = b'\x8f\x00\xb5\xa4\x00\x00\x00\x04' \
+            + b'\x01\x00\x00\x00' \
+            + b'\xff\x00\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x01' \
+            + b'\x01\x00\x00\x02' \
+            + b'\xff\x00\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x02' \
+            + b'\xfe\x80\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x01' \
+            + b'\xfe\x80\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x02' \
+            + b'\x01\x01\x00\x00' \
+            + b'\xff\x00\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x03' \
+            + b'\x61\x62\x63\x00' \
+            + b'\x01\x02\x00\x02' \
+            + b'\xff\x00\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x04' \
+            + b'\xfe\x80\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x01' \
+            + b'\xfe\x80\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x02' \
+            + b'\x61\x62\x63\x64\x65\x00\x00\x00'
 
     def tearDown(self):
         pass
@@ -1474,9 +1498,10 @@ class Test_mldv2_report(unittest.TestCase):
         icmp = icmpv6.icmpv6(self.type_, self.code, 0, self.mld)
         buf = icmp.serialize(bytearray(), prev)
 
-        (type_, code, csum) = struct.unpack_from(icmp._PACK_STR, str(buf))
+        (type_, code, csum) = struct.unpack_from(icmp._PACK_STR,
+                                                 six.binary_type(buf))
         (record_num, ) = struct.unpack_from(
-            self.mld._PACK_STR, str(buf), icmp._MIN_LEN)
+            self.mld._PACK_STR, six.binary_type(buf), icmp._MIN_LEN)
 
         eq_(type_, self.type_)
         eq_(code, self.code)
@@ -1491,19 +1516,20 @@ class Test_mldv2_report(unittest.TestCase):
         mld_csum = icmpv6_csum(prev, self.buf)
 
         icmp = icmpv6.icmpv6(self.type_, self.code, 0, self.mld)
-        buf = icmp.serialize(bytearray(), prev)
+        buf = six.binary_type(icmp.serialize(bytearray(), prev))
 
-        (type_, code, csum) = struct.unpack_from(icmp._PACK_STR, str(buf))
+        (type_, code, csum) = struct.unpack_from(icmp._PACK_STR,
+                                                 six.binary_type(buf))
         (record_num, ) = struct.unpack_from(
-            self.mld._PACK_STR, str(buf), icmp._MIN_LEN)
+            self.mld._PACK_STR, six.binary_type(buf), icmp._MIN_LEN)
         offset = icmp._MIN_LEN + self.mld._MIN_LEN
-        rec1 = icmpv6.mldv2_report_group.parser(buffer(buf[offset:]))
+        rec1 = icmpv6.mldv2_report_group.parser(buf[offset:])
         offset += len(rec1)
-        rec2 = icmpv6.mldv2_report_group.parser(buffer(buf[offset:]))
+        rec2 = icmpv6.mldv2_report_group.parser(buf[offset:])
         offset += len(rec2)
-        rec3 = icmpv6.mldv2_report_group.parser(buffer(buf[offset:]))
+        rec3 = icmpv6.mldv2_report_group.parser(buf[offset:])
         offset += len(rec3)
-        rec4 = icmpv6.mldv2_report_group.parser(buffer(buf[offset:]))
+        rec4 = icmpv6.mldv2_report_group.parser(buf[offset:])
 
         eq_(type_, self.type_)
         eq_(code, self.code)
@@ -1578,10 +1604,10 @@ class Test_mldv2_report(unittest.TestCase):
             icmpv6.MODE_IS_INCLUDE, 0, 2, 'ff00::2',
             ['fe80::1', 'fe80::2'])
         self.record3 = icmpv6.mldv2_report_group(
-            icmpv6.MODE_IS_INCLUDE, 1, 0, 'ff00::3', [], 'abc\x00')
+            icmpv6.MODE_IS_INCLUDE, 1, 0, 'ff00::3', [], b'abc\x00')
         self.record4 = icmpv6.mldv2_report_group(
             icmpv6.MODE_IS_INCLUDE, 2, 2, 'ff00::4',
-            ['fe80::1', 'fe80::2'], 'abcde\x00\x00\x00')
+            ['fe80::1', 'fe80::2'], b'abcde\x00\x00\x00')
         self.records = [self.record1, self.record2, self.record3,
                         self.record4]
         self.record_num = len(self.records) + 1
@@ -1602,10 +1628,10 @@ class Test_mldv2_report(unittest.TestCase):
             icmpv6.MODE_IS_INCLUDE, 0, 2, 'ff00::2',
             ['fe80::1', 'fe80::2'])
         self.record3 = icmpv6.mldv2_report_group(
-            icmpv6.MODE_IS_INCLUDE, 1, 0, 'ff00::3', [], 'abc\x00')
+            icmpv6.MODE_IS_INCLUDE, 1, 0, 'ff00::3', [], b'abc\x00')
         self.record4 = icmpv6.mldv2_report_group(
             icmpv6.MODE_IS_INCLUDE, 2, 2, 'ff00::4',
-            ['fe80::1', 'fe80::2'], 'abcde\x00\x00\x00')
+            ['fe80::1', 'fe80::2'], b'abcde\x00\x00\x00')
         self.records = [self.record1, self.record2, self.record3,
                         self.record4]
         self.record_num = len(self.records) - 1
@@ -1624,13 +1650,13 @@ class Test_mldv2_report(unittest.TestCase):
             type_=icmpv6.MLDV2_LISTENER_REPORT, data=icmpv6.mldv2_report())
         prev.serialize(ic, None)
         buf = ic.serialize(bytearray(), prev)
-        res = struct.unpack(icmpv6.icmpv6._PACK_STR, str(buf[:4]))
+        res = struct.unpack(icmpv6.icmpv6._PACK_STR, six.binary_type(buf[:4]))
 
         eq_(res[0], icmpv6.MLDV2_LISTENER_REPORT)
         eq_(res[1], 0)
         eq_(res[2], icmpv6_csum(prev, buf))
 
-        res = struct.unpack(icmpv6.mldv2_report._PACK_STR, str(buf[4:]))
+        res = struct.unpack(icmpv6.mldv2_report._PACK_STR, six.binary_type(buf[4:]))
 
         eq_(res[0], 0)
 
@@ -1644,12 +1670,12 @@ class Test_mldv2_report(unittest.TestCase):
         rep = icmpv6.mldv2_report(records=records)
         buf = rep.serialize()
         res = struct.unpack_from(
-            icmpv6.mldv2_report._PACK_STR, str(buf))
+            icmpv6.mldv2_report._PACK_STR, six.binary_type(buf))
 
         eq_(res[0], len(records))
 
         res = struct.unpack_from(
-            icmpv6.mldv2_report_group._PACK_STR, str(buf),
+            icmpv6.mldv2_report_group._PACK_STR, six.binary_type(buf),
             icmpv6.mldv2_report._MIN_LEN)
 
         eq_(res[0], icmpv6.MODE_IS_INCLUDE)
@@ -1658,7 +1684,7 @@ class Test_mldv2_report(unittest.TestCase):
         eq_(res[3], addrconv.ipv6.text_to_bin('ff00::1'))
 
         res = struct.unpack_from(
-            icmpv6.mldv2_report_group._PACK_STR, str(buf),
+            icmpv6.mldv2_report_group._PACK_STR, six.binary_type(buf),
             icmpv6.mldv2_report._MIN_LEN +
             icmpv6.mldv2_report_group._MIN_LEN)
 
@@ -1668,7 +1694,7 @@ class Test_mldv2_report(unittest.TestCase):
         eq_(res[3], addrconv.ipv6.text_to_bin('ff00::2'))
 
         res = struct.unpack_from(
-            '16s16s', str(buf),
+            '16s16s', six.binary_type(buf),
             icmpv6.mldv2_report._MIN_LEN +
             icmpv6.mldv2_report_group._MIN_LEN +
             icmpv6.mldv2_report_group._MIN_LEN)
@@ -1695,9 +1721,9 @@ class Test_mldv2_report_group(unittest.TestCase):
     aux = None
     mld = icmpv6.mldv2_report_group(
         type_, aux_len, num, address, srcs, aux)
-    buf = '\x01\x00\x00\x00' \
-        + '\xff\x00\x00\x00\x00\x00\x00\x00' \
-        + '\x00\x00\x00\x00\x00\x00\x00\x01'
+    buf = b'\x01\x00\x00\x00' \
+        + b'\xff\x00\x00\x00\x00\x00\x00\x00' \
+        + b'\x00\x00\x00\x00\x00\x00\x00\x01'
 
     def setUp(self):
         pass
@@ -1708,45 +1734,45 @@ class Test_mldv2_report_group(unittest.TestCase):
         self.mld = icmpv6.mldv2_report_group(
             self.type_, self.aux_len, self.num, self.address, self.srcs,
             self.aux)
-        self.buf = '\x01\x00\x00\x03' \
-            + '\xff\x00\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x01' \
-            + '\xfe\x80\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x01' \
-            + '\xfe\x80\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x02' \
-            + '\xfe\x80\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x03'
+        self.buf = b'\x01\x00\x00\x03' \
+            + b'\xff\x00\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x01' \
+            + b'\xfe\x80\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x01' \
+            + b'\xfe\x80\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x02' \
+            + b'\xfe\x80\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x03'
 
     def setUp_with_aux(self):
-        self.aux = '\x01\x02\x03\x04\x05\x06\x07\x08'
+        self.aux = b'\x01\x02\x03\x04\x05\x06\x07\x08'
         self.aux_len = len(self.aux) // 4
         self.mld = icmpv6.mldv2_report_group(
             self.type_, self.aux_len, self.num, self.address, self.srcs,
             self.aux)
-        self.buf = '\x01\x02\x00\x00' \
-            + '\xff\x00\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x01' \
-            + '\x01\x02\x03\x04\x05\x06\x07\x08'
+        self.buf = b'\x01\x02\x00\x00' \
+            + b'\xff\x00\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x01' \
+            + b'\x01\x02\x03\x04\x05\x06\x07\x08'
 
     def setUp_with_srcs_and_aux(self):
         self.srcs = ['fe80::1', 'fe80::2', 'fe80::3']
         self.num = len(self.srcs)
-        self.aux = '\x01\x02\x03\x04\x05\x06\x07\x08'
+        self.aux = b'\x01\x02\x03\x04\x05\x06\x07\x08'
         self.aux_len = len(self.aux) // 4
         self.mld = icmpv6.mldv2_report_group(
             self.type_, self.aux_len, self.num, self.address, self.srcs,
             self.aux)
-        self.buf = '\x01\x02\x00\x03' \
-            + '\xff\x00\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x01' \
-            + '\xfe\x80\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x01' \
-            + '\xfe\x80\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x02' \
-            + '\xfe\x80\x00\x00\x00\x00\x00\x00' \
-            + '\x00\x00\x00\x00\x00\x00\x00\x03' \
-            + '\x01\x02\x03\x04\x05\x06\x07\x08'
+        self.buf = b'\x01\x02\x00\x03' \
+            + b'\xff\x00\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x01' \
+            + b'\xfe\x80\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x01' \
+            + b'\xfe\x80\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x02' \
+            + b'\xfe\x80\x00\x00\x00\x00\x00\x00' \
+            + b'\x00\x00\x00\x00\x00\x00\x00\x03' \
+            + b'\x01\x02\x03\x04\x05\x06\x07\x08'
 
     def tearDown(self):
         pass
@@ -1800,7 +1826,7 @@ class Test_mldv2_report_group(unittest.TestCase):
     def test_serialize(self):
         buf = self.mld.serialize()
         res = struct.unpack_from(
-            icmpv6.mldv2_report_group._PACK_STR, buffer(buf))
+            icmpv6.mldv2_report_group._PACK_STR, six.binary_type(buf))
 
         eq_(res[0], self.type_)
         eq_(res[1], self.aux_len)
@@ -1811,9 +1837,9 @@ class Test_mldv2_report_group(unittest.TestCase):
         self.setUp_with_srcs()
         buf = self.mld.serialize()
         res = struct.unpack_from(
-            icmpv6.mldv2_report_group._PACK_STR, buffer(buf))
+            icmpv6.mldv2_report_group._PACK_STR, six.binary_type(buf))
         (src1, src2, src3) = struct.unpack_from(
-            '16s16s16s', buffer(buf), icmpv6.mldv2_report_group._MIN_LEN)
+            '16s16s16s', six.binary_type(buf), icmpv6.mldv2_report_group._MIN_LEN)
         eq_(res[0], self.type_)
         eq_(res[1], self.aux_len)
         eq_(res[2], self.num)
@@ -1826,9 +1852,9 @@ class Test_mldv2_report_group(unittest.TestCase):
         self.setUp_with_aux()
         buf = self.mld.serialize()
         res = struct.unpack_from(
-            icmpv6.mldv2_report_group._PACK_STR, buffer(buf))
+            icmpv6.mldv2_report_group._PACK_STR, six.binary_type(buf))
         (aux, ) = struct.unpack_from(
-            '%ds' % (self.aux_len * 4), buffer(buf),
+            '%ds' % (self.aux_len * 4), six.binary_type(buf),
             icmpv6.mldv2_report_group._MIN_LEN)
         eq_(res[0], self.type_)
         eq_(res[1], self.aux_len)
@@ -1840,11 +1866,11 @@ class Test_mldv2_report_group(unittest.TestCase):
         self.setUp_with_srcs_and_aux()
         buf = self.mld.serialize()
         res = struct.unpack_from(
-            icmpv6.mldv2_report_group._PACK_STR, buffer(buf))
+            icmpv6.mldv2_report_group._PACK_STR, six.binary_type(buf))
         (src1, src2, src3) = struct.unpack_from(
-            '16s16s16s', buffer(buf), icmpv6.mldv2_report_group._MIN_LEN)
+            '16s16s16s', six.binary_type(buf), icmpv6.mldv2_report_group._MIN_LEN)
         (aux, ) = struct.unpack_from(
-            '%ds' % (self.aux_len * 4), buffer(buf),
+            '%ds' % (self.aux_len * 4), six.binary_type(buf),
             icmpv6.mldv2_report_group._MIN_LEN + 16 * 3)
         eq_(res[0], self.type_)
         eq_(res[1], self.aux_len)
@@ -1927,7 +1953,7 @@ class Test_mldv2_report_group(unittest.TestCase):
 
     @raises
     def test_aux_len_larger_than_aux(self):
-        self.aux = '\x01\x02\x03\x04\x05\x06\x07\x08'
+        self.aux = b'\x01\x02\x03\x04\x05\x06\x07\x08'
         self.aux_len = len(self.aux) // 4 + 1
         self.buf = struct.pack(
             icmpv6.mldv2_report_group._PACK_STR, self.type_, self.aux_len,
@@ -1940,7 +1966,7 @@ class Test_mldv2_report_group(unittest.TestCase):
 
     @raises
     def test_aux_len_smaller_than_aux(self):
-        self.aux = '\x01\x02\x03\x04\x05\x06\x07\x08'
+        self.aux = b'\x01\x02\x03\x04\x05\x06\x07\x08'
         self.aux_len = len(self.aux) // 4 - 1
         self.buf = struct.pack(
             icmpv6.mldv2_report_group._PACK_STR, self.type_, self.aux_len,
@@ -1955,7 +1981,7 @@ class Test_mldv2_report_group(unittest.TestCase):
         rep = icmpv6.mldv2_report_group()
         buf = rep.serialize()
         res = struct.unpack_from(
-            icmpv6.mldv2_report_group._PACK_STR, str(buf))
+            icmpv6.mldv2_report_group._PACK_STR, six.binary_type(buf))
 
         eq_(res[0], 0)
         eq_(res[1], 0)
@@ -1968,7 +1994,7 @@ class Test_mldv2_report_group(unittest.TestCase):
         buf = rep.serialize()
         LOG.info(repr(buf))
         res = struct.unpack_from(
-            icmpv6.mldv2_report_group._PACK_STR, str(buf))
+            icmpv6.mldv2_report_group._PACK_STR, six.binary_type(buf))
 
         eq_(res[0], 0)
         eq_(res[1], 0)
@@ -1976,23 +2002,23 @@ class Test_mldv2_report_group(unittest.TestCase):
         eq_(res[3], addrconv.ipv6.text_to_bin('::'))
 
         (src1, src2, src3) = struct.unpack_from(
-            '16s16s16s', str(buf), icmpv6.mldv2_report_group._MIN_LEN)
+            '16s16s16s', six.binary_type(buf), icmpv6.mldv2_report_group._MIN_LEN)
 
         eq_(src1, addrconv.ipv6.text_to_bin(srcs[0]))
         eq_(src2, addrconv.ipv6.text_to_bin(srcs[1]))
         eq_(src3, addrconv.ipv6.text_to_bin(srcs[2]))
 
         # aux without aux_len
-        rep = icmpv6.mldv2_report_group(aux='\x01\x02\x03')
+        rep = icmpv6.mldv2_report_group(aux=b'\x01\x02\x03')
         buf = rep.serialize()
         res = struct.unpack_from(
-            icmpv6.mldv2_report_group._PACK_STR, str(buf))
+            icmpv6.mldv2_report_group._PACK_STR, six.binary_type(buf))
 
         eq_(res[0], 0)
         eq_(res[1], 1)
         eq_(res[2], 0)
         eq_(res[3], addrconv.ipv6.text_to_bin('::'))
-        eq_(buf[icmpv6.mldv2_report_group._MIN_LEN:], '\x01\x02\x03\x00')
+        eq_(buf[icmpv6.mldv2_report_group._MIN_LEN:], b'\x01\x02\x03\x00')
 
     def test_json(self):
         jsondict = self.mld.to_jsondict()

@@ -20,8 +20,7 @@ OpenFlow 1.5 definitions.
 
 from ryu.lib import type_desc
 from ryu.ofproto import oxm_fields
-# TODO: oxs_fields
-# from ryu.ofproto import oxs_fields
+from ryu.ofproto import oxs_fields
 
 from struct import calcsize
 
@@ -380,7 +379,7 @@ def oxm_tlv_header_extract_hasmask(header):
 
 def oxm_tlv_header_extract_length(header):
     if oxm_tlv_header_extract_hasmask(header):
-        length = (header & 0xff) / 2
+        length = (header & 0xff) // 2
     else:
         length = header & 0xff
     return length
@@ -435,6 +434,7 @@ oxm_types = [
     oxm_fields.OpenFlowBasic('packet_type', 44, type_desc.Int4),
     oxm_fields.NiciraExtended1('tun_ipv4_src', 31, type_desc.IPv4Addr),
     oxm_fields.NiciraExtended1('tun_ipv4_dst', 32, type_desc.IPv4Addr),
+    oxm_fields.NiciraExtended1('pkt_mark', 33, type_desc.Int4),
     oxm_fields.NiciraExtended1('conj_id', 37, type_desc.Int4),
 ]
 
@@ -450,12 +450,27 @@ assert calcsize(OFP_STATS_PACK_STR) == OFP_STATS_SIZE
 OFPXSC_OPENFLOW_BASIC = 0x8002  # Basic stats class for OpenFlow
 OFPXSC_EXPERIMENTER = 0xFFFF    # Experimenter class
 
-# enum oxs_ofb_stat_fields
-OFPXST_OFB_DURATION = 0         # Time flow entry has been alive.
-OFPXST_OFB_IDLE_TIME = 1        # Time flow entry has been idle.
-OFPXST_OFB_FLOW_COUNT = 3       # Number of aggregated flow entries.
-OFPXST_OFB_PACKET_COUNT = 4     # Number of packets in flow entry.
-OFPXST_OFB_BYTE_COUNT = 5       # Number of bytes in flow entry.
+
+def _oxs_tlv_header(class_, field, reserved, length):
+    return (class_ << 16) | (field << 9) | (reserved << 8) | length
+
+
+def oxs_tlv_header(field, length):
+    return _oxs_tlv_header(OFPXSC_OPENFLOW_BASIC, field, 0, length)
+
+
+def oxs_tlv_header_extract_length(header):
+    return header & 0xff
+
+oxs_types = [
+    oxs_fields.OpenFlowBasic('duration', 0, type_desc.Int4Double),
+    oxs_fields.OpenFlowBasic('idle_time', 1, type_desc.Int4Double),
+    oxs_fields.OpenFlowBasic('flow_count', 3, type_desc.Int4),
+    oxs_fields.OpenFlowBasic('packet_count', 4, type_desc.Int8),
+    oxs_fields.OpenFlowBasic('byte_count', 5, type_desc.Int8),
+]
+
+oxs_fields.generate(__name__)
 
 # enum ofp_action_type
 OFPAT_OUTPUT = 0            # Output to switch port.
@@ -651,9 +666,9 @@ OFPGC_REMOVE_BUCKET = 5     # Remove all action buckets or any specific action
                             # bucket from matching group
 
 # enum ofp_group_bucket_prop_type
-OFPGBPT_WEIGHT = 0      # Select groups only.
-OFPGBPT_WATCH_PORT = 1  # Fast failover groups only.
-OFPGBPT_WATCH_GROU = 2  # Fast failover groups only.
+OFPGBPT_WEIGHT = 0             # Select groups only.
+OFPGBPT_WATCH_PORT = 1         # Fast failover groups only.
+OFPGBPT_WATCH_GROUP = 2        # Fast failover groups only.
 OFPGBPT_EXPERIMENTER = 0xFFFF  # Experimenter defined.
 
 # struct ofp_group_bucket_prop_header
@@ -730,9 +745,10 @@ OFPGT_FF = 3        # Fast failover group.
 OFP_NO_BUFFER = 0xffffffff  # Special buffer-id to indicate 'no buffer'
 
 # struct ofp_packet_out
-OFP_PACKET_OUT_PACK_STR = '!IH2x'
+OFP_PACKET_OUT_0_PACK_STR = '!IH2x'
+OFP_PACKET_OUT_0_SIZE = 16
 OFP_PACKET_OUT_SIZE = 24
-assert (calcsize(OFP_PACKET_OUT_PACK_STR) + OFP_MATCH_SIZE + OFP_HEADER_SIZE ==
+assert (calcsize(OFP_PACKET_OUT_0_PACK_STR) + OFP_MATCH_SIZE + OFP_HEADER_SIZE ==
         OFP_PACKET_OUT_SIZE)
 
 # enum ofp_packet_in_reason
@@ -1182,7 +1198,7 @@ assert (calcsize(OFP_FLOW_STATS_REQUEST_PACK_STR) ==
         OFP_FLOW_STATS_REQUEST_SIZE)
 
 # struct ofp_flow_desc
-_OFP_FLOW_DESC_0_PACK_STR = 'H2xBBHHHHHQ'
+_OFP_FLOW_DESC_0_PACK_STR = 'H2xBxHHHHHQ'
 OFP_FLOW_DESC_0_PACK_STR = '!' + _OFP_FLOW_DESC_0_PACK_STR
 OFP_FLOW_DESC_0_SIZE = 24
 assert calcsize(OFP_FLOW_DESC_0_PACK_STR) == OFP_FLOW_DESC_0_SIZE
@@ -1360,11 +1376,6 @@ OFP_BUCKET_COUNTER_PACK_STR = '!QQ'
 OFP_BUCKET_COUNTER_SIZE = 16
 assert calcsize(OFP_BUCKET_COUNTER_PACK_STR) == OFP_BUCKET_COUNTER_SIZE
 
-# struct ofp_group_desc_stats
-OFP_GROUP_DESC_STATS_PACK_STR = '!HBxI'
-OFP_GROUP_DESC_STATS_SIZE = 8
-assert calcsize(OFP_GROUP_DESC_STATS_PACK_STR) == OFP_GROUP_DESC_STATS_SIZE
-
 # struct ofp_group_stats
 OFP_GROUP_STATS_PACK_STR = '!H2xII4xQQII'
 OFP_GROUP_STATS_SIZE = 40
@@ -1374,6 +1385,12 @@ assert calcsize(OFP_GROUP_STATS_PACK_STR) == OFP_GROUP_STATS_SIZE
 OFP_GROUP_DESC_PACK_STR = '!HBxIH6x'
 OFP_GROUP_DESC_SIZE = 16
 assert calcsize(OFP_GROUP_DESC_PACK_STR) == OFP_GROUP_DESC_SIZE
+
+# struct ofp_group_desc_stats
+# Backward compatibility with 1.3.1 - avoid breaking the API.
+OFP_GROUP_DESC_STATS_PACK_STR = OFP_GROUP_DESC_PACK_STR
+OFP_GROUP_DESC_STATS_SIZE = OFP_GROUP_DESC_SIZE
+assert calcsize(OFP_GROUP_DESC_STATS_PACK_STR) == OFP_GROUP_DESC_STATS_SIZE
 
 # enum ofp_group_capabilities
 OFPGFC_SELECT_WEIGHT = 1 << 0       # Support weight for select groups.
@@ -1613,14 +1630,11 @@ OFP_TIME_SIZE = 16
 assert calcsize(OFP_TIME_PACK_STR) == OFP_TIME_SIZE
 
 # struct ofp_bundle_features_prop_time
-OFP_BUNDLE_FEATURES_PROP_TIME_PACK_STR = ('!HH4x' +
-                                          _OFP_TIME_PACK_STR +
-                                          _OFP_TIME_PACK_STR +
-                                          _OFP_TIME_PACK_STR +
-                                          _OFP_TIME_PACK_STR)
+OFP_BUNDLE_FEATURES_PROP_TIME_0_PACK_STR = '!HH4x'
+OFP_BUNDLE_FEATURES_PROP_TIME_0_SIZE = 8
 OFP_BUNDLE_FEATURES_PROP_TIME_SIZE = 72
-assert (calcsize(OFP_BUNDLE_FEATURES_PROP_TIME_PACK_STR) ==
-        OFP_BUNDLE_FEATURES_PROP_TIME_SIZE)
+assert (calcsize(OFP_BUNDLE_FEATURES_PROP_TIME_0_PACK_STR) +
+        OFP_TIME_SIZE * 4 == OFP_BUNDLE_FEATURES_PROP_TIME_SIZE)
 
 # enum ofp_bundle_feature_flags
 OFPBF_TIMESTAMP = 1 << 0        # Request includes a timestamp.
@@ -1794,6 +1808,15 @@ OFP_BUNDLE_ADD_MSG_PACK_STR = (OFP_BUNDLE_ADD_MSG_0_PACK_STR +
 OFP_BUNDLE_ADD_MSG_SIZE = 24
 assert (calcsize(OFP_BUNDLE_ADD_MSG_PACK_STR) + OFP_HEADER_SIZE ==
         OFP_BUNDLE_ADD_MSG_SIZE)
+
+# Note: struct ofp_prop_experimenter is specific to this implementation.
+# It does not have a corresponding structure in the specification.
+# This structure defines common structure for ofp_*_prop_experimenter.
+# struct ofp_prop_experimenter
+OFP_PROP_EXPERIMENTER_PACK_STR = '!HHII'
+OFP_PROP_EXPERIMENTER_SIZE = 12
+assert (calcsize(OFP_PROP_EXPERIMENTER_PACK_STR) ==
+        OFP_PROP_EXPERIMENTER_SIZE)
 
 # define constants
 OFP_VERSION = 0x06

@@ -34,6 +34,11 @@ class Test_bmp(unittest.TestCase):
     def tearDown(self):
         pass
 
+    def _time(self):
+        # time() can give sub-microsecond precision, which results
+        # in an assertion failure
+        return round(time(), 6)
+
     def test_route_monitoring(self):
         update = bgp.BGPUpdate()
         msg = bmp.BMPRouteMonitoring(bgp_update=update,
@@ -43,11 +48,11 @@ class Test_bmp(unittest.TestCase):
                                      peer_address='192.0.2.1',
                                      peer_as=30000,
                                      peer_bgp_id='192.0.2.1',
-                                     timestamp=time())
+                                     timestamp=self._time())
         binmsg = msg.serialize()
         msg2, rest = bmp.BMPMessage.parser(binmsg)
         eq_(msg.to_jsondict(), msg2.to_jsondict())
-        eq_(rest, '')
+        eq_(rest, b'')
 
     def test_statistics_report(self):
         stats = [{'type': bmp.BMP_STAT_TYPE_REJECTED, 'value': 100},
@@ -62,15 +67,15 @@ class Test_bmp(unittest.TestCase):
                                       peer_address='192.0.2.1',
                                       peer_as=30000,
                                       peer_bgp_id='192.0.2.1',
-                                      timestamp=time())
+                                      timestamp=self._time())
         binmsg = msg.serialize()
         msg2, rest = bmp.BMPMessage.parser(binmsg)
         eq_(msg.to_jsondict(), msg2.to_jsondict())
-        eq_(rest, '')
+        eq_(rest, b'')
 
     def test_peer_down_notification(self):
         reason = bmp.BMP_PEER_DOWN_REASON_LOCAL_BGP_NOTIFICATION
-        data = "hoge"
+        data = b'hoge'
         data = bgp.BGPNotification(error_code=1, error_subcode=2, data=data)
         msg = bmp.BMPPeerDownNotification(reason=reason, data=data,
                                           peer_type=bmp.BMP_PEER_TYPE_GLOBAL,
@@ -79,15 +84,15 @@ class Test_bmp(unittest.TestCase):
                                           peer_address='192.0.2.1',
                                           peer_as=30000,
                                           peer_bgp_id='192.0.2.1',
-                                          timestamp=time())
+                                          timestamp=self._time())
         binmsg = msg.serialize()
         msg2, rest = bmp.BMPMessage.parser(binmsg)
         eq_(msg.to_jsondict(), msg2.to_jsondict())
-        eq_(rest, '')
+        eq_(rest, b'')
 
     def test_peer_up_notification(self):
         opt_param = [bgp.BGPOptParamCapabilityUnknown(cap_code=200,
-                                                      cap_value='hoge'),
+                                                      cap_value=b'hoge'),
                      bgp.BGPOptParamCapabilityRouteRefresh(),
                      bgp.BGPOptParamCapabilityMultiprotocol(
                          afi=afi.IP, safi=safi.MPLS_VPN)]
@@ -104,11 +109,11 @@ class Test_bmp(unittest.TestCase):
                                         peer_address='192.0.2.1',
                                         peer_as=30000,
                                         peer_bgp_id='192.0.2.1',
-                                        timestamp=time())
+                                        timestamp=self._time())
         binmsg = msg.serialize()
         msg2, rest = bmp.BMPMessage.parser(binmsg)
         eq_(msg.to_jsondict(), msg2.to_jsondict())
-        eq_(rest, '')
+        eq_(rest, b'')
 
     def test_initiation(self):
         initiation_info = [{'type': bmp.BMP_INIT_TYPE_STRING,
@@ -117,7 +122,7 @@ class Test_bmp(unittest.TestCase):
         binmsg = msg.serialize()
         msg2, rest = bmp.BMPMessage.parser(binmsg)
         eq_(msg.to_jsondict(lambda v: v), msg2.to_jsondict(lambda v: v))
-        eq_(rest, '')
+        eq_(rest, b'')
 
     def test_termination(self):
         termination_info = [{'type': bmp.BMP_TERM_TYPE_STRING,
@@ -128,4 +133,4 @@ class Test_bmp(unittest.TestCase):
         binmsg = msg.serialize()
         msg2, rest = bmp.BMPMessage.parser(binmsg)
         eq_(msg.to_jsondict(lambda v: v), msg2.to_jsondict(lambda v: v))
-        eq_(rest, '')
+        eq_(rest, b'')

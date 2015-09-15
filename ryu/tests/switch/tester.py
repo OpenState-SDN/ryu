@@ -21,6 +21,7 @@ import math
 import netaddr
 import os
 import signal
+import six
 import sys
 import time
 import traceback
@@ -30,7 +31,7 @@ from ryu import cfg
 
 # import all packet libraries.
 PKT_LIB_PATH = 'ryu.lib.packet'
-for modname, moddef in sys.modules.iteritems():
+for modname, moddef in sys.modules.items():
     if not modname.startswith(PKT_LIB_PATH) or not moddef:
         continue
     for (clsname, clsdef, ) in inspect.getmembers(moddef):
@@ -882,7 +883,7 @@ class OfTester(app_manager.RyuApp):
                             'ipv6_flabel': 20,
                             'ipv6_exthdr': 9}
             match_fields = list()
-            for key, united_value in match.iteritems():
+            for key, united_value in match.items():
                 if isinstance(united_value, tuple):
                     (value, mask) = united_value
                     # look up oxm_fields.TypeDescr to get mask length.
@@ -1308,7 +1309,7 @@ class TestFile(stringify.StringifyMixin):
                 if v[k] == port_name:
                     v[k] = CONF['test-switch'][port_name]
         if isinstance(val, dict):
-            for k, v in val.iteritems():
+            for k, v in val.items():
                 if k == "OFPActionOutput":
                     if 'port' in v:
                         __replace_port_name("port", v)
@@ -1321,19 +1322,19 @@ class TestFile(stringify.StringifyMixin):
                 self._normalize_test_json(v)
 
     def _get_tests(self, path):
-        with open(path, 'rb') as fhandle:
+        with open(path, 'r') as fhandle:
             buf = fhandle.read()
             try:
                 json_list = json.loads(buf)
                 for test_json in json_list:
-                    if isinstance(test_json, unicode):
+                    if isinstance(test_json, six.text_type):
                         self.description = test_json
                     else:
                         self._normalize_test_json(test_json)
                         self.tests.append(Test(test_json))
             except (ValueError, TypeError) as e:
                 result = (TEST_FILE_ERROR %
-                          {'file': path, 'detail': e.message})
+                          {'file': path, 'detail': str(e)})
                 self.logger.warning(result)
 
 
@@ -1348,7 +1349,7 @@ class Test(stringify.StringifyMixin):
         def __test_pkt_from_json(test):
             data = eval('/'.join(test))
             data.serialize()
-            return str(data.data)
+            return six.binary_type(data.data)
 
         def __normalize_match(ofproto, match):
             match_json = match.to_jsondict()

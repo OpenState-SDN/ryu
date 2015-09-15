@@ -163,9 +163,19 @@ def actions_to_str(instructions):
     for instruction in instructions:
         if isinstance(instruction,
                       ofproto_v1_2_parser.OFPInstructionActions):
-            for a in instruction.actions:
-                actions.append(action_to_str(a))
-
+            if instruction.type == ofproto_v1_2.OFPIT_APPLY_ACTIONS:
+                for a in instruction.actions:
+                    actions.append(action_to_str(a))
+            elif instruction.type == ofproto_v1_2.OFPIT_WRITE_ACTIONS:
+                write_actions = []
+                for a in instruction.actions:
+                    write_actions.append(action_to_str(a))
+                if write_actions:
+                    actions.append({'WRITE_ACTIONS': write_actions})
+            elif instruction.type == ofproto_v1_2.OFPIT_CLEAR_ACTIONS:
+                actions.append('CLEAR_ACTIONS')
+            else:
+                actions.append('UNKNOWN')
         elif isinstance(instruction,
                         ofproto_v1_2_parser.OFPInstructionGotoTable):
             buf = 'GOTO_TABLE:' + str(instruction.table_id)
@@ -188,7 +198,7 @@ def actions_to_str(instructions):
 def to_match(dp, attrs):
     convert = {'in_port': int,
                'in_phy_port': int,
-               'metadata': to_match_metadata,
+               'metadata': to_match_masked_int,
                'dl_dst': to_match_eth,
                'dl_src': to_match_eth,
                'eth_dst': to_match_eth,
@@ -316,8 +326,8 @@ def to_match_vid(value):
                 return int(value, 0)
 
 
-def to_match_metadata(value):
-    if '/' in value:
+def to_match_masked_int(value):
+    if isinstance(value, str) and '/' in value:
         value = value.split('/')
         return str_to_int(value[0]), str_to_int(value[1])
     else:
@@ -351,20 +361,12 @@ def match_to_str(ofmatch):
         value = match_field['OXMTlv']['value']
         if key == 'dl_vlan':
             value = match_vid_to_str(value, mask)
-        elif key == 'metadata':
-            value = match_metadata_to_str(value, mask)
         else:
             if mask is not None:
-                value = value + '/' + mask
-            else:
-                value = value
+                value = str(value) + '/' + str(mask)
         match.setdefault(key, value)
 
     return match
-
-
-def match_metadata_to_str(value, mask):
-    return '%d/%d' % (value, mask) if mask else '%d' % value
 
 
 def match_vid_to_str(value, mask):
@@ -382,10 +384,18 @@ def send_stats_request(dp, stats, waiters, msgs):
     dp.set_xid(stats)
     waiters_per_dp = waiters.setdefault(dp.id, {})
     lock = hub.Event()
+    previous_msg_len = len(msgs)
     waiters_per_dp[stats.xid] = (lock, msgs)
     dp.send_msg(stats)
 
     lock.wait(timeout=DEFAULT_TIMEOUT)
+    current_msg_len = len(msgs)
+
+    while current_msg_len > previous_msg_len:
+        previous_msg_len = current_msg_len
+        lock.wait(timeout=DEFAULT_TIMEOUT)
+        current_msg_len = len(msgs)
+
     if not lock.is_set():
         del waiters_per_dp[stats.xid]
 

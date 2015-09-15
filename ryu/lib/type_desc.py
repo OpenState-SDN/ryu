@@ -15,6 +15,8 @@
 # limitations under the License.
 
 
+import six
+
 from ryu.lib import addrconv
 
 
@@ -35,9 +37,9 @@ class IntDescr(TypeDescr):
         return i
 
     def from_user(self, i):
-        bin = ''
+        bin = b''
         for x in range(self.size):
-            bin = chr(i & 255) + bin
+            bin = six.int2byte(i & 255) + bin
             i //= 256
         return bin
 
@@ -46,6 +48,47 @@ Int2 = IntDescr(2)
 Int3 = IntDescr(3)
 Int4 = IntDescr(4)
 Int8 = IntDescr(8)
+
+
+def _split_str(s, n):
+    """
+    split string into list of strings by specified number.
+    """
+    length = len(s)
+    return [s[i:i + n] for i in range(0, length, n)]
+
+
+class IntDescrMlt(TypeDescr):
+    def __init__(self, length, num):
+        self.length = length
+        self.num = num
+        self.size = length * num
+
+    def to_user(self, bin):
+        assert len(bin) == self.size
+        lb = _split_str(bin, self.length)
+        li = []
+        for b in lb:
+            i = 0
+            for x in range(self.length):
+                c = b[:1]
+                i = i * 256 + ord(c)
+                b = b[1:]
+            li.append(i)
+        return tuple(li)
+
+    def from_user(self, li):
+        assert len(li) == self.num
+        bin = b''
+        for i in li:
+            b = b''
+            for x in range(self.length):
+                b = six.int2byte(i & 255) + b
+                i //= 256
+            bin += b
+        return bin
+
+Int4Double = IntDescrMlt(4, 2)
 
 
 class MacAddr(TypeDescr):
@@ -69,5 +112,11 @@ class IPv6Addr(TypeDescr):
 class UnknownType(TypeDescr):
     import base64
 
-    to_user = staticmethod(base64.b64encode)
+    b64encode = base64.b64encode
+    if six.PY3:
+        @classmethod
+        def to_user(cls, data):
+            return cls.b64encode(data).decode('ascii')
+    else:
+        to_user = staticmethod(base64.b64encode)
     from_user = staticmethod(base64.b64decode)

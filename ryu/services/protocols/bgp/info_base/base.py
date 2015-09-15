@@ -80,8 +80,11 @@ class Table(object):
         """
         raise NotImplementedError()
 
+    def values(self):
+        return self._destinations.values()
+
     def itervalues(self):
-        return self._destinations.itervalues()
+        return iter(self._destinations.values())
 
     def insert(self, path):
         self._validate_path(path)
@@ -124,7 +127,7 @@ class Table(object):
         version number. Also removes sent paths to this peer.
         """
         LOG.debug('Cleaning paths from table %s for peer %s', self, peer)
-        for dest in self.itervalues():
+        for dest in self.values():
             # Remove paths learned from this source
             paths_deleted = dest.remove_old_paths_from_source(peer)
             # Remove sent paths to this peer
@@ -146,7 +149,7 @@ class Table(object):
         LOG.debug('Cleaning table %s for given interested RTs %s',
                   self, interested_rts)
         uninteresting_dest_count = 0
-        for dest in self.itervalues():
+        for dest in self.values():
             added_withdraw = \
                 dest.withdraw_unintresting_paths(interested_rts)
             if added_withdraw:
@@ -343,7 +346,7 @@ class Destination(object):
 
     @property
     def sent_routes(self):
-        return self._sent_routes.values()
+        return list(self._sent_routes.values())
 
     def add_new_path(self, new_path):
         self._validate_path(new_path)
@@ -805,6 +808,13 @@ class Path(object):
         curr_rts.append(RouteTargetMembershipNLRI.DEFAULT_RT)
 
         return not interested_rts.isdisjoint(curr_rts)
+
+    def is_local(self):
+        return self._source == None
+
+    def has_nexthop(self):
+        return not (not self._nexthop or self._nexthop == '0.0.0.0' or
+                    self._nexthop == '::')
 
     def __str__(self):
         return (

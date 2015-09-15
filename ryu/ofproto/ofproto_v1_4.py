@@ -342,7 +342,7 @@ def oxm_tlv_header_extract_hasmask(header):
 
 def oxm_tlv_header_extract_length(header):
     if oxm_tlv_header_extract_hasmask(header):
-        length = (header & 0xff) / 2
+        length = (header & 0xff) // 2
     else:
         length = header & 0xff
     return length
@@ -391,6 +391,7 @@ oxm_types = [
     oxm_fields.OpenFlowBasic('pbb_uca', 41, type_desc.Int1),
     oxm_fields.NiciraExtended1('tun_ipv4_src', 31, type_desc.IPv4Addr),
     oxm_fields.NiciraExtended1('tun_ipv4_dst', 32, type_desc.IPv4Addr),
+    oxm_fields.NiciraExtended1('pkt_mark', 33, type_desc.Int4),
 ]
 
 oxm_fields.generate(__name__)
@@ -1153,11 +1154,6 @@ OFP_BUCKET_COUNTER_PACK_STR = '!QQ'
 OFP_BUCKET_COUNTER_SIZE = 16
 assert calcsize(OFP_BUCKET_COUNTER_PACK_STR) == OFP_BUCKET_COUNTER_SIZE
 
-# struct ofp_group_desc_stats
-OFP_GROUP_DESC_STATS_PACK_STR = '!HBxI'
-OFP_GROUP_DESC_STATS_SIZE = 8
-assert calcsize(OFP_GROUP_DESC_STATS_PACK_STR) == OFP_GROUP_DESC_STATS_SIZE
-
 # struct ofp_group_stats
 OFP_GROUP_STATS_PACK_STR = '!H2xII4xQQII'
 OFP_GROUP_STATS_SIZE = 40
@@ -1167,6 +1163,12 @@ assert calcsize(OFP_GROUP_STATS_PACK_STR) == OFP_GROUP_STATS_SIZE
 OFP_GROUP_DESC_PACK_STR = '!HBxI'
 OFP_GROUP_DESC_SIZE = 8
 assert calcsize(OFP_GROUP_DESC_PACK_STR) == OFP_GROUP_DESC_SIZE
+
+# struct ofp_group_desc_stats
+# Backward compatibility with 1.3.1 - avoid breaking the API.
+OFP_GROUP_DESC_STATS_PACK_STR = OFP_GROUP_DESC_PACK_STR
+OFP_GROUP_DESC_STATS_SIZE = OFP_GROUP_DESC_SIZE
+assert calcsize(OFP_GROUP_DESC_STATS_PACK_STR) == OFP_GROUP_DESC_STATS_SIZE
 
 # enum ofp_group_capabilities
 OFPGFC_SELECT_WEIGHT = 1 << 0       # Support weight for select groups.
@@ -1470,6 +1472,15 @@ OFP_BUNDLE_ADD_MSG_PACK_STR = (OFP_BUNDLE_ADD_MSG_0_PACK_STR +
 OFP_BUNDLE_ADD_MSG_SIZE = 24
 assert (calcsize(OFP_BUNDLE_ADD_MSG_PACK_STR) + OFP_HEADER_SIZE ==
         OFP_BUNDLE_ADD_MSG_SIZE)
+
+# Note: struct ofp_prop_experimenter is specific to this implementation.
+# It does not have a corresponding structure in the specification.
+# This structure defines common structure for ofp_*_prop_experimenter.
+# struct ofp_prop_experimenter
+OFP_PROP_EXPERIMENTER_PACK_STR = '!HHII'
+OFP_PROP_EXPERIMENTER_SIZE = 12
+assert (calcsize(OFP_PROP_EXPERIMENTER_PACK_STR) ==
+        OFP_PROP_EXPERIMENTER_SIZE)
 
 # define constants
 OFP_VERSION = 0x05

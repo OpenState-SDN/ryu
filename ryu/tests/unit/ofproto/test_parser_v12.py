@@ -17,6 +17,7 @@
 
 import unittest
 import logging
+import six
 import socket
 from struct import *
 from nose.tools import *
@@ -136,7 +137,7 @@ class TestOFPHello(unittest.TestCase):
         eq_(msg_type, res.msg_type)
         eq_(msg_len, res.msg_len)
         eq_(xid, res.xid)
-        eq_(buffer(buf), res.buf)
+        eq_(six.binary_type(buf), six.binary_type(res.buf))
 
     def test_parser_xid_min(self):
         xid = 0
@@ -203,13 +204,13 @@ class TestOFPErrorMsg(unittest.TestCase):
     def test_parser_mid(self):
         type_ = 32768
         code = 32768
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_max(self):
         type_ = 65534
         code = 65535
-        data = 'Error Message.'.ljust(65523)
+        data = b'Error Message.'.ljust(65523)
         self._test_parser(type_, code, data)
 
     def test_parser_min(self):
@@ -221,554 +222,554 @@ class TestOFPErrorMsg(unittest.TestCase):
     def test_parser_p0_1(self):
         type_ = ofproto.OFPET_HELLO_FAILED
         code = ofproto.OFPHFC_EPERM
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_0(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_BAD_VERSION
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_1(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_BAD_TYPE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_2(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_BAD_STAT
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_3(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_BAD_EXPERIMENTER
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_4(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_BAD_EXP_TYPE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_5(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_EPERM
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_6(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_BAD_LEN
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_7(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_BUFFER_EMPTY
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_8(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_BUFFER_UNKNOWN
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_9(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_BAD_TABLE_ID
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_10(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_IS_SLAVE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_11(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_BAD_PORT
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p1_12(self):
         type_ = ofproto.OFPET_BAD_REQUEST
         code = ofproto.OFPBRC_BAD_PACKET
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_0(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_BAD_TYPE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_1(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_BAD_LEN
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_2(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_BAD_EXPERIMENTER
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_3(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_BAD_EXP_TYPE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_4(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_BAD_OUT_PORT
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_5(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_BAD_ARGUMENT
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_6(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_EPERM
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_7(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_TOO_MANY
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_8(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_BAD_QUEUE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_9(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_BAD_OUT_GROUP
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_10(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_MATCH_INCONSISTENT
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_11(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_UNSUPPORTED_ORDER
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_12(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_BAD_TAG
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_13(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_BAD_SET_TYPE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_14(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_BAD_SET_LEN
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p2_15(self):
         type_ = ofproto.OFPET_BAD_ACTION
         code = ofproto.OFPBAC_BAD_SET_ARGUMENT
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p3_0(self):
         type_ = ofproto.OFPET_BAD_INSTRUCTION
         code = ofproto.OFPBIC_UNKNOWN_INST
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p3_1(self):
         type_ = ofproto.OFPET_BAD_INSTRUCTION
         code = ofproto.OFPBIC_UNSUP_INST
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p3_2(self):
         type_ = ofproto.OFPET_BAD_INSTRUCTION
         code = ofproto.OFPBIC_BAD_TABLE_ID
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p3_3(self):
         type_ = ofproto.OFPET_BAD_INSTRUCTION
         code = ofproto.OFPBIC_UNSUP_METADATA
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p3_4(self):
         type_ = ofproto.OFPET_BAD_INSTRUCTION
         code = ofproto.OFPBIC_UNSUP_METADATA_MASK
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p3_5(self):
         type_ = ofproto.OFPET_BAD_INSTRUCTION
         code = ofproto.OFPBIC_BAD_EXPERIMENTER
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p3_6(self):
         type_ = ofproto.OFPET_BAD_INSTRUCTION
         code = ofproto.OFPBIC_BAD_EXP_TYPE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p3_7(self):
         type_ = ofproto.OFPET_BAD_INSTRUCTION
         code = ofproto.OFPBIC_BAD_LEN
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p3_8(self):
         type_ = ofproto.OFPET_BAD_INSTRUCTION
         code = ofproto.OFPBIC_EPERM
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p4_0(self):
         type_ = ofproto.OFPET_BAD_MATCH
         code = ofproto.OFPBMC_BAD_TYPE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p4_1(self):
         type_ = ofproto.OFPET_BAD_MATCH
         code = ofproto.OFPBMC_BAD_LEN
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p4_2(self):
         type_ = ofproto.OFPET_BAD_MATCH
         code = ofproto.OFPBMC_BAD_TAG
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p4_3(self):
         type_ = ofproto.OFPET_BAD_MATCH
         code = ofproto.OFPBMC_BAD_DL_ADDR_MASK
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p4_4(self):
         type_ = ofproto.OFPET_BAD_MATCH
         code = ofproto.OFPBMC_BAD_NW_ADDR_MASK
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p4_5(self):
         type_ = ofproto.OFPET_BAD_MATCH
         code = ofproto.OFPBMC_BAD_WILDCARDS
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p4_6(self):
         type_ = ofproto.OFPET_BAD_MATCH
         code = ofproto.OFPBMC_BAD_FIELD
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p4_7(self):
         type_ = ofproto.OFPET_BAD_MATCH
         code = ofproto.OFPBMC_BAD_VALUE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p4_8(self):
         type_ = ofproto.OFPET_BAD_MATCH
         code = ofproto.OFPBMC_BAD_MASK
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p4_9(self):
         type_ = ofproto.OFPET_BAD_MATCH
         code = ofproto.OFPBMC_BAD_PREREQ
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p4_10(self):
         type_ = ofproto.OFPET_BAD_MATCH
         code = ofproto.OFPBMC_DUP_FIELD
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p4_11(self):
         type_ = ofproto.OFPET_BAD_MATCH
         code = ofproto.OFPBMC_EPERM
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p5_0(self):
         type_ = ofproto.OFPET_FLOW_MOD_FAILED
         code = ofproto.OFPFMFC_UNKNOWN
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p5_1(self):
         type_ = ofproto.OFPET_FLOW_MOD_FAILED
         code = ofproto.OFPFMFC_TABLE_FULL
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p5_2(self):
         type_ = ofproto.OFPET_FLOW_MOD_FAILED
         code = ofproto.OFPFMFC_BAD_TABLE_ID
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p5_3(self):
         type_ = ofproto.OFPET_FLOW_MOD_FAILED
         code = ofproto.OFPFMFC_OVERLAP
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p5_4(self):
         type_ = ofproto.OFPET_FLOW_MOD_FAILED
         code = ofproto.OFPFMFC_EPERM
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p5_5(self):
         type_ = ofproto.OFPET_FLOW_MOD_FAILED
         code = ofproto.OFPFMFC_BAD_TIMEOUT
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p5_6(self):
         type_ = ofproto.OFPET_FLOW_MOD_FAILED
         code = ofproto.OFPFMFC_BAD_COMMAND
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p5_7(self):
         type_ = ofproto.OFPET_FLOW_MOD_FAILED
         code = ofproto.OFPFMFC_BAD_FLAGS
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_0(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_GROUP_EXISTS
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_1(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_INVALID_GROUP
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_2(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_WEIGHT_UNSUPPORTED
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_3(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_OUT_OF_GROUPS
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_4(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_OUT_OF_BUCKETS
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_5(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_CHAINING_UNSUPPORTED
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_6(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_WATCH_UNSUPPORTED
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_7(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_LOOP
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_8(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_UNKNOWN_GROUP
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_9(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_CHAINED_GROUP
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_10(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_BAD_TYPE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_11(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_BAD_COMMAND
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_12(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_BAD_BUCKET
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_13(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_BAD_WATCH
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p6_14(self):
         type_ = ofproto.OFPET_GROUP_MOD_FAILED
         code = ofproto.OFPGMFC_EPERM
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p7_0(self):
         type_ = ofproto.OFPET_PORT_MOD_FAILED
         code = ofproto.OFPPMFC_BAD_PORT
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p7_1(self):
         type_ = ofproto.OFPET_PORT_MOD_FAILED
         code = ofproto.OFPPMFC_BAD_HW_ADDR
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p7_2(self):
         type_ = ofproto.OFPET_PORT_MOD_FAILED
         code = ofproto.OFPPMFC_BAD_CONFIG
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p7_3(self):
         type_ = ofproto.OFPET_PORT_MOD_FAILED
         code = ofproto.OFPPMFC_BAD_ADVERTISE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p7_4(self):
         type_ = ofproto.OFPET_PORT_MOD_FAILED
         code = ofproto.OFPPMFC_EPERM
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p8_0(self):
         type_ = ofproto.OFPET_TABLE_MOD_FAILED
         code = ofproto.OFPTMFC_BAD_TABLE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p8_1(self):
         type_ = ofproto.OFPET_TABLE_MOD_FAILED
         code = ofproto.OFPTMFC_BAD_CONFIG
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p8_2(self):
         type_ = ofproto.OFPET_TABLE_MOD_FAILED
         code = ofproto.OFPTMFC_EPERM
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p9_0(self):
         type_ = ofproto.OFPET_QUEUE_OP_FAILED
         code = ofproto.OFPQOFC_BAD_PORT
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p9_1(self):
         type_ = ofproto.OFPET_QUEUE_OP_FAILED
         code = ofproto.OFPQOFC_BAD_QUEUE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p9_2(self):
         type_ = ofproto.OFPET_QUEUE_OP_FAILED
         code = ofproto.OFPQOFC_EPERM
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p10_0(self):
         type_ = ofproto.OFPET_SWITCH_CONFIG_FAILED
         code = ofproto.OFPSCFC_BAD_FLAGS
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p10_1(self):
         type_ = ofproto.OFPET_SWITCH_CONFIG_FAILED
         code = ofproto.OFPSCFC_BAD_LEN
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p10_2(self):
         type_ = ofproto.OFPET_SWITCH_CONFIG_FAILED
         code = ofproto.OFPSCFC_EPERM
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p11_0(self):
         type_ = ofproto.OFPET_ROLE_REQUEST_FAILED
         code = ofproto.OFPRRFC_STALE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p11_1(self):
         type_ = ofproto.OFPET_ROLE_REQUEST_FAILED
         code = ofproto.OFPRRFC_UNSUP
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_p11_2(self):
         type_ = ofproto.OFPET_ROLE_REQUEST_FAILED
         code = ofproto.OFPRRFC_BAD_ROLE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_parser(type_, code, data)
 
     def test_parser_experimenter(self):
         type_ = 0xffff
         exp_type = 1
         experimenter = 1
-        data = 'Error Experimenter Message.'
+        data = b'Error Experimenter Message.'
 
         # OFP_ERROR_EXPERIMENTER_MSG_PACK_STR = '!HHI'
         fmt = ofproto.OFP_ERROR_EXPERIMENTER_MSG_PACK_STR
@@ -810,7 +811,7 @@ class TestOFPErrorMsg(unittest.TestCase):
             + ofproto.OFP_ERROR_MSG_PACK_STR.replace('!', '') \
             + str(len(c.data)) + 's'
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_ERROR)
@@ -823,19 +824,19 @@ class TestOFPErrorMsg(unittest.TestCase):
     def test_serialize_mid(self):
         type_ = 32768
         code = 32768
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_serialize(type_, code, data)
 
     def test_serialize_max(self):
         type_ = 65535
         code = 65535
-        data = 'Error Message.'.ljust(65523)
+        data = b'Error Message.'.ljust(65523)
         self._test_serialize(type_, code, data)
 
     def test_serialize_min_except_data(self):
         type_ = ofproto.OFPET_HELLO_FAILED
         code = ofproto.OFPHFC_INCOMPATIBLE
-        data = 'Error Message.'
+        data = b'Error Message.'
         self._test_serialize(type_, code, data)
 
     @raises(AssertionError)
@@ -844,7 +845,7 @@ class TestOFPErrorMsg(unittest.TestCase):
         c.serialize()
 
     def _test_serialize_p(self, type_, code):
-        self._test_serialize(type_, code, 'Error Message.')
+        self._test_serialize(type_, code, b'Error Message.')
 
     def test_serialize_p0_1(self):
         self._test_serialize_p(ofproto.OFPET_HELLO_FAILED,
@@ -1258,13 +1259,13 @@ class TestOFPErrorExperimenterMsg(unittest.TestCase):
     def test_parser_mid(self):
         exp_type = 32768
         experimenter = 2147483648
-        data = 'Error Experimenter Message.'
+        data = b'Error Experimenter Message.'
         self._test_parser(exp_type, experimenter, data)
 
     def test_parser_max(self):
         exp_type = 65535
         experimenter = 4294967295
-        data = 'Error Experimenter Message.'.ljust(65519)
+        data = b'Error Experimenter Message.'.ljust(65519)
         self._test_parser(exp_type, experimenter, data)
 
     def test_parser_min(self):
@@ -1307,11 +1308,11 @@ class TestOFPEchoRequest(unittest.TestCase):
             eq_(res.data, data)
 
     def test_parser_mid(self):
-        data = 'Request Message.'
+        data = b'Request Message.'
         self._test_parser(data)
 
     def test_parser_max(self):
-        data = 'Request Message.'.ljust(65527)
+        data = b'Request Message.'.ljust(65527)
         self._test_parser(data)
 
     def test_parser_min(self):
@@ -1332,7 +1333,7 @@ class TestOFPEchoRequest(unittest.TestCase):
         if data is not None:
             fmt += str(len(c.data)) + 's'
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_ECHO_REQUEST)
@@ -1343,11 +1344,11 @@ class TestOFPEchoRequest(unittest.TestCase):
             eq_(res[4], data)
 
     def test_serialize_mid(self):
-        data = 'Request Message.'
+        data = b'Request Message.'
         self._test_serialize(data)
 
     def test_serialize_max(self):
-        data = 'Request Message.'.ljust(65527)
+        data = b'Request Message.'.ljust(65527)
         self._test_serialize(data)
 
     def test_serialize_min(self):
@@ -1390,11 +1391,11 @@ class TestOFPEchoReply(unittest.TestCase):
             eq_(res.data, data)
 
     def test_parser_mid(self):
-        data = 'Reply Message.'
+        data = b'Reply Message.'
         self._test_parser(data)
 
     def test_parser_max(self):
-        data = 'Reply Message.'.ljust(65527)
+        data = b'Reply Message.'.ljust(65527)
         self._test_parser(data)
 
     def test_parser_min(self):
@@ -1418,7 +1419,7 @@ class TestOFPEchoReply(unittest.TestCase):
             + ofproto.OFP_HEADER_PACK_STR.replace('!', '') \
             + str(len(c.data)) + 's'
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_ECHO_REPLY)
@@ -1427,11 +1428,11 @@ class TestOFPEchoReply(unittest.TestCase):
         eq_(res[4], data)
 
     def test_serialize_mid(self):
-        data = 'Reply Message.'
+        data = b'Reply Message.'
         self._test_serialize(data)
 
     def test_serialize_max(self):
-        data = 'Reply Message.'.ljust(65527)
+        data = b'Reply Message.'.ljust(65527)
         self._test_serialize(data)
 
     @raises(AssertionError)
@@ -1501,7 +1502,7 @@ class TestOFPPort(unittest.TestCase):
         #                          peer, curr_speed, max_speed
         port_no = 1119692796
         hw_addr = 'c0:26:53:c4:29:e2'
-        name = 'name'.ljust(16)
+        name = b'name'.ljust(16)
         config = 2226555987
         state = 1678244809
         curr = 2850556459
@@ -1512,8 +1513,6 @@ class TestOFPPort(unittest.TestCase):
         max_speed = 1797291672
 
         fmt = ofproto.OFP_PORT_PACK_STR
-        buf = pack(fmt, port_no, hw_addr, name, config, state, curr,
-                   advertised, supported, peer, curr_speed, max_speed)
 
         c = OFPPort(port_no, hw_addr, name, config, state, curr,
                     advertised, supported, peer, curr_speed, max_speed)
@@ -1532,7 +1531,7 @@ class TestOFPPort(unittest.TestCase):
 
     def _test_parser(self, port_no, hw_addr, config, state, curr, advertised,
                      supported, peer, curr_speed, max_speed):
-        name = 'name'.ljust(16)
+        name = b'name'.ljust(16)
         fmt = ofproto.OFP_PORT_PACK_STR
         buf = pack(fmt, port_no, addrconv.mac.text_to_bin(hw_addr), name,
                    config, state, curr,
@@ -1785,7 +1784,7 @@ class TestOFPFeaturesRequest(unittest.TestCase):
 
         fmt = ofproto.OFP_HEADER_PACK_STR
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_FEATURES_REQUEST)
@@ -1826,7 +1825,7 @@ class TestOFPSwitchFeatures(unittest.TestCase):
             port_no = i
 
             fmt = ofproto.OFP_PORT_PACK_STR
-            buf += pack(fmt, port_no, '\x00' * 6, '\x00' * 16, 0, 0, 0,
+            buf += pack(fmt, port_no, b'\x00' * 6, b'\x00' * 16, 0, 0, 0,
                         0, 0, 0, 0, 0)
 
         res = OFPSwitchFeatures.parser(object, version, msg_type,
@@ -1897,7 +1896,7 @@ class TestOFPGetConfigRequest(unittest.TestCase):
 
         fmt = ofproto.OFP_HEADER_PACK_STR
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_GET_CONFIG_REQUEST)
         eq_(res[2], len(c.buf))
@@ -2003,7 +2002,7 @@ class TestOFPSetConfig(unittest.TestCase):
             + ofproto.OFP_HEADER_PACK_STR.replace('!', '') \
             + ofproto.OFP_SWITCH_CONFIG_PACK_STR.replace('!', '')
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_SET_CONFIG)
@@ -2069,7 +2068,7 @@ class TestOFPPacketIn(unittest.TestCase):
     def _test_parser(self, xid, buffer_id, total_len=0,
                      reason=0, table_id=0, data=None):
         if data is None:
-            data = ''
+            data = b''
 
         # OFP_HEADER_PACK_STR
         # '!BBHI'...version, msg_type, msg_len, xid
@@ -2088,10 +2087,10 @@ class TestOFPPacketIn(unittest.TestCase):
         buf_match = bytearray()
         match = OFPMatch()
         match.serialize(buf_match, 0)
-        buf += str(buf_match)
+        buf += six.binary_type(buf_match)
 
         # data
-        buf += '\x00' * 2
+        buf += b'\x00' * 2
         buf += data
 
         res = OFPPacketIn.parser(object, version, msg_type, msg_len,
@@ -2116,7 +2115,7 @@ class TestOFPPacketIn(unittest.TestCase):
         buffer_id = 2926809324
         reason = 128
         table_id = 3
-        data = 'PacketIn'
+        data = b'PacketIn'
         total_len = len(data)
         self._test_parser(xid, buffer_id, total_len, reason, table_id, data)
 
@@ -2125,7 +2124,7 @@ class TestOFPPacketIn(unittest.TestCase):
         buffer_id = 2926809324
         reason = 128
         table_id = 3
-        data = 'PacketIn'
+        data = b'PacketIn'
         total_len = len(data) - 1
         self._test_parser(xid, buffer_id, total_len, reason, table_id, data)
 
@@ -2135,7 +2134,7 @@ class TestOFPPacketIn(unittest.TestCase):
         buffer_id = 4294967295
         reason = 255
         table_id = 255
-        data = 'data'.ljust(65511)
+        data = b'data'.ljust(65511)
         total_len = len(data)
         self._test_parser(xid, buffer_id, total_len, reason, table_id, data)
 
@@ -2148,7 +2147,7 @@ class TestOFPPacketIn(unittest.TestCase):
         self._test_parser(xid, buffer_id, total_len, reason, table_id)
 
     def test_parser_p1(self):
-        data = 'data'.ljust(8)
+        data = b'data'.ljust(8)
         xid = 3423224276
         buffer_id = 2926809324
         total_len = len(data)
@@ -2157,7 +2156,7 @@ class TestOFPPacketIn(unittest.TestCase):
         self._test_parser(xid, buffer_id, total_len, reason, table_id, data)
 
     def test_parser_p2(self):
-        data = 'data'.ljust(8)
+        data = b'data'.ljust(8)
         xid = 3423224276
         buffer_id = 2926809324
         total_len = len(data)
@@ -2198,7 +2197,7 @@ class TestOFPFlowRemoved(unittest.TestCase):
         buf_match = bytearray()
         match.serialize(buf_match, 0)
 
-        buf += str(buf_match)
+        buf += six.binary_type(buf_match)
 
         res = OFPFlowRemoved.parser(object, version, msg_type,
                                     msg_len, xid, buf)
@@ -2347,7 +2346,7 @@ class TestOFPPortStatus(unittest.TestCase):
         #                          name, config, state, curr, advertised,
         #                          peer, curr_speed, max_speed
         hw_addr = '80:ff:9a:e3:72:85'
-        name = 'name'.ljust(16)
+        name = b'name'.ljust(16)
 
         fmt = ofproto.OFP_PORT_STATUS_PACK_STR
         buf += pack(fmt, reason, port_no, addrconv.mac.text_to_bin(hw_addr),
@@ -2451,7 +2450,7 @@ class TestOFPPacketOut(unittest.TestCase):
 
     def _test_init(self, in_port):
         buffer_id = 0xffffffff
-        data = 'Message'
+        data = b'Message'
         out_port = 0x00002ae0
         actions = [OFPActionOutput(out_port, 0)]
 
@@ -2491,7 +2490,7 @@ class TestOFPPacketOut(unittest.TestCase):
         if data is not None:
             fmt += str(len(data)) + 's'
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_PACKET_OUT)
@@ -2515,7 +2514,7 @@ class TestOFPPacketOut(unittest.TestCase):
         buffer_id = 0xffffffff
         in_port = 0x00040455
         action_cnt = 2
-        data = 'Message'
+        data = b'Message'
         self._test_serialize(buffer_id, in_port, action_cnt, data)
 
     def test_serialize_none(self):
@@ -2527,7 +2526,7 @@ class TestOFPPacketOut(unittest.TestCase):
         buffer_id = 0xffffffff
         in_port = 4294967295
         action_cnt = 1
-        data = "Message".ljust(65495)
+        data = b'Message'.ljust(65495)
         self._test_serialize(buffer_id, in_port, action_cnt, data)
 
     def test_serialize_min(self):
@@ -2545,7 +2544,7 @@ class TestOFPPacketOut(unittest.TestCase):
         buffer_id = 2147483648
         in_port = 1
         action_cnt = 0
-        data = 'DATA'
+        data = b'DATA'
         self._test_serialize(buffer_id, in_port, action_cnt, data)
 
 
@@ -2620,7 +2619,7 @@ class TestOFPFlowMod(unittest.TestCase):
             + MTEthType.pack_str[1:] + '6x' \
             + ofproto.OFP_INSTRUCTION_GOTO_TABLE_PACK_STR[1:] * inst_cnt
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_FLOW_MOD)
@@ -2818,7 +2817,7 @@ class TestOFPInstructionGotoTable(unittest.TestCase):
         buf = bytearray()
         c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
         eq_(res[2], table_id)
@@ -2891,7 +2890,7 @@ class TestOFPInstructionWriteMetadata(unittest.TestCase):
         buf = bytearray()
         c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
         eq_(res[2], metadata)
@@ -2936,7 +2935,7 @@ class TestOFPInstructionActions(unittest.TestCase):
     buf_actions = bytearray()
     actions[0].serialize(buf_actions, 0)
 
-    buf += str(buf_actions)
+    buf += six.binary_type(buf_actions)
 
     def test_init(self):
         c = OFPInstructionActions(self.type_, self.actions)
@@ -2961,7 +2960,7 @@ class TestOFPInstructionActions(unittest.TestCase):
             actions.append(action)
             buf_actions = bytearray()
             actions[a].serialize(buf_actions, 0)
-            buf += str(buf_actions)
+            buf += six.binary_type(buf_actions)
 
         res = OFPInstructionActions.parser(buf, 0)
 
@@ -3009,7 +3008,7 @@ class TestOFPInstructionActions(unittest.TestCase):
 
         for a in range(action_cnt):
             fmt += ofproto.OFP_ACTION_OUTPUT_PACK_STR.replace('!', '')
-        res = struct.unpack(fmt, buffer(buf))
+        res = struct.unpack(fmt, six.binary_type(buf))
 
         eq_(res[0], self.type_)
         eq_(res[1], len_)
@@ -3062,7 +3061,7 @@ class TestOFPActionHeader(unittest.TestCase):
         c.serialize(buf, 0)
 
         fmt = ofproto.OFP_ACTION_HEADER_PACK_STR
-        res = struct.unpack(fmt, buffer(buf))
+        res = struct.unpack(fmt, six.binary_type(buf))
 
         eq_(res[0], type_)
         eq_(res[1], len_)
@@ -3140,7 +3139,7 @@ class TestOFPActionOutput(unittest.TestCase):
         c.serialize(buf, 0)
 
         fmt = ofproto.OFP_ACTION_OUTPUT_PACK_STR
-        res = struct.unpack(fmt, buffer(buf))
+        res = struct.unpack(fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
         eq_(res[2], port)
@@ -3206,7 +3205,7 @@ class TestOFPActionGroup(unittest.TestCase):
         buf = bytearray()
         c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
         eq_(res[2], group_id)
@@ -3260,7 +3259,7 @@ class TestOFPActionSetQueue(unittest.TestCase):
         buf = bytearray()
         c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
         eq_(res[2], queue_id)
@@ -3314,7 +3313,7 @@ class TestOFPActionSetMplsTtl(unittest.TestCase):
         buf = bytearray()
         c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
         eq_(res[2], mpls_ttl)
@@ -3349,7 +3348,7 @@ class TestOFPActionDecMplsTtl(unittest.TestCase):
         buf = bytearray()
         self.c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
 
@@ -3393,7 +3392,7 @@ class TestOFPActionSetNwTtl(unittest.TestCase):
         buf = bytearray()
         c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
         eq_(res[2], nw_ttl)
@@ -3428,7 +3427,7 @@ class TestOFPActionDecNwTtl(unittest.TestCase):
         buf = bytearray()
         self.c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
 
@@ -3452,7 +3451,7 @@ class TestOFPActionCopyTtlOut(unittest.TestCase):
         buf = bytearray()
         self.c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
 
@@ -3479,7 +3478,7 @@ class TestOFPActionCopyTtlIn(unittest.TestCase):
         buf = bytearray()
         self.c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
 
@@ -3521,7 +3520,7 @@ class TestOFPActionPushVlan(unittest.TestCase):
         buf = bytearray()
         c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
         eq_(res[2], ethertype)
@@ -3573,7 +3572,7 @@ class TestOFPActionPushMpls(unittest.TestCase):
         buf = bytearray()
         c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
         eq_(res[2], ethertype)
@@ -3609,7 +3608,7 @@ class TestOFPActionPopVlan(unittest.TestCase):
         buf = bytearray()
         self.c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
 
@@ -3651,7 +3650,7 @@ class TestOFPActionPopMpls(unittest.TestCase):
         buf = bytearray()
         c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
         eq_(res[2], ethertype)
@@ -3698,7 +3697,7 @@ class TestOFPActionSetField(unittest.TestCase):
         buf = bytearray()
         self.c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
 
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
@@ -3747,7 +3746,7 @@ class TestOFPActionExperimenter(unittest.TestCase):
         buf = bytearray()
         c.serialize(buf, 0)
 
-        res = struct.unpack(self.fmt, buffer(buf))
+        res = struct.unpack(self.fmt, six.binary_type(buf))
         eq_(res[0], self.type_)
         eq_(res[1], self.len_)
         eq_(res[2], experimenter)
@@ -3807,7 +3806,7 @@ class TestOFPBucket(unittest.TestCase):
             actions.append(action)
             buf_actions = bytearray()
             actions[a].serialize(buf_actions, 0)
-            buf += str(buf_actions)
+            buf += six.binary_type(buf_actions)
 
         res = OFPBucket.parser(buf, 0)
 
@@ -3871,7 +3870,7 @@ class TestOFPBucket(unittest.TestCase):
         fmt = ofproto.OFP_BUCKET_PACK_STR
         for a in range(action_cnt):
             fmt += ofproto.OFP_ACTION_OUTPUT_PACK_STR[1:]
-        res = struct.unpack(fmt, buffer(buf))
+        res = struct.unpack(fmt, six.binary_type(buf))
 
         eq_(res[0], len_)
         eq_(res[1], weight)
@@ -3973,7 +3972,7 @@ class TestOFPGroupMod(unittest.TestCase):
             fmt += ofproto.OFP_BUCKET_PACK_STR[1:] \
                 + ofproto.OFP_ACTION_OUTPUT_PACK_STR[1:]
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         msg_len = ofproto.OFP_GROUP_MOD_SIZE \
             + (len_ * bucket_cnt)
@@ -4074,7 +4073,7 @@ class TestOFPPortMod(unittest.TestCase):
             + ofproto.OFP_HEADER_PACK_STR.replace('!', '') \
             + ofproto.OFP_PORT_MOD_PACK_STR.replace('!', '')
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_PORT_MOD)
@@ -4261,7 +4260,7 @@ class TestOFPTableMod(unittest.TestCase):
             + ofproto.OFP_HEADER_PACK_STR.replace('!', '') \
             + ofproto.OFP_TABLE_MOD_PACK_STR.replace('!', '')
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_TABLE_MOD)
@@ -4317,7 +4316,7 @@ class TestOFPStatsRequest(unittest.TestCase):
         self.c._serialize_body()
 
         fmt = ofproto.OFP_STATS_REQUEST_PACK_STR
-        res = struct.unpack_from(fmt, str(self.c.buf),
+        res = struct.unpack_from(fmt, six.binary_type(self.c.buf),
                                  ofproto.OFP_HEADER_SIZE)
 
         eq_(res[0], self.type_)
@@ -4484,7 +4483,7 @@ class TestOFPDescStatsRequest(unittest.TestCase):
             + ofproto.OFP_HEADER_PACK_STR.replace('!', '') \
             + ofproto.OFP_STATS_REQUEST_PACK_STR.replace('!', '')
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_STATS_REQUEST)
@@ -4500,11 +4499,11 @@ class TestOFPDescStats(unittest.TestCase):
 
     # OFP_DESC_STATS_PACK_STR
     # '!256s256s256s32s256s'...mfr_desc, hw_desc, sw_desc, serial_num, dp_desc
-    mfr_desc = 'mfr_desc'.ljust(256)
-    hw_desc = 'hw_desc'.ljust(256)
-    sw_desc = 'sw_desc'.ljust(256)
-    serial_num = 'serial_num'.ljust(32)
-    dp_desc = 'dp_desc'.ljust(256)
+    mfr_desc = b'mfr_desc'.ljust(256)
+    hw_desc = b'hw_desc'.ljust(256)
+    sw_desc = b'sw_desc'.ljust(256)
+    serial_num = b'serial_num'.ljust(32)
+    dp_desc = b'dp_desc'.ljust(256)
 
     buf = mfr_desc \
         + hw_desc \
@@ -4580,7 +4579,7 @@ class TestOFPFlowStatsRequest(unittest.TestCase):
             + 'HHHBB' \
             + MTEthType.pack_str[1:] + '6x'
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_STATS_REQUEST)
@@ -4691,7 +4690,7 @@ class TestOFPFlowStats(unittest.TestCase):
         match.set_dl_type(dl_type)
         match_buf = bytearray()
         match.serialize(match_buf, 0)
-        buf += str(match_buf)
+        buf += six.binary_type(match_buf)
 
         # instructions
         # 56 + 8 + 8 * inst_cnt <= 65535
@@ -4700,7 +4699,7 @@ class TestOFPFlowStats(unittest.TestCase):
             inst = OFPInstructionGotoTable(1)
             inst_buf = bytearray()
             inst.serialize(inst_buf, 0)
-            buf += str(inst_buf)
+            buf += six.binary_type(inst_buf)
 
         # parse
         res = OFPFlowStats.parser(buf, 0)
@@ -4803,7 +4802,7 @@ class TestOFPAggregateStatsRequest(unittest.TestCase):
             + 'HHHBB' \
             + MTEthType.pack_str[1:] + '6x'
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_STATS_REQUEST)
         eq_(res[2], len(c.buf))
@@ -4910,7 +4909,7 @@ class TestOFPTableStatsRequest(unittest.TestCase):
             + ofproto.OFP_HEADER_PACK_STR.replace('!', '') \
             + ofproto.OFP_STATS_REQUEST_PACK_STR.replace('!', '')
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_STATS_REQUEST)
@@ -4976,7 +4975,8 @@ class TestOFPTableStats(unittest.TestCase):
         #    instructions, config, max_entries,
         #    active_count, lookup_count, matched_count
         fmt = ofproto.OFP_TABLE_STATS_PACK_STR
-        buf = pack(fmt, table_id, name, match, wildcards, write_actions,
+        buf = pack(fmt, table_id, name,
+                   match, wildcards, write_actions,
                    apply_actions, write_setfields, apply_setfields,
                    metadata_match, metadata_write, instructions, config,
                    max_entries, active_count, lookup_count, matched_count)
@@ -4984,7 +4984,7 @@ class TestOFPTableStats(unittest.TestCase):
         res = OFPTableStats.parser(buf, 0)
 
         eq_(table_id, res.table_id)
-        eq_(name, res.name.replace('\x00', ''))
+        eq_(name, res.name.replace(b'\x00', b''))
         eq_(match, res.match)
         eq_(wildcards, res.wildcards)
         eq_(write_actions, res.write_actions)
@@ -5002,7 +5002,7 @@ class TestOFPTableStats(unittest.TestCase):
 
     def test_parser_mid(self):
         table_id = 91
-        name = 'name'
+        name = b'name'
         match = 1270985291017894273
         wildcards = 3316608530
         write_actions = 2484712402
@@ -5027,7 +5027,7 @@ class TestOFPTableStats(unittest.TestCase):
     def test_parser_max(self):
         # '!B7x32sQQIIQQQQIIIIQQ'
         table_id = 0xff
-        name = 'a' * 32
+        name = b'a' * 32
         match = 0xffffffffffffffff
         wildcards = 0xffffffffffffffff
         write_actions = 0xffffffff
@@ -5051,7 +5051,7 @@ class TestOFPTableStats(unittest.TestCase):
 
     def test_parser_min(self):
         table_id = 0
-        name = ''
+        name = b''
         match = 0
         wildcards = 0
         write_actions = 0
@@ -5075,7 +5075,7 @@ class TestOFPTableStats(unittest.TestCase):
 
     def _test_parser_p(self, ofpxmt, ofpit, ofptc):
         table_id = 91
-        name = 'name'
+        name = b'name'
         match = ofpxmt
         wildcards = ofpxmt
         write_actions = 2484712402
@@ -5302,7 +5302,7 @@ class TestOFPPortStatsRequest(unittest.TestCase):
             + ofproto.OFP_HEADER_PACK_STR.replace('!', '') \
             + ofproto.OFP_STATS_REQUEST_PACK_STR.replace('!', '') \
             + ofproto.OFP_PORT_STATS_REQUEST_PACK_STR.replace('!', '')
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_STATS_REQUEST)
@@ -5539,7 +5539,7 @@ class TestOFPQueueStatsRequest(unittest.TestCase):
             + ofproto.OFP_HEADER_PACK_STR.replace('!', '') \
             + ofproto.OFP_STATS_REQUEST_PACK_STR.replace('!', '') \
             + ofproto.OFP_QUEUE_STATS_REQUEST_PACK_STR.replace('!', '')
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_STATS_REQUEST)
@@ -5742,7 +5742,7 @@ class TestOFPGroupStatsRequest(unittest.TestCase):
             + ofproto.OFP_HEADER_PACK_STR.replace('!', '') \
             + ofproto.OFP_STATS_REQUEST_PACK_STR.replace('!', '') \
             + ofproto.OFP_GROUP_STATS_REQUEST_PACK_STR.replace('!', '')
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_STATS_REQUEST)
@@ -5880,7 +5880,7 @@ class TestOFPGroupDescStatsRequest(unittest.TestCase):
             + ofproto.OFP_HEADER_PACK_STR.replace('!', '') \
             + ofproto.OFP_STATS_REQUEST_PACK_STR.replace('!', '')
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_STATS_REQUEST)
@@ -5942,7 +5942,7 @@ class TestOFPGroupDescStats(unittest.TestCase):
             buckets.append(bucket)
             buf_buckets = bytearray()
             buckets[b].serialize(buf_buckets, 0)
-            buf += str(buf_buckets)
+            buf += six.binary_type(buf_buckets)
 
         res = OFPGroupDescStats.parser(buf, 0)
 
@@ -6001,7 +6001,7 @@ class TestOFPGroupFeaturesStatsRequest(unittest.TestCase):
             + ofproto.OFP_HEADER_PACK_STR.replace('!', '') \
             + ofproto.OFP_STATS_REQUEST_PACK_STR.replace('!', '')
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_STATS_REQUEST)
@@ -6138,7 +6138,7 @@ class TestOFPQueueGetConfigRequest(unittest.TestCase):
         fmt = ofproto.OFP_HEADER_PACK_STR \
             + ofproto.OFP_QUEUE_GET_CONFIG_REQUEST_PACK_STR[1:]
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
         eq_(res[0], ofproto.OFP_VERSION)
         eq_(res[1], ofproto.OFPT_QUEUE_GET_CONFIG_REQUEST)
         eq_(res[2], len(c.buf))
@@ -6177,7 +6177,7 @@ class TestOFPQueuePropHeader(unittest.TestCase):
         c.serialize(buf, 0)
 
         fmt = ofproto.OFP_QUEUE_PROP_HEADER_PACK_STR
-        res = struct.unpack(fmt, buffer(buf))
+        res = struct.unpack(fmt, six.binary_type(buf))
 
         eq_(res[0], property_)
         eq_(res[1], len_)
@@ -6402,7 +6402,7 @@ class TestOFPBarrierRequest(unittest.TestCase):
         eq_(0, c.xid)
 
         fmt = ofproto.OFP_HEADER_PACK_STR
-        res = unpack(fmt, str(c.buf))
+        res = unpack(fmt, six.binary_type(c.buf))
         eq_(ofproto.OFP_VERSION, res[0])
         eq_(ofproto.OFPT_BARRIER_REQUEST, res[1])
         eq_(len(c.buf), res[2])
@@ -6464,7 +6464,7 @@ class TestOFPRoleRequest(unittest.TestCase):
             + ofproto.OFP_HEADER_PACK_STR.replace('!', '') \
             + ofproto.OFP_ROLE_REQUEST_PACK_STR.replace('!', '')
 
-        res = struct.unpack(fmt, str(c.buf))
+        res = struct.unpack(fmt, six.binary_type(c.buf))
 
         eq_(ofproto.OFP_VERSION, res[0])
         eq_(ofproto.OFPT_ROLE_REQUEST, res[1])
@@ -6636,12 +6636,12 @@ class TestOFPMatch(unittest.TestCase):
         if mask and len(buf) > calcsize(fmt):
             fmt += pack_str
 
-        res = list(unpack_from(fmt, str(buf), 0)[3:])
+        res = list(unpack_from(fmt, six.binary_type(buf), 0)[3:])
         if type(value) is list:
-            res_value = res[:calcsize(pack_str) / 2]
+            res_value = res[:calcsize(pack_str) // 2]
             eq_(res_value, value)
             if mask:
-                res_mask = res[calcsize(pack_str) / 2:]
+                res_mask = res[calcsize(pack_str) // 2:]
                 eq_(res_mask, mask)
         else:
             res_value = res.pop(0)
@@ -6654,7 +6654,7 @@ class TestOFPMatch(unittest.TestCase):
                 eq_(res_mask, mask)
 
         # parser
-        res = match.parser(str(buf), 0)
+        res = match.parser(six.binary_type(buf), 0)
         eq_(res.type, ofproto.OFPMT_OXM)
         eq_(res.fields[0].header, header)
         eq_(res.fields[0].value, value)
@@ -6680,7 +6680,7 @@ class TestOFPMatch(unittest.TestCase):
         pack_utils.msg_pack_into('!IH', buf, 10, header, 1)
 
         match = OFPMatch()
-        res = match.parser(str(buf), 0)
+        res = match.parser(six.binary_type(buf), 0)
 
     # set_in_port
     def _test_set_in_port(self, in_port):
@@ -6866,12 +6866,12 @@ class TestOFPMatch(unittest.TestCase):
         length = match.serialize(buf, 0)
         eq_(length, len(buf))
 
-        res = list(unpack_from(fmt, str(buf), 0)[3:])
+        res = list(unpack_from(fmt, six.binary_type(buf), 0)[3:])
         res_value = res.pop(0)
         eq_(res_value, value)
 
         # parser
-        res = match.parser(str(buf), 0)
+        res = match.parser(six.binary_type(buf), 0)
         eq_(res.type, ofproto.OFPMT_OXM)
         eq_(res.fields[0].header, header)
         eq_(res.fields[0].value, value)
@@ -7318,7 +7318,7 @@ class TestOFPMatch(unittest.TestCase):
             header = ofproto.OXM_OF_IPV6_SRC_W
             mask = [int(x, 16) for x in mask.split(":")]
             match.set_ipv6_src_masked(ipv6, mask)
-            ipv6 = [x & y for (x, y) in itertools.izip(ipv6, mask)]
+            ipv6 = [x & y for (x, y) in zip(ipv6, mask)]
         self._test_serialize_and_parser(match, header, ipv6, mask)
 
     def test_set_ipv6_src_mid(self):
@@ -7359,7 +7359,7 @@ class TestOFPMatch(unittest.TestCase):
             header = ofproto.OXM_OF_IPV6_DST_W
             mask = [int(x, 16) for x in mask.split(":")]
             match.set_ipv6_dst_masked(ipv6, mask)
-            ipv6 = [x & y for (x, y) in itertools.izip(ipv6, mask)]
+            ipv6 = [x & y for (x, y) in zip(ipv6, mask)]
         self._test_serialize_and_parser(match, header, ipv6, mask)
 
     def test_set_ipv6_dst_mid(self):
@@ -7547,7 +7547,7 @@ class TestOFPMatchField(unittest.TestCase):
         res = OFPMatchField(header)
 
         eq_(res.header, header)
-        eq_(res.n_bytes, (header & 0xff) / 2)
+        eq_(res.n_bytes, (header & 0xff) // 2)
         eq_(res.length, 0)
 
     def test_init_hasmask_false(self):

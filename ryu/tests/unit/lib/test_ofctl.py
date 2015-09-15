@@ -17,30 +17,31 @@ import unittest
 import logging
 import netaddr
 import functools
+import inspect
 
 from nose.tools import *
 
+from ryu.lib import addrconv
+from ryu.lib import ofctl_v1_0
+from ryu.ofproto import ofproto_v1_0, ofproto_v1_0_parser
 from ryu.lib import ofctl_v1_2
 from ryu.ofproto import ofproto_v1_2, ofproto_v1_2_parser
 from ryu.lib import ofctl_v1_3
 from ryu.ofproto import ofproto_v1_3, ofproto_v1_3_parser
 from ryu.ofproto import ofproto_protocol
 from ryu.ofproto import inet
+from ryu.tests import test_lib
 
 LOG = logging.getLogger('test_ofctl_v1_2, v1_3')
 
 """ Common Functions """
 
 
-def _str_to_int(src):
-    if isinstance(src, str):
-        if src.startswith("0x") or src.startswith("0X"):
-            dst = int(src, 16)
-        else:
-            dst = int(src)
-    else:
-        dst = src
-    return dst
+def _str_to_int(v):
+    try:
+        return int(v, 0)
+    except (ValueError, TypeError):
+        return v
 
 
 def _to_match_eth(value):
@@ -67,6 +68,12 @@ def _to_match_masked_int(value):
         return _str_to_int(value[0]), _str_to_int(value[1])
     else:
         return _str_to_int(value), None
+
+
+def _to_masked_int_str(value):
+    v, m = _to_match_masked_int(value)
+    v &= m
+    return '%d/%d' % (v, m)
 
 
 conv_of10_to_of12_dict = {
@@ -133,23 +140,59 @@ class Test_ofctl(unittest.TestCase):
             ok_(isinstance(insts, cls))
             eq_(insts.meter_id, act["meter_id"])
         else:
-            ok_(isinstance(insts.actions[0], cls))
+            if test.ver == ofproto_v1_0.OFP_VERSION:
+                action = insts
+            else:
+                action = insts.actions[0]
+            ok_(isinstance(action, cls))
             if act_type == 'OUTPUT':
-                eq_(insts.actions[0].port, act["port"])
+                eq_(action.port, act["port"])
+            elif act_type == 'SET_VLAN_VID':
+                eq_(action.vlan_vid, act["vlan_vid"])
+            elif act_type == 'SET_VLAN_PCP':
+                eq_(action.vlan_pcp, act["vlan_pcp"])
+            elif act_type == 'SET_DL_SRC':
+                eq_(addrconv.mac.bin_to_text(action.dl_addr),
+                    act["dl_src"])
+            elif act_type == 'SET_DL_DST':
+                eq_(addrconv.mac.bin_to_text(action.dl_addr),
+                    act["dl_dst"])
+            elif act_type == 'SET_NW_SRC':
+                ip = netaddr.ip.IPAddress(action.nw_addr)
+                eq_(str(ip), act["nw_src"])
+            elif act_type == 'SET_NW_DST':
+                ip = netaddr.ip.IPAddress(action.nw_addr)
+                eq_(str(ip), act["nw_dst"])
+            elif act_type == 'SET_NW_TOS':
+                eq_(action.tos, act["nw_tos"])
+            elif act_type == 'SET_TP_SRC':
+                eq_(action.tp, act["tp_src"])
+            elif act_type == 'SET_TP_DST':
+                eq_(action.tp, act["tp_dst"])
+            elif act_type == 'ENQUEUE':
+                eq_(action.queue_id, act["queue_id"])
+                eq_(action.port, act["port"])
             elif act_type == 'SET_MPLS_TTL':
-                eq_(insts.actions[0].mpls_ttl, act["mpls_ttl"])
+                eq_(action.mpls_ttl, act["mpls_ttl"])
             elif act_type in ['PUSH_VLAN', 'PUSH_MPLS',
                               'POP_MPLS', 'PUSH_PBB']:
-                eq_(insts.actions[0].ethertype, act["ethertype"])
+                eq_(action.ethertype, act["ethertype"])
             elif act_type == 'SET_QUEUE':
-                eq_(insts.actions[0].queue_id, act["queue_id"])
+                eq_(action.queue_id, act["queue_id"])
             elif act_type == 'GROUP':
-                eq_(insts.actions[0].group_id, act["group_id"])
+                eq_(action.group_id, act["group_id"])
             elif act_type == 'SET_NW_TTL':
-                eq_(insts.actions[0].nw_ttl, act["nw_ttl"])
+                eq_(action.nw_ttl, act["nw_ttl"])
+            elif act_type in ['STRIP_VLAN', 'COPY_TTL_OUT',
+                              'COPY_TTL_IN', 'DEC_MPLS_TTL',
+                              'POP_VLAN', 'DEC_NW_TTL', 'POP_PBB']:
+                pass
+            else:
+                assert False
+
         # action -> str
         action_str = actions_to_str(result)
-        action_str_list = action_str[0].split(':')
+        action_str_list = action_str[0].split(':', 1)
         eq_(action_str_list[0], act_type)
         if act_type == 'GOTO_TABLE':
             eq_(int(action_str_list[1]), act["table_id"])
@@ -162,6 +205,28 @@ class Test_ofctl(unittest.TestCase):
         else:
             if act_type == 'OUTPUT':
                 eq_(int(action_str_list[1]), act["port"])
+            elif act_type == 'SET_VLAN_VID':
+                eq_(int(action_str_list[1]), act["vlan_vid"])
+            elif act_type == 'SET_VLAN_PCP':
+                eq_(int(action_str_list[1]), act["vlan_pcp"])
+            elif act_type == 'SET_DL_SRC':
+                eq_(action_str_list[1], act["dl_src"])
+            elif act_type == 'SET_DL_DST':
+                eq_(action_str_list[1], act["dl_dst"])
+            elif act_type == 'SET_NW_SRC':
+                eq_(action_str_list[1], act["nw_src"])
+            elif act_type == 'SET_NW_DST':
+                eq_(action_str_list[1], act["nw_dst"])
+            elif act_type == 'SET_NW_TOS':
+                eq_(int(action_str_list[1]), act["nw_tos"])
+            elif act_type == 'SET_TP_SRC':
+                eq_(int(action_str_list[1]), act["tp_src"])
+            elif act_type == 'SET_TP_DST':
+                eq_(int(action_str_list[1]), act["tp_dst"])
+            elif act_type == 'ENQUEUE':
+                enq = action_str_list[1].split(':')
+                eq_(int(enq[0], 10), act["port"])
+                eq_(int(enq[1], 10), act["queue_id"])
             elif act_type == 'SET_MPLS_TTL':
                 eq_(int(action_str_list[1]), act["mpls_ttl"])
             elif act_type == 'PUSH_VLAN':
@@ -181,6 +246,12 @@ class Test_ofctl(unittest.TestCase):
                 eq_(action_str_list[2].strip('} '), act["value"])
             elif act_type == 'PUSH_PBB':
                 eq_(int(action_str_list[1]), act["ethertype"])
+            elif act_type in ['STRIP_VLAN', 'COPY_TTL_OUT',
+                              'COPY_TTL_IN', 'DEC_MPLS_TTL',
+                              'POP_VLAN', 'DEC_NW_TTL', 'POP_PBB']:
+                pass
+            else:
+                assert False
 
     def _test_to_match(self, attrs, test):
         to_match = test.to_match
@@ -188,49 +259,13 @@ class Test_ofctl(unittest.TestCase):
         dp = ofproto_protocol.ProtocolDesc(version=test.ver)
         ofproto = dp.ofproto
 
-        vid_present = dp.ofproto.OFPVID_PRESENT
-        expected_value = {
-            "vlan_vid": {
-                0: {"to_match": 0 | vid_present, "to_str": "0"},
-                3: {"to_match": 3 | vid_present, "to_str": "3"},
-                4095: {"to_match": 4095 | vid_present, "to_str": "4095"},
-                "0": {"to_match": 0 | vid_present, "to_str": "0"},
-                "3": {"to_match": 3 | vid_present, "to_str": "3"},
-                "4095": {"to_match": 4095 | vid_present, "to_str": "4095"},
-                "0x0000": {"to_match": 0x0000, "to_str": "0x0000"},
-                "0x0003": {"to_match": 0x0003, "to_str": "0x0003"},
-                "0x0fff": {"to_match": 0x0fff, "to_str": "0x0fff"},
-                "0x1000": {"to_match": 0x1000, "to_str": "0"},
-                "0x1003": {"to_match": 0x1003, "to_str": "3"},
-                "0x1fff": {"to_match": 0x1fff, "to_str": "4095"},
-                "4096/4096": {"to_match": (4096, 4096),
-                              "to_str": "0x1000/0x1000"},
-                "4096/4097": {"to_match": (4096, 4097),
-                              "to_str": "0x1000/0x1001"},
-                "2744/2748": {"to_match": (2744, 2748),
-                              "to_str": "0x0ab8/0x0abc"},
-                "2748/2748": {"to_match": (2748, 2748),
-                              "to_str": "0x0abc/0x0abc"},
-                "2748/2749": {"to_match": (2748, 2749),
-                              "to_str": "0x0abc/0x0abd"},
-                "0x1000/0x1000": {"to_match": (0x1000, 0x1000),
-                                  "to_str": "0x1000/0x1000"},
-                "0x1000/0x1001": {"to_match": (0x1000, 0x1001),
-                                  "to_str": "0x1000/0x1001"},
-                "0x0ab8/0x0abc": {"to_match": (0x0ab8, 0x0abc),
-                                  "to_str": "0x0ab8/0x0abc"},
-                "0x0abc/0x0abc": {"to_match": (0x0abc, 0x0abc),
-                                  "to_str": "0x0abc/0x0abc"},
-                "0x0abc/0x0abd": {"to_match": (0x0abc, 0x0abd),
-                                  "to_str": "0x0abc/0x0abd"}
-            }
-        }
-
         # str -> match
         match = to_match(dp, attrs)
 
         def equal_match(key, value, match):
-            field_value = match[key]
+            key = self._conv_key(test, key, attrs)
+            field_value = self._get_field_value(test, key, match)
+
             if key in ['eth_src', 'eth_dst', 'arp_sha', 'arp_tha']:
                 # MAC address
                 eth, mask = _to_match_eth(value)
@@ -244,6 +279,11 @@ class Test_ofctl(unittest.TestCase):
                     # without mask
                     eq_(eth, field_value)
                 return
+            elif key in ['dl_src', 'dl_dst']:
+                eth, mask = _to_match_eth(value)
+                field_value = addrconv.mac.bin_to_text(field_value)
+                eq_(eth, field_value)
+                return
             elif key in ['ipv4_src', 'ipv4_dst', 'arp_spa', 'arp_tpa']:
                 # IPv4 address
                 ipv4, mask = _to_match_ip(value)
@@ -254,6 +294,18 @@ class Test_ofctl(unittest.TestCase):
                 else:
                     # without mask
                     eq_(ipv4, field_value)
+                return
+            elif key in ['nw_src', 'nw_dst']:
+                # IPv4 address
+                ipv4, mask = _to_match_ip(value)
+                field_value = _to_match_ip(field_value)
+                if mask is not None:
+                    # with mask
+                    eq_(ipv4, field_value[0])
+                    eq_(mask, field_value[1])
+                else:
+                    # without mask
+                    eq_(ipv4, field_value[0])
                 return
             elif key in ['ipv6_src', 'ipv6_dst']:
                 # IPv6 address
@@ -267,39 +319,26 @@ class Test_ofctl(unittest.TestCase):
                     eq_(ipv6, field_value)
                 return
             elif key == 'vlan_vid':
-                eq_(expected_value['vlan_vid'][value]['to_match'], field_value)
+                if test.ver == ofproto_v1_0.OFP_VERSION:
+                    eq_(value, field_value)
+                else:
+                    eq_(test.expected_value['vlan_vid'][
+                        value]['to_match'], field_value)
                 return
-            elif key == 'metadata' or key == 'ipv6_exthdr':
-                # Metadata or IPv6 Extension Header pseudo-field
-                value, mask = _to_match_masked_int(value)
-                if mask is not None:
+            else:
+                if isinstance(value, str) and '/' in value:
                     # with mask
+                    value, mask = _to_match_masked_int(value)
                     value &= mask
                     eq_(value, field_value[0])
                     eq_(mask, field_value[1])
                 else:
                     # without mask
-                    eq_(value, field_value)
-                return
-            else:
-                eq_(value, field_value)
+                    eq_(_str_to_int(value), field_value)
                 return
 
         for key, value in attrs.items():
-            if key in conv_of10_to_of12_dict:
-                # For old field name
-                key_new = conv_of10_to_of12_dict[key]
-            elif key == 'tp_src' or key == 'tp_dst':
-                # TCP/UDP port
-                conv = {inet.IPPROTO_TCP: {'tp_src': 'tcp_src',
-                                           'tp_dst': 'tcp_dst'},
-                        inet.IPPROTO_UDP: {'tp_src': 'udp_src',
-                                           'tp_dst': 'udp_dst'}}
-                ip_proto = attrs.get('nw_proto', attrs.get('ip_proto', 0))
-                key_new = conv[ip_proto][key]
-            else:
-                key_new = key
-            equal_match(key_new, value, match)
+            equal_match(key, value, match)
 
         # match -> str
         match_str = match_to_str(match)
@@ -322,15 +361,26 @@ class Test_ofctl(unittest.TestCase):
                 return
             elif key in['nw_src', 'nw_dst', 'arp_spa', 'arp_tpa']:
                 # IPv4 address
-                ipv4, mask = _to_match_ip(value)
-                if mask is not None:
-                    # with mask
-                    field_value = field_value.split('/')
-                    eq_(ipv4, field_value[0])
-                    eq_(mask, field_value[1])
+                if test.ver == ofproto_v1_0.OFP_VERSION:
+                    ipv4, mask = _to_match_ip(value)
+                    field_value = _to_match_ip(field_value)
+                    if mask is not None:
+                        # with mask
+                        eq_(ipv4, field_value[0])
+                        eq_(mask, field_value[1])
+                    else:
+                        # without mask
+                        eq_(ipv4, field_value[0])
                 else:
-                    # without mask
-                    eq_(ipv4, field_value)
+                    ipv4, mask = _to_match_ip(value)
+                    if mask is not None:
+                        # with mask
+                        field_value = field_value.split('/')
+                        eq_(ipv4, field_value[0])
+                        eq_(mask, field_value[1])
+                    else:
+                        # without mask
+                        eq_(ipv4, field_value)
                 return
             elif key in ['ipv6_src', 'ipv6_dst']:
                 # IPv6 address
@@ -345,23 +395,20 @@ class Test_ofctl(unittest.TestCase):
                     eq_(ipv6, field_value)
                 return
             elif key == 'dl_vlan':
-                eq_(expected_value['vlan_vid'][value]['to_str'], field_value)
-                return
-            elif key == 'metadata' or key == 'ipv6_exthdr':
-                # Metadata or IPv6 Extension Header pseudo-field
-                value, mask = _to_match_masked_int(value)
-                if mask is not None:
-                    # with mask
-                    field_value = field_value.split('/')
-                    value &= mask
-                    eq_(str(value), field_value[0])
-                    eq_(str(mask), field_value[1])
+                if test.ver == ofproto_v1_0.OFP_VERSION:
+                    eq_(value, field_value)
                 else:
-                    # without mask
-                    eq_(str(value), field_value)
+                    eq_(test.expected_value['vlan_vid'][
+                        value]['to_str'], field_value)
                 return
             else:
-                eq_(value, field_value)
+                if isinstance(value, str) and '/' in value:
+                    # with mask
+                    value = _to_masked_int_str(value)
+                    eq_(value, field_value)
+                else:
+                    # without mask
+                    eq_(_str_to_int(value), field_value)
                 return
 
         for key, value in attrs.items():
@@ -371,14 +418,123 @@ class Test_ofctl(unittest.TestCase):
                 key_old = key
             equal_str(key_old, value, match_str)
 
-""" Test_data for of_v1_2 """
+    def _conv_key(self, test, key, attrs):
+        if test.ver != ofproto_v1_0.OFP_VERSION:
+            if key in conv_of10_to_of12_dict:
+                # For old field name
+                key = conv_of10_to_of12_dict[key]
+            elif key == 'tp_src' or key == 'tp_dst':
+                # TCP/UDP port
+                conv = {inet.IPPROTO_TCP: {'tp_src': 'tcp_src',
+                                           'tp_dst': 'tcp_dst'},
+                        inet.IPPROTO_UDP: {'tp_src': 'udp_src',
+                                           'tp_dst': 'udp_dst'}}
+                ip_proto = attrs.get('nw_proto', attrs.get('ip_proto', 0))
+                key = conv[ip_proto][key]
+
+        return key
+
+    def _get_field_value(self, test, key, match):
+        if test.ver == ofproto_v1_0.OFP_VERSION:
+            members = inspect.getmembers(match)
+            for member in members:
+                if member[0] == key:
+                    field_value = member[1]
+                elif member[0] == 'wildcards':
+                    wildcards = member[1]
+            if key == 'nw_src':
+                field_value = test.nw_src_to_str(wildcards, field_value)
+            elif key == 'nw_dst':
+                field_value = test.nw_dst_to_str(wildcards, field_value)
+        else:
+            field_value = match[key]
+
+        return field_value
 
 
-class test_data_v1_2():
+class test_data_base(object):
+    # followings must be an attribute of subclass.
+    # _ofctl
+    # _ofproto
 
     def __init__(self):
+        self.ver = self._ofproto.OFP_VERSION
+        self.to_match = self._ofctl.to_match
+        self.match_to_str = self._ofctl.match_to_str
+        self.to_actions = self._ofctl.to_actions
+        self.actions_to_str = self._ofctl.actions_to_str
+
+
+class test_data_v1_0(test_data_base):
+    """ Test_data for of_v1_0 """
+    _ofctl = ofctl_v1_0
+    _ofproto = ofproto_v1_0
+    _parser = ofproto_v1_0_parser
+
+    def __init__(self):
+        super(test_data_v1_0, self).__init__()
+        self.nw_src_to_str = self._ofctl.nw_src_to_str
+        self.nw_dst_to_str = self._ofctl.nw_dst_to_str
         self.supported_action = {}
-        self.supported_match = {}
+        self.act_list = [
+            {'type': 'OUTPUT', 'port': 3},
+            {'type': 'SET_VLAN_VID', 'vlan_vid': 5},
+            {'type': 'SET_VLAN_PCP', 'vlan_pcp': 3},
+            {'type': 'STRIP_VLAN'},
+            {'type': 'SET_DL_SRC', 'dl_src': 'aa:bb:cc:11:22:33'},
+            {'type': 'SET_DL_DST', 'dl_dst': 'aa:bb:cc:11:22:33'},
+            {'type': 'SET_NW_SRC', 'nw_src': '10.0.0.1'},
+            {'type': 'SET_NW_DST', 'nw_dst': '10.0.0.1'},
+            {'type': 'SET_NW_TOS', 'nw_tos': 184},
+            {'type': 'SET_TP_SRC', 'tp_src': 8080},
+            {'type': 'SET_TP_DST', 'tp_dst': 8080},
+            {'type': 'ENQUEUE', 'queue_id': 3, 'port': 1}
+        ]
+        self.attr_list = [
+            {'in_port': 7},
+            {'dl_src': 'aa:bb:cc:11:22:33'},
+            {'dl_dst': 'aa:bb:cc:11:22:33'},
+            {'dl_vlan': 5},
+            {'dl_vlan_pcp': 3},
+            {'dl_type': 123},
+            {'nw_tos': 16},
+            {'nw_proto': 5},
+            {'nw_src': '192.168.0.1'},
+            {'nw_src': '192.168.0.1/24'},
+            {'nw_dst': '192.168.0.1'},
+            {'nw_dst': '192.168.0.1/24'},
+            {'tp_src': 1},
+            {'tp_dst': 2}
+        ]
+        self.set_action()
+
+    def set_action(self):
+        self.supported_action.update(
+            {
+                'OUTPUT': self._parser.OFPActionOutput,
+                'SET_VLAN_VID': self._parser.OFPActionVlanVid,
+                'SET_VLAN_PCP': self._parser.OFPActionVlanPcp,
+                'STRIP_VLAN': self._parser.OFPActionStripVlan,
+                'SET_DL_SRC': self._parser.OFPActionSetDlSrc,
+                'SET_DL_DST': self._parser.OFPActionSetDlDst,
+                'SET_NW_SRC': self._parser.OFPActionSetNwSrc,
+                'SET_NW_DST': self._parser.OFPActionSetNwDst,
+                'SET_NW_TOS': self._parser.OFPActionSetNwTos,
+                'SET_TP_SRC': self._parser.OFPActionSetTpSrc,
+                'SET_TP_DST': self._parser.OFPActionSetTpDst,
+                'ENQUEUE': self._parser.OFPActionEnqueue
+            })
+
+
+class test_data_v1_2(test_data_base):
+    """ Test_data for of_v1_2 """
+    _ofctl = ofctl_v1_2
+    _ofproto = ofproto_v1_2
+    _parser = ofproto_v1_2_parser
+
+    def __init__(self):
+        super(test_data_v1_2, self).__init__()
+        self.supported_action = {}
         self.act_list = [
             {'type': 'OUTPUT', 'port': 3},
             {'type': 'COPY_TTL_OUT'},
@@ -400,6 +556,7 @@ class test_data_v1_2():
         self.attr_list = [
             {'in_port': 7},
             {'in_phy_port': 5, 'in_port': 3},
+            {'metadata': 12345},
             {'metadata': '0x1212121212121212'},
             {'metadata': '0x19af28be37fa91b/0x1010101010101010'},
             {'dl_src': "aa:bb:cc:11:22:33"},
@@ -512,97 +669,75 @@ class test_data_v1_2():
             {'mpls_label': 3, 'eth_type': 0x8848},
             {'mpls_tc': 2, 'eth_type': 0x8848}
         ]
-
-    def set_ver(self, ver):
-        self.ver = ver
-
-    def set_attr(self, ofctl):
-        self.to_match = getattr(ofctl, "to_match")
-        self.match_to_str = getattr(ofctl, "match_to_str")
-        self.to_actions = getattr(ofctl, "to_actions")
-        self.actions_to_str = getattr(ofctl, "actions_to_str")
-
-    def set_action_v1_2(self, parser):
         self.supported_action.update(
             {
-                'OUTPUT': getattr(parser, "OFPActionOutput"),
-                'COPY_TTL_OUT': getattr(parser, "OFPActionCopyTtlOut"),
-                'COPY_TTL_IN': getattr(parser, "OFPActionCopyTtlIn"),
-                'SET_MPLS_TTL': getattr(parser, "OFPActionSetMplsTtl"),
-                'DEC_MPLS_TTL': getattr(parser, "OFPActionDecMplsTtl"),
-                'PUSH_VLAN': getattr(parser, "OFPActionPushVlan"),
-                'POP_VLAN': getattr(parser, "OFPActionPopVlan"),
-                'PUSH_MPLS': getattr(parser, "OFPActionPushMpls"),
-                'POP_MPLS': getattr(parser, "OFPActionPopMpls"),
-                'SET_QUEUE': getattr(parser, "OFPActionSetQueue"),
-                'GROUP': getattr(parser, "OFPActionGroup"),
-                'SET_NW_TTL': getattr(parser, "OFPActionSetNwTtl"),
-                'DEC_NW_TTL': getattr(parser, "OFPActionDecNwTtl"),
-                'SET_FIELD': getattr(parser, "OFPActionSetField"),
-                'GOTO_TABLE': getattr(parser, "OFPInstructionGotoTable"),
-                'WRITE_METADATA': getattr(parser,
-                                          "OFPInstructionWriteMetadata"),
+                'OUTPUT': self._parser.OFPActionOutput,
+                'COPY_TTL_OUT': self._parser.OFPActionCopyTtlOut,
+                'COPY_TTL_IN': self._parser.OFPActionCopyTtlIn,
+                'SET_MPLS_TTL': self._parser.OFPActionSetMplsTtl,
+                'DEC_MPLS_TTL': self._parser.OFPActionDecMplsTtl,
+                'PUSH_VLAN': self._parser.OFPActionPushVlan,
+                'POP_VLAN': self._parser.OFPActionPopVlan,
+                'PUSH_MPLS': self._parser.OFPActionPushMpls,
+                'POP_MPLS': self._parser.OFPActionPopMpls,
+                'SET_QUEUE': self._parser.OFPActionSetQueue,
+                'GROUP': self._parser.OFPActionGroup,
+                'SET_NW_TTL': self._parser.OFPActionSetNwTtl,
+                'DEC_NW_TTL': self._parser.OFPActionDecNwTtl,
+                'SET_FIELD': self._parser.OFPActionSetField,
+                'GOTO_TABLE': self._parser.OFPInstructionGotoTable,
+                'WRITE_METADATA': self._parser.OFPInstructionWriteMetadata,
             })
+        self.set_expected_value()
 
-    def set_match_v1_2(self, parser):
-        self.supported_match.update(
-            {
-                'in_port': getattr(parser, "MTInPort"),
-                'in_phy_port': getattr(parser, "MTInPhyPort"),
-                'metadata': getattr(parser, "MTMetadata"),
-                'eth_dst': getattr(parser, "MTEthDst"),
-                'dl_dst': getattr(parser, "MTEthDst"),
-                'eth_src': getattr(parser, "MTEthSrc"),
-                'dl_src': getattr(parser, "MTEthSrc"),
-                'dl_type': getattr(parser, "MTEthType"),
-                'eth_type': getattr(parser, "MTEthType"),
-                'dl_vlan': getattr(parser, "MTVlanVid"),
-                'vlan_vid': getattr(parser, "MTVlanVid"),
-                'vlan_pcp': getattr(parser, "MTVlanPcp"),
-                'ip_dscp': getattr(parser, "MTIPDscp"),
-                'ip_ecn': getattr(parser, "MTIPECN"),
-                'nw_proto': getattr(parser, "MTIPProto"),
-                'ip_proto': getattr(parser, "MTIPProto"),
-                'nw_src': getattr(parser, "MTIPV4Src"),
-                'nw_dst': getattr(parser, "MTIPV4Dst"),
-                'ipv4_src': getattr(parser, "MTIPV4Src"),
-                'ipv4_dst': getattr(parser, "MTIPV4Dst"),
-                'tp_src': {6: getattr(parser, "MTTCPSrc"),
-                           17: getattr(parser, "MTUDPSrc")},
-                'tp_dst': {6: getattr(parser, "MTTCPDst"),
-                           17: getattr(parser, "MTUDPDst")},
-                'tcp_src': getattr(parser, "MTTCPSrc"),
-                'tcp_dst': getattr(parser, "MTTCPDst"),
-                'udp_src': getattr(parser, "MTUDPSrc"),
-                'udp_dst': getattr(parser, "MTUDPDst"),
-                'sctp_src': getattr(parser, "MTSCTPSrc"),
-                'sctp_dst': getattr(parser, "MTSCTPDst"),
-                'icmpv4_type': getattr(parser, "MTICMPV4Type"),
-                'icmpv4_code': getattr(parser, "MTICMPV4Code"),
-                'arp_op': getattr(parser, "MTArpOp"),
-                'arp_spa': getattr(parser, "MTArpSpa"),
-                'arp_tpa': getattr(parser, "MTArpTpa"),
-                'arp_sha': getattr(parser, "MTArpSha"),
-                'arp_tha': getattr(parser, "MTArpTha"),
-                'ipv6_src': getattr(parser, "MTIPv6Src"),
-                'ipv6_dst': getattr(parser, "MTIPv6Dst"),
-                'ipv6_flabel': getattr(parser, "MTIPv6Flabel"),
-                'icmpv6_type': getattr(parser, "MTICMPV6Type"),
-                'icmpv6_code': getattr(parser, "MTICMPV6Code"),
-                'ipv6_nd_target': getattr(parser, "MTIPv6NdTarget"),
-                'ipv6_nd_sll': getattr(parser, "MTIPv6NdSll"),
-                'ipv6_nd_tll': getattr(parser, "MTIPv6NdTll"),
-                'mpls_label': getattr(parser, "MTMplsLabel"),
-                'mpls_tc': getattr(parser, "MTMplsTc"),
-            })
-
-""" Test_data for of_v1_3 """
+    def set_expected_value(self):
+        vid_present = self._ofproto.OFPVID_PRESENT
+        self.expected_value = {
+            "vlan_vid": {
+                0: {"to_match": 0 | vid_present, "to_str": "0"},
+                3: {"to_match": 3 | vid_present, "to_str": "3"},
+                4095: {"to_match": 4095 | vid_present, "to_str": "4095"},
+                "0": {"to_match": 0 | vid_present, "to_str": "0"},
+                "3": {"to_match": 3 | vid_present, "to_str": "3"},
+                "4095": {"to_match": 4095 | vid_present, "to_str": "4095"},
+                "0x0000": {"to_match": 0x0000, "to_str": "0x0000"},
+                "0x0003": {"to_match": 0x0003, "to_str": "0x0003"},
+                "0x0fff": {"to_match": 0x0fff, "to_str": "0x0fff"},
+                "0x1000": {"to_match": 0x1000, "to_str": "0"},
+                "0x1003": {"to_match": 0x1003, "to_str": "3"},
+                "0x1fff": {"to_match": 0x1fff, "to_str": "4095"},
+                "4096/4096": {"to_match": (4096, 4096),
+                              "to_str": "0x1000/0x1000"},
+                "4096/4097": {"to_match": (4096, 4097),
+                              "to_str": "0x1000/0x1001"},
+                "2744/2748": {"to_match": (2744, 2748),
+                              "to_str": "0x0ab8/0x0abc"},
+                "2748/2748": {"to_match": (2748, 2748),
+                              "to_str": "0x0abc/0x0abc"},
+                "2748/2749": {"to_match": (2748, 2749),
+                              "to_str": "0x0abc/0x0abd"},
+                "0x1000/0x1000": {"to_match": (0x1000, 0x1000),
+                                  "to_str": "0x1000/0x1000"},
+                "0x1000/0x1001": {"to_match": (0x1000, 0x1001),
+                                  "to_str": "0x1000/0x1001"},
+                "0x0ab8/0x0abc": {"to_match": (0x0ab8, 0x0abc),
+                                  "to_str": "0x0ab8/0x0abc"},
+                "0x0abc/0x0abc": {"to_match": (0x0abc, 0x0abc),
+                                  "to_str": "0x0abc/0x0abc"},
+                "0x0abc/0x0abd": {"to_match": (0x0abc, 0x0abd),
+                                  "to_str": "0x0abc/0x0abd"}
+            }
+        }
 
 
 class test_data_v1_3(test_data_v1_2):
+    """ Test_data for of_v1_3 """
+    _ofctl = ofctl_v1_3
+    _ofproto = ofproto_v1_3
+    _parser = ofproto_v1_3_parser
 
     def __init__(self):
-        test_data_v1_2.__init__(self)
+        super(test_data_v1_3, self).__init__()
         self.act_list.extend(
             [
                 {'type': 'PUSH_PBB', 'ethertype': 0x0800},
@@ -614,43 +749,23 @@ class test_data_v1_3(test_data_v1_2):
             [
                 {'mpls_bos': 3, 'eth_type': 0x8848},
                 {'pbb_isid': 5, 'eth_type': 0x88E7},
+                {'pbb_isid': "0x05", 'eth_type': 0x88E7},
+                {'pbb_isid': "0x05/0xff", 'eth_type': 0x88E7},
                 {'tunnel_id': 7},
+                {'tunnel_id': "0x07"},
+                {'tunnel_id': "0x07/0xff"},
                 {'ipv6_exthdr': 3, 'eth_type': 0x86dd},
                 {'ipv6_exthdr': "0x40", 'eth_type': 0x86dd},
                 {'ipv6_exthdr': "0x40/0x1F0", 'eth_type': 0x86dd},
             ]
         )
-
-    def set_action_v1_3(self, parser):
-        self.set_action_v1_2(parser)
         self.supported_action.update(
             {
-                'PUSH_PBB': getattr(parser, "OFPActionPushPbb"),
-                'POP_PBB': getattr(parser, "OFPActionPopPbb"),
-                'METER': getattr(parser, "OFPInstructionMeter"),
+                'PUSH_PBB': self._parser.OFPActionPushPbb,
+                'POP_PBB': self._parser.OFPActionPopPbb,
+                'METER': self._parser.OFPInstructionMeter,
             })
-
-    def set_match_v1_3(self, parser):
-        self.set_match_v1_2(parser)
-        self.supported_match.update(
-            {
-                'mpls_bos': getattr(parser, "MTMplsBos"),
-                'pbb_isid': getattr(parser, "MTPbbIsid"),
-                'tunnel_id': getattr(parser, "MTTunnelId"),
-                'ipv6_exthdr': getattr(parser, "MTIPv6ExtHdr"),
-            })
-
-""" Test_data for of_v1_4 """
-
-# class test_data_v1_4(test_data_v1_3):
-    # def __init__(self):
-        # test_data_v1_3.__init__(self)
-
-    # def set_action_v1_4(self, parser):
-        # self.set_action_v1_3(parser)
-
-    # def set_match_v1_4(self, parser):
-        # self.set_match_v1_3(parser)
+        self.set_expected_value()
 
 
 def _add_tests_actions(cls):
@@ -663,9 +778,7 @@ def _add_tests_actions(cls):
             cls_._test_actions(act, cls)
         print('adding %s ...' % method_name)
         func = functools.partial(_run, name=method_name, act=act, cls=cls)
-        func.func_name = method_name
-        func.__name__ = method_name
-        setattr(Test_ofctl, method_name, func)
+        test_lib.add_method(Test_ofctl, method_name, func)
 
 
 def _add_tests_match(cls):
@@ -682,36 +795,22 @@ def _add_tests_match(cls):
             print('adding %s ...' % method_name)
             func = functools.partial(
                 _run, name=method_name, attr=attr, cls=cls)
-            func.func_name = method_name
-            func.__name__ = method_name
-            setattr(Test_ofctl, method_name, func)
+            test_lib.add_method(Test_ofctl, method_name, func)
 
 
 """ Test case """
 
+# for of10
+cls = test_data_v1_0()
+_add_tests_actions(cls)
+_add_tests_match(cls)
+
 # for of12
 cls = test_data_v1_2()
-cls.set_action_v1_2(ofproto_v1_2_parser)
-cls.set_match_v1_2(ofproto_v1_2_parser)
-cls.set_ver(ofproto_v1_2.OFP_VERSION)
-cls.set_attr(ofctl_v1_2)
 _add_tests_actions(cls)
 _add_tests_match(cls)
 
 # for of13
 cls = test_data_v1_3()
-cls.set_action_v1_3(ofproto_v1_3_parser)
-cls.set_match_v1_3(ofproto_v1_3_parser)
-cls.set_ver(ofproto_v1_3.OFP_VERSION)
-cls.set_attr(ofctl_v1_3)
 _add_tests_actions(cls)
 _add_tests_match(cls)
-
-# for of14
-# cls = test_data_v1_4()
-# cls.set_action_v1_4(ofproto_v1_4_parser)
-# cls.set_match_v1_4(ofproto_v1_4_parser)
-# cls.set_ver(ofproto_v1_4.OFP_VERSION)
-# cls.set_attr(ofctl_v1_4)
-# _add_tests_actions(cls)
-# _add_tests_match(cls)

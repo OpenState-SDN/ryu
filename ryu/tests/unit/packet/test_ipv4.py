@@ -17,6 +17,7 @@
 
 import unittest
 import logging
+import six
 import struct
 from struct import *
 from nose.tools import *
@@ -51,11 +52,11 @@ class Test_ipv4(unittest.TestCase):
     src = '131.151.32.21'
     dst = '131.151.32.129'
     length = header_length * 4
-    option = '\x86\x28\x00\x00\x00\x01\x01\x22' \
-        + '\x00\x01\xae\x00\x00\x00\x00\x00' \
-        + '\x00\x00\x00\x00\x00\x00\x00\x00' \
-        + '\x00\x00\x00\x00\x00\x00\x00\x00' \
-        + '\x00\x00\x00\x00\x00\x00\x00\x01'
+    option = b'\x86\x28\x00\x00\x00\x01\x01\x22' \
+        + b'\x00\x01\xae\x00\x00\x00\x00\x00' \
+        + b'\x00\x00\x00\x00\x00\x00\x00\x00' \
+        + b'\x00\x00\x00\x00\x00\x00\x00\x00' \
+        + b'\x00\x00\x00\x00\x00\x00\x00\x01'
 
     buf = pack(ipv4._PACK_STR, ver_hlen, tos, total_length, identification,
                flg_off, ttl, proto, csum,
@@ -107,7 +108,7 @@ class Test_ipv4(unittest.TestCase):
 
     def test_serialize(self):
         buf = self.ip.serialize(bytearray(), None)
-        res = struct.unpack_from(ipv4._PACK_STR, str(buf))
+        res = struct.unpack_from(ipv4._PACK_STR, six.binary_type(buf))
         option = buf[ipv4._MIN_LEN:ipv4._MIN_LEN + len(self.option)]
 
         eq_(res[0], self.ver_hlen)

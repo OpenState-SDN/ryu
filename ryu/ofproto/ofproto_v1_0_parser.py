@@ -20,6 +20,7 @@ Decoder/Encoder implementations of OpenFlow 1.0.
 
 import struct
 import binascii
+import six
 
 from ryu.ofproto.ofproto_parser import StringifyMixin, MsgBase, msg_str_attr
 from ryu.lib import addrconv
@@ -108,7 +109,7 @@ class OFPPhyPort(ofproto_parser.namedtuple('OFPPhyPort', (
         i = cls._fields.index('hw_addr')
         port[i] = addrconv.mac.bin_to_text(port[i])
         i = cls._fields.index('name')
-        port[i] = port[i].rstrip('\0')
+        port[i] = port[i].rstrip(b'\0')
         return cls(*port)
 
 
@@ -933,7 +934,7 @@ class NXActionLearn(NXActionHeader):
         self.table_id = table_id
         self.fin_idle_timeout = fin_idle_timeout
         self.fin_hard_timeout = fin_hard_timeout
-        self.spec = spec + bytearray('\x00' * pad_len)
+        self.spec = spec + bytearray(b'\x00' * pad_len)
 
     def serialize(self, buf, offset):
         msg_pack_into(ofproto.NX_ACTION_LEARN_PACK_STR, buf, offset,
@@ -1016,7 +1017,7 @@ class OFPDescStats(ofproto_parser.namedtuple('OFPDescStats', (
         desc = struct.unpack_from(ofproto.OFP_DESC_STATS_PACK_STR,
                                   buf, offset)
         desc = list(desc)
-        desc = map(lambda x: x.rstrip('\0'), desc)
+        desc = [x.rstrip(b'\0') for x in desc]
         stats = cls(*desc)
         stats.length = ofproto.OFP_DESC_STATS_SIZE
         return stats
@@ -1101,7 +1102,7 @@ class OFPTableStats(ofproto_parser.namedtuple('OFPTableStats', (
                                  buf, offset)
         tbl = list(tbl)
         i = cls._fields.index('name')
-        tbl[i] = tbl[i].rstrip('\0')
+        tbl[i] = tbl[i].rstrip(b'\0')
         stats = cls(*tbl)
         stats.length = ofproto.OFP_TABLE_STATS_SIZE
         return stats
@@ -1605,7 +1606,7 @@ class NXTPacketIn(NiciraHeader):
                    - ofproto.NICIRA_HEADER_SIZE)
 
         match = nx_match.NXMatch.parser(buf, offset, match_len)
-        offset += (match_len + 7) / 8 * 8
+        offset += (match_len + 7) // 8 * 8
         frame = buf[offset:]
         if total_len < len(frame):
             frame = frame[:total_len]
@@ -1685,7 +1686,7 @@ class OFPSwitchFeatures(MsgBase):
             ofproto.OFP_HEADER_SIZE)
 
         msg.ports = {}
-        n_ports = ((msg_len - ofproto.OFP_SWITCH_FEATURES_SIZE) /
+        n_ports = ((msg_len - ofproto.OFP_SWITCH_FEATURES_SIZE) //
                    ofproto.OFP_PHY_PORT_SIZE)
         offset = ofproto.OFP_SWITCH_FEATURES_SIZE
         for _i in range(n_ports):
@@ -1877,7 +1878,7 @@ class OFPStatsReply(MsgBase):
     @classmethod
     def parser(cls, datapath, version, msg_type, msg_len, xid, buf):
         type_, flags = struct.unpack_from(ofproto.OFP_STATS_MSG_PACK_STR,
-                                          buffer(buf),
+                                          six.binary_type(buf),
                                           ofproto.OFP_HEADER_SIZE)
         stats_type_cls = cls._STATS_MSG_TYPES.get(type_)
         msg = stats_type_cls.parser_stats(
@@ -1956,7 +1957,7 @@ class OFPVendorStatsReply(OFPStatsReply):
     def parser_stats(cls, datapath, version, msg_type, msg_len, xid,
                      buf):
         (type_,) = struct.unpack_from(
-            ofproto.OFP_VENDOR_STATS_MSG_PACK_STR, buffer(buf),
+            ofproto.OFP_VENDOR_STATS_MSG_PACK_STR, six.binary_type(buf),
             ofproto.OFP_STATS_MSG_SIZE)
 
         cls_ = cls._STATS_VENDORS.get(type_)
@@ -2017,7 +2018,7 @@ class NXStatsReply(OFPStatsReply):
     def parser(cls, datapath, version, msg_type, msg_len, xid, buf,
                offset):
         (type_,) = struct.unpack_from(
-            ofproto.NX_STATS_MSG_PACK_STR, buffer(buf), offset)
+            ofproto.NX_STATS_MSG_PACK_STR, six.binary_type(buf), offset)
         offset += ofproto.NX_STATS_MSG0_SIZE
 
         cls_ = cls._NX_STATS_TYPES.get(type_)

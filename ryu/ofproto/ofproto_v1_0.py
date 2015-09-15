@@ -197,9 +197,6 @@ OFP_ACTION_OUTPUT_PACK_STR = '!HHHH'
 OFP_ACTION_OUTPUT_SIZE = 8
 assert calcsize(OFP_ACTION_OUTPUT_PACK_STR) == OFP_ACTION_OUTPUT_SIZE
 
-# define constants
-OFP_VLAN_NONE = 0xffff
-
 OFP_ACTION_VLAN_VID_PACK_STR = '!HHH2x'
 OFP_ACTION_VLAN_VID_SIZE = 8
 assert calcsize(OFP_ACTION_VLAN_VID_PACK_STR) == OFP_ACTION_VLAN_VID_SIZE
@@ -581,6 +578,9 @@ NXM_NX_IPV6_LABEL = nxm_header(0x0001, 27, 4)
 NXM_NX_IP_ECN = nxm_header(0x0001, 28, 1)
 
 NXM_NX_IP_TTL = nxm_header(0x0001, 29, 1)
+
+NXM_NX_PKT_MARK = nxm_header(0x0001, 33, 4)
+NXM_NX_PKT_MARK_W = nxm_header_w(0x0001, 33, 4)
 
 
 def nxm_nx_reg(idx):

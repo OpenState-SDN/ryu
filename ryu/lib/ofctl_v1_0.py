@@ -107,7 +107,7 @@ def actions_to_str(acts):
         elif action_type == ofproto_v1_0.OFPAT_SET_TP_DST:
             buf = 'SET_TP_DST:' + str(a.tp)
         elif action_type == ofproto_v1_0.OFPAT_ENQUEUE:
-            buf = 'ENQUEUE:' + str(a.queue_id)
+            buf = 'ENQUEUE:' + str(a.port) + ":" + str(a.queue_id)
         elif action_type == ofproto_v1_0.OFPAT_VENDOR:
             buf = 'VENDOR'
         else:
@@ -274,10 +274,18 @@ def send_stats_request(dp, stats, waiters, msgs):
     dp.set_xid(stats)
     waiters_per_dp = waiters.setdefault(dp.id, {})
     lock = hub.Event()
+    previous_msg_len = len(msgs)
     waiters_per_dp[stats.xid] = (lock, msgs)
     dp.send_msg(stats)
 
     lock.wait(timeout=DEFAULT_TIMEOUT)
+    current_msg_len = len(msgs)
+
+    while current_msg_len > previous_msg_len:
+        previous_msg_len = current_msg_len
+        lock.wait(timeout=DEFAULT_TIMEOUT)
+        current_msg_len = len(msgs)
+
     if not lock.is_set():
         del waiters_per_dp[stats.xid]
 

@@ -15,10 +15,11 @@
 
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-import unittest
-import logging
 import copy
+import logging
 from struct import pack, unpack_from
+import unittest
+
 from nose.tools import ok_, eq_, raises
 from ryu.ofproto import ether
 from ryu.lib.packet.ethernet import ethernet
@@ -111,7 +112,7 @@ class Test_slow(unittest.TestCase):
                             self.actor_tag,
                             self.actor_length,
                             self.actor_system_priority,
-                            self.actor_system,
+                            addrconv.mac.text_to_bin(self.actor_system),
                             self.actor_key,
                             self.actor_port_priority,
                             self.actor_port,
@@ -120,7 +121,7 @@ class Test_slow(unittest.TestCase):
                             self.partner_tag,
                             self.partner_length,
                             self.partner_system_priority,
-                            self.partner_system,
+                            addrconv.mac.text_to_bin(self.partner_system),
                             self.partner_key,
                             self.partner_port_priority,
                             self.partner_port,
@@ -143,14 +144,15 @@ class Test_slow(unittest.TestCase):
         slow.parser(self.buf)
 
     def test_not_implemented_subtype(self):
-        not_implemented_buf = str(SLOW_SUBTYPE_MARKER) + self.buf[1:]
+        not_implemented_buf = pack(
+            slow._PACK_STR, SLOW_SUBTYPE_MARKER) + self.buf[1:]
         (instance, nexttype, last) = slow.parser(not_implemented_buf)
         assert None == instance
         assert None == nexttype
         assert None != last
 
     def test_invalid_subtype(self):
-        invalid_buf = "\xff" + self.buf[1:]
+        invalid_buf = b'\xff' + self.buf[1:]
         (instance, nexttype, last) = slow.parser(invalid_buf)
         assert None == instance
         assert None == nexttype

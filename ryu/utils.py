@@ -33,6 +33,7 @@
 import inspect
 import logging
 import os
+import six
 import sys
 import re
 
@@ -65,7 +66,7 @@ def _likely_same(a, b):
 
 def _find_loaded_module(modpath):
     # copy() to avoid RuntimeError: dictionary changed size during iteration
-    for k, m in sys.modules.copy().iteritems():
+    for k, m in sys.modules.copy().items():
         if k == '__main__':
             continue
         if not hasattr(m, '__file__'):
@@ -95,23 +96,29 @@ def import_module(modname):
 
 
 def round_up(x, y):
-    return ((x + y - 1) / y) * y
+    return ((x + y - 1) // y) * y
 
 
 def _str_to_hex(data):
-    """Convert string into array of hexes to be printed."""
+    """Convert str into array of hexes to be printed. (Python2 only)"""
     return ' '.join(hex(ord(char)) for char in data)
 
 
 def _bytearray_to_hex(data):
-    """Convert bytearray into array of hexes to be printed."""
+    """Convert bytearray into array of hexes to be printed.
+    In Python3, this function works for binary_types, too.
+    """
     return ' '.join(hex(byte) for byte in data)
 
 
 def hex_array(data):
-    """Convert string or bytearray into array of hexes to be printed."""
-    to_hex = {str: _str_to_hex,
-              bytearray: _bytearray_to_hex}
+    """Convert binary_type or bytearray into array of hexes to be printed."""
+    if six.PY3:
+        to_hex = {six.binary_type: _bytearray_to_hex,
+                  bytearray: _bytearray_to_hex}
+    else:
+        to_hex = {six.binary_type: _str_to_hex,
+                  bytearray: _bytearray_to_hex}
     try:
         return to_hex[type(data)](data)
     except KeyError:

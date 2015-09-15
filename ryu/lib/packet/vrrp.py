@@ -355,7 +355,7 @@ class vrrp(packet_base.PacketBase):
                            inet.IPPROTO_VRRP, VRRP_IPV6_HOP_LIMIT,
                            primary_ip_address, VRRP_IPV6_DST_ADDRESS)
         else:
-            header_length = ipv4.ipv4._MIN_LEN / 4      # XXX _MIN_LEN
+            header_length = ipv4.ipv4._MIN_LEN // 4      # XXX _MIN_LEN
             total_length = 0
             tos = 0xc0  # set tos to internetwork control
             identification = self.get_identification()
@@ -463,8 +463,7 @@ class vrrpv2(vrrp):
         ip_addresses_pack_str = cls._ip_addresses_pack_str(count_ip)
         ip_addresses_bin = struct.unpack_from(ip_addresses_pack_str, buf,
                                               offset)
-        ip_addresses = map(lambda x: addrconv.ipv4.bin_to_text(x),
-                           ip_addresses_bin)
+        ip_addresses = [addrconv.ipv4.bin_to_text(x) for x in ip_addresses_bin]
 
         offset += struct.calcsize(ip_addresses_pack_str)
         auth_data = struct.unpack_from(cls._AUTH_DATA_PACK_STR, buf, offset)
@@ -499,8 +498,7 @@ class vrrpv2(vrrp):
                          vrrp_.checksum)
         offset += vrrpv2._MIN_LEN
         struct.pack_into(ip_addresses_pack_str, buf, offset,
-                         *map(lambda x: addrconv.ipv4.text_to_bin(x),
-                              vrrp_.ip_addresses))
+                         *[addrconv.ipv4.text_to_bin(x) for x in vrrp_.ip_addresses])
         offset += ip_addresses_len
         struct.pack_into(vrrpv2._AUTH_DATA_PACK_STR, buf, offset,
                          *vrrp_.auth_data)
@@ -574,7 +572,7 @@ class vrrpv3(vrrp):
         max_adver_int &= VRRP_V3_MAX_ADVER_INT_MASK
 
         offset = cls._MIN_LEN
-        address_len = (len(buf) - offset) / count_ip
+        address_len = (len(buf) - offset) // count_ip
         # Address version (IPv4 or IPv6) is determined by network layer
         # header type.
         # Unfortunately it isn't available. Guess it by vrrp packet length.
@@ -590,7 +588,7 @@ class vrrpv3(vrrp):
                     address_len, count_ip))
 
         ip_addresses_bin = struct.unpack_from(pack_str, buf, offset)
-        ip_addresses = map(lambda x: conv(x), ip_addresses_bin)
+        ip_addresses = [conv(x) for x in ip_addresses_bin]
         msg = cls(version, type_, vrid, priority,
                   count_ip, max_adver_int, checksum, ip_addresses)
         return msg, None, buf[len(msg):]
@@ -624,7 +622,7 @@ class vrrpv3(vrrp):
                          vrrp_.vrid, vrrp_.priority,
                          vrrp_.count_ip, vrrp_.max_adver_int, vrrp_.checksum)
         struct.pack_into(ip_addresses_pack_str, buf, vrrpv3._MIN_LEN,
-                         *map(lambda x: conv(x), vrrp_.ip_addresses))
+                         *[conv(x) for x in vrrp_.ip_addresses])
 
         if checksum:
             vrrp_.checksum = packet_utils.checksum_ip(prev, len(buf), buf)

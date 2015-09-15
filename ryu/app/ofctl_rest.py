@@ -145,7 +145,7 @@ class StatsController(ControllerBase):
         self.waiters = data['waiters']
 
     def get_dpids(self, req, **_kwargs):
-        dps = self.dpset.dps.keys()
+        dps = list(self.dpset.dps.keys())
         body = json.dumps(dps)
         return Response(content_type='application/json', body=body)
 
@@ -519,9 +519,12 @@ class StatsController(ControllerBase):
         if dp is None:
             return Response(status=404)
 
-        flow = {'table_id': dp.ofproto.OFPTT_ALL}
-
         _ofp_version = dp.ofproto.OFP_VERSION
+
+        if ofproto_v1_0.OFP_VERSION == _ofp_version:
+            flow = {}
+        else:
+            flow = {'table_id': dp.ofproto.OFPTT_ALL}
 
         _ofctl = supported_ofctl.get(_ofp_version, None)
         if _ofctl is not None:

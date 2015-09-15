@@ -77,11 +77,12 @@ def require_app(app_name, api_style=False):
 
     If this is used for client application module, set api_style=False.
     """
+    iterable = (inspect.getmodule(frame[0]) for frame in inspect.stack())
+    modules = [module for module in iterable if module is not None]
     if api_style:
-        frm = inspect.stack()[2]  # skip a frame for "api" module
+        m = modules[2]  # skip a frame for "api" module
     else:
-        frm = inspect.stack()[1]
-    m = inspect.getmodule(frm[0])  # client module
+        m = modules[1]
     m._REQUIRED_APP = getattr(m, '_REQUIRED_APP', [])
     m._REQUIRED_APP.append(app_name)
     LOG.debug('require_app: %s is required by %s', app_name, m.__name__)
@@ -147,7 +148,7 @@ class RyuApp(object):
         """
         Return iterator over the (key, contxt class) of application context
         """
-        return cls._CONTEXTS.iteritems()
+        return iter(cls._CONTEXTS.items())
 
     def __init__(self, *_args, **_kwargs):
         super(RyuApp, self).__init__()
@@ -243,7 +244,7 @@ class RyuApp(object):
 
     def get_observers(self, ev, state):
         observers = []
-        for k, v in self.observers.get(ev.__class__, {}).iteritems():
+        for k, v in self.observers.get(ev.__class__, {}).items():
             if not state or not v or state in v:
                 observers.append(k)
 
@@ -380,8 +381,7 @@ class AppManager(object):
         while len(app_lists) > 0:
             app_cls_name = app_lists.pop(0)
 
-            context_modules = map(lambda x: x.__module__,
-                                  self.contexts_cls.values())
+            context_modules = [x.__module__ for x in self.contexts_cls.values()]
             if app_cls_name in context_modules:
                 continue
 
@@ -428,7 +428,7 @@ class AppManager(object):
             for _k, m in inspect.getmembers(i, inspect.ismethod):
                 if not hasattr(m, 'callers'):
                     continue
-                for ev_cls, c in m.callers.iteritems():
+                for ev_cls, c in m.callers.items():
                     if not c.ev_source:
                         continue
 
@@ -438,7 +438,7 @@ class AppManager(object):
                                                 c.dispatchers)
 
                     # allow RyuApp and Event class are in different module
-                    for brick in SERVICE_BRICKS.itervalues():
+                    for brick in SERVICE_BRICKS.values():
                         if ev_cls in brick._EVENTS:
                             brick.register_observer(ev_cls, i.name,
                                                     c.dispatchers)

@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import six
 import sys
 import unittest
 from nose.tools import eq_
@@ -130,8 +131,8 @@ class Test_Parser_Compat(unittest.TestCase):
 
         # a parsed object can be inspected by old and new api
 
-        check(ofpp.OFPMatch.parser(buffer(new_buf), 0))
-        check(ofpp.OFPMatch.from_jsondict(new_jsondict.values()[0]))
+        check(ofpp.OFPMatch.parser(six.binary_type(new_buf), 0))
+        check(ofpp.OFPMatch.from_jsondict(list(new_jsondict.values())[0]))
 
 
 def _add_tests():
@@ -145,7 +146,10 @@ def _add_tests():
 
         def _run(self, name, ofpp):
             print('processing %s ...' % name)
-            self._test(name, ofpp)
+            if six.PY3:
+                self._test(self, name, ofpp)
+            else:
+                self._test(name, ofpp)
         print('adding %s ...' % method_name)
         f = functools.partial(_run, name=method_name,
                               ofpp=ofpp)

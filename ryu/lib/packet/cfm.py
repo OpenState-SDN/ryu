@@ -260,9 +260,9 @@ class cc_message(operation):
     def __init__(self, md_lv=0, version=CFM_VERSION,
                  rdi=0, interval=_INTERVAL_1_SEC, seq_num=0, mep_id=1,
                  md_name_format=_MD_FMT_CHARACTER_STRING,
-                 md_name_length=0, md_name="0",
+                 md_name_length=0, md_name=b"0",
                  short_ma_name_format=_SHORT_MA_FMT_CHARACTER_STRING,
-                 short_ma_name_length=0, short_ma_name="1",
+                 short_ma_name_length=0, short_ma_name=b"1",
                  tlvs=None):
         super(cc_message, self).__init__(md_lv, version, tlvs)
         self._opcode = CFM_CC_MESSAGE
@@ -285,7 +285,7 @@ class cc_message(operation):
         (md_lv_version, opcode, flags, tlv_offset, seq_num, mep_id,
          md_name_format) = struct.unpack_from(cls._PACK_STR, buf)
         md_name_length = 0
-        md_name = ""
+        md_name = b""
         md_lv = int(md_lv_version >> 5)
         version = int(md_lv_version & 0x1f)
         rdi = int(flags >> 7)
@@ -310,9 +310,9 @@ class cc_message(operation):
         # ascii to text
         if md_name_format == cls._MD_FMT_DOMAIN_NAME_BASED_STRING or \
            md_name_format == cls._MD_FMT_CHARACTER_STRING:
-            md_name = "".join(map(chr, md_name))
+            md_name = b"".join(map(six.int2byte, md_name))
         if short_ma_name_format == cls._SHORT_MA_FMT_CHARACTER_STRING:
-            short_ma_name = "".join(map(chr, short_ma_name))
+            short_ma_name = b"".join(map(six.int2byte, short_ma_name))
         return cls(md_lv, version, rdi, interval, seq_num, mep_id,
                    md_name_format, md_name_length,
                    md_name,
@@ -524,6 +524,11 @@ class link_trace_message(link_trace):
     _ALL_PACK_LEN = struct.calcsize(_PACK_STR)
     _MIN_LEN = _ALL_PACK_LEN
     _TLV_OFFSET = 17
+    _TYPE = {
+        'ascii': [
+            'ltm_orig_addr', 'ltm_targ_addr'
+        ]
+    }
 
     def __init__(self, md_lv=0, version=CFM_VERSION,
                  use_fdb_only=1,
@@ -742,11 +747,11 @@ class sender_id_tlv(tlv):
                  length=0,
                  chassis_id_length=0,
                  chassis_id_subtype=_CHASSIS_ID_MAC_ADDRESS,
-                 chassis_id="",
+                 chassis_id=b'',
                  ma_domain_length=0,
-                 ma_domain="",
+                 ma_domain=b'',
                  ma_length=0,
-                 ma=""
+                 ma=b''
                  ):
         super(sender_id_tlv, self).__init__(length)
         self._type = CFM_SENDER_ID_TLV
@@ -771,11 +776,11 @@ class sender_id_tlv(tlv):
         (type_, length, chassis_id_length) = struct.unpack_from(cls._PACK_STR,
                                                                 buf)
         chassis_id_subtype = 4
-        chassis_id = ""
+        chassis_id = b''
         ma_domain_length = 0
-        ma_domain = ""
+        ma_domain = b''
         ma_length = 0
-        ma = ""
+        ma = b''
         offset = cls._MIN_LEN
         if chassis_id_length != 0:
             (chassis_id_subtype, ) = struct.unpack_from("!B", buf, offset)
@@ -925,7 +930,7 @@ class data_tlv(tlv):
     _PACK_STR = '!BH'
     _MIN_LEN = struct.calcsize(_PACK_STR)
 
-    def __init__(self, length=0, data_value=""
+    def __init__(self, length=0, data_value=b""
                  ):
         super(data_tlv, self).__init__(length)
         self._type = CFM_DATA_TLV
@@ -1171,9 +1176,9 @@ class organization_specific_tlv(tlv):
 
     def __init__(self,
                  length=0,
-                 oui="\x00\x00\x00",
+                 oui=b"\x00\x00\x00",
                  subtype=0,
-                 value=""
+                 value=b""
                  ):
         super(organization_specific_tlv, self).__init__(length)
         self._type = CFM_ORGANIZATION_SPECIFIC_TLV
@@ -1184,7 +1189,7 @@ class organization_specific_tlv(tlv):
     @classmethod
     def parser(cls, buf):
         (type_, length, oui, subtype) = struct.unpack_from(cls._PACK_STR, buf)
-        value = ""
+        value = b""
         if length > cls._OUI_AND_SUBTYPE_LEN:
             form = "%ds" % (length - cls._OUI_AND_SUBTYPE_LEN)
             (value,) = struct.unpack_from(form, buf, cls._MIN_LEN)
@@ -1230,7 +1235,7 @@ class reply_tlv(tlv):
          mac_address) = struct.unpack_from(cls._PACK_STR, buf)
         port_id_length = 0
         port_id_subtype = 0
-        port_id = ""
+        port_id = b''
         if length > cls._MIN_VALUE_LEN:
             (port_id_length,
              port_id_subtype) = struct.unpack_from('!2B', buf, cls._MIN_LEN)
@@ -1309,7 +1314,7 @@ class reply_ingress_tlv(reply_tlv):
                  mac_address='00:00:00:00:00:00',
                  port_id_length=0,
                  port_id_subtype=0,
-                 port_id=""
+                 port_id=b''
                  ):
         super(reply_ingress_tlv, self).__init__(length, action,
                                                 mac_address, port_id_length,
@@ -1358,7 +1363,7 @@ class reply_egress_tlv(reply_tlv):
                  mac_address='00:00:00:00:00:00',
                  port_id_length=0,
                  port_id_subtype=0,
-                 port_id=""
+                 port_id=b''
                  ):
         super(reply_egress_tlv, self).__init__(length, action,
                                                mac_address, port_id_length,

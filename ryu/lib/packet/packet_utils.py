@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import array
+import six
 import socket
 import struct
 from ryu.lib import addrconv
@@ -25,10 +26,10 @@ def carry_around_add(a, b):
 
 
 def checksum(data):
+    data = six.binary_type(data)    # input can be bytearray.
     if len(data) % 2:
-        data += '\x00'
+        data += b'\x00'
 
-    data = str(data)    # input can be bytearray.
     s = sum(array.array('H', data))
     s = (s & 0xffff) + (s >> 16)
     s += (s >> 16)

@@ -17,6 +17,7 @@
 
 import unittest
 import logging
+import six
 
 from nose.tools import *
 
@@ -65,7 +66,7 @@ class Test_packet_in_filter(unittest.TestCase):
         pkt = (e / v / i)
         pkt.serialize()
         pkt_in = ofproto_v1_3_parser.OFPPacketIn(datapath,
-                                                 data=buffer(pkt.data))
+                                                 data=six.binary_type(pkt.data))
         ev = ofp_event.EventOFPPacketIn(pkt_in)
         ok_(self.app.packet_in_handler(ev))
 
@@ -78,13 +79,13 @@ class Test_packet_in_filter(unittest.TestCase):
         pkt = (e / i)
         pkt.serialize()
         pkt_in = ofproto_v1_3_parser.OFPPacketIn(datapath,
-                                                 data=buffer(pkt.data))
+                                                 data=six.binary_type(pkt.data))
         ev = ofp_event.EventOFPPacketIn(pkt_in)
         ok_(not self.app.packet_in_handler(ev))
 
     def test_pkt_in_filter_truncated(self):
         datapath = ProtocolDesc(version=ofproto_v1_3.OFP_VERSION)
-        truncated_data = buffer('')
+        truncated_data = ''
         pkt_in = ofproto_v1_3_parser.OFPPacketIn(datapath,
                                                  data=truncated_data)
         ev = ofp_event.EventOFPPacketIn(pkt_in)

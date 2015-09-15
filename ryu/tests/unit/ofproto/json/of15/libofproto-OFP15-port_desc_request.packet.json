@@ -1,0 +1,7 @@
+{
+    "OFPPortDescStatsRequest": {
+        "flags": 0,
+        "port_no": 48346,
+        "type": 13
+    }
+}

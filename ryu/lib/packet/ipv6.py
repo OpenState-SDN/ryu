@@ -206,7 +206,7 @@ class opt_header(header):
         buf = bytearray(buf)
         if self.data is None:
             self.data = [option(type_=1, len_=4,
-                                data='\x00\x00\x00\x00')]
+                                data=b'\x00\x00\x00\x00')]
         for opt in self.data:
             buf.extend(opt.serialize())
         return buf
@@ -413,6 +413,11 @@ class routing_type3(header):
 
     _PACK_STR = '!BBBBBB2x'
     _MIN_LEN = struct.calcsize(_PACK_STR)
+    _TYPE = {
+        'asciilist': [
+            'adrs'
+        ]
+    }
 
     def __init__(self, nxt=inet.IPPROTO_TCP, size=0,
                  type_=3, seg=0, cmpi=0, cmpe=0, adrs=None):
@@ -451,18 +456,18 @@ class routing_type3(header):
             form_e = "%ds" % adrs_len_e
             while data < (header_len - (adrs_len_e + pad)):
                 (adr, ) = struct.unpack_from(form_i, buf[data:])
-                adr = ('\x00' * cmpi) + adr
+                adr = (b'\x00' * cmpi) + adr
                 adrs.append(addrconv.ipv6.bin_to_text(adr))
                 data += adrs_len_i
             (adr, ) = struct.unpack_from(form_e, buf[data:])
-            adr = ('\x00' * cmpe) + adr
+            adr = (b'\x00' * cmpe) + adr
             adrs.append(addrconv.ipv6.bin_to_text(adr))
         return cls(nxt, size, type_, seg, cmpi, cmpe, adrs)
 
     def serialize(self):
         if self.size == 0:
             self.size = ((len(self.adrs) - 1) * (16 - self.cmpi) +
-                         (16 - self.cmpe) + self._pad) / 8
+                         (16 - self.cmpe) + self._pad) // 8
         buf = struct.pack(self._PACK_STR, self.nxt, self.size,
                           self.type_, self.seg, (self.cmpi << 4) | self.cmpe,
                           self._pad << 4)
@@ -565,7 +570,7 @@ class auth(header):
     _MIN_LEN = struct.calcsize(_PACK_STR)
 
     def __init__(self, nxt=inet.IPPROTO_TCP, size=2, spi=0, seq=0,
-                 data='\x00\x00\x00\x00'):
+                 data=b'\x00\x00\x00\x00'):
         super(auth, self).__init__(nxt)
         assert data is not None
         self.size = size
