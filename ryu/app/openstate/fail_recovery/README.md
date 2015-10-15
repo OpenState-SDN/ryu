@@ -1,4 +1,4 @@
-# DOS detection
+# Failure Recovery
 
 ### Requirements:
 
