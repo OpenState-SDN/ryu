@@ -20,7 +20,7 @@ print 'Starting Mininet'
 net = Mininet(topo=SingleSwitchTopo(4),switch=UserSwitch,controller=RemoteController,cleanup=True,autoSetMacs=True,listenPort=6634,autoStaticArp=True)
 net.start()
 
-time.sleep(5)
+time.sleep(6)
 
 drop_perc = net.pingAll(2)
 if drop_perc == 0.0:
