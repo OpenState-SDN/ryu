@@ -51,13 +51,14 @@ if 'ESTABLISHED' in out:
 	print 'Test 1: \x1b[32mSUCCESS!\x1b[0m'
 else:
 	print 'Test 1: \x1b[31mFAIL\x1b[0m'
+	exit(1)
 
 ###############################################################################
 print 'Waiting 5 seconds for connection timeout...'
 time.sleep(5)
 print '\nTest 2: h1 connects to h2 after an ongoing attack below the the threshold'
 net['h1'].cmd('hping3 -S -p 80 -i u200000 -o 28 10.0.0.2 &')
-time.sleep(1)
+time.sleep(2)
 net['h1'].cmd('(echo "HI!" | nc -q3 -T af11 10.0.0.2 2000) &')
 net['h1'].cmd('(echo "HI!" | nc -q3 -T af11 10.0.0.2 2000) &')
 
@@ -73,6 +74,7 @@ if 'ESTABLISHED' in out:
 	print 'Test 2: \x1b[32mSUCCESS!\x1b[0m'
 else:
 	print 'Test 2: \x1b[31mFAIL\x1b[0m'
+	exit(1)
 net['h1'].cmd('kill -9 $(pidof hping3)')
 
 ###############################################################################
@@ -81,7 +83,7 @@ print 'Waiting 5 seconds for connection timeout...'
 time.sleep(5)
 print '\nTest 3: h1 connects to h2 after an ongoing attack above the the threshold'
 net['h1'].cmd('hping3 -S -p 80 -i u5000 -o 28 10.0.0.2 &')
-time.sleep(1)
+time.sleep(2)
 net['h1'].cmd('(echo "HI!" | nc -q3 -T af11 10.0.0.2 2000) &')
 
 out = ''
@@ -94,6 +96,7 @@ while 'ESTABLISHED' not in out and attempts<5:
 
 if 'ESTABLISHED' in out:
 	print 'Test 3: \x1b[31mFAIL\x1b[0m'
+	exit(1)
 else:
 	print 'Test 3: \x1b[32mSUCCESS!\x1b[0m'
 net['h1'].cmd('kill -9 $(pidof hping3)')
@@ -118,6 +121,7 @@ if 'ESTABLISHED' in out:
 	print 'Test 4: \x1b[32mSUCCESS!\x1b[0m'
 else:
 	print 'Test 4: \x1b[31mFAIL\x1b[0m'
+	exit(1)
 net['h1'].cmd('kill -9 $(pidof hping3)')
 
 # Kill Mininet and/or Ryu
