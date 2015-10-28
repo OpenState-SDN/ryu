@@ -636,16 +636,16 @@ class OVSDatapath(Datapath):
             return 2*table_id+1
 
         if isinstance(msg,ofproto_parser.OFPExperimenter) and msg.experimenter==0xBEBABEBA and msg.exp_type==osproto.OFPT_EXP_STATE_MOD:
-            # We are forced to do unpack because OFPExpMsgConfigureStatefulTable is not a class with attributes; for simplicity it's a
+            # We are forced to unpack because OFPExpMsgConfigureStatefulTable is not a class with attributes; for simplicity it's a
             # method returning an instance of OFPExperimenter with the packed payload (refactoring!?!)
             command_offset = struct.calcsize(osproto.OFP_EXP_STATE_MOD_PACK_STR)
             (command,) = struct.unpack(osproto.OFP_EXP_STATE_MOD_PACK_STR, msg.data[:command_offset])
             if command == osproto.OFPSC_STATEFUL_TABLE_CONFIG:
                 (table_id,stateful) = struct.unpack(osproto.OFP_EXP_STATE_MOD_STATEFUL_TABLE_CONFIG_PACK_STR, msg.data[command_offset:command_offset+struct.calcsize(osproto.OFP_EXP_STATE_MOD_STATEFUL_TABLE_CONFIG_PACK_STR)])
 
-                # table miss in state table
+                # "control flow" table miss in State Table
                 # OVS have all port numbers into the 16-bit range (like in OF1.0), while later OF version use 32-bit port numbers.
-                # NXActionResubmitTable needs 16-bit port numbers, so we cannot put ofproto.OFPP_IN_PORT. (OFPP_IN_PORT=0xfff8 in OF1.0)
+                # NXActionResubmitTable needs 16-bit port numbers, so we cannot put ofproto.OFPP_IN_PORT: we put 0xfff8 (OFPP_IN_PORT=0xfff8 in OF1.0)
                 # https://github.com/openvswitch/ovs/blob/master/OPENFLOW-1.1%2B.md
                 match = ofproto_parser.OFPMatch(reg1=0)
                 actions = [ofproto_parser.OFPActionSetField(reg1=1),
@@ -655,14 +655,15 @@ class OVSDatapath(Datapath):
                 mod = ofproto_parser.OFPFlowMod(datapath=self, table_id=get_state_table_id(table_id), priority=10, match=match, instructions=inst)
                 super(OVSDatapath, self).send_msg(mod)
 
-                # "return DEFAULT state" in state table
+                # "return DEFAULT state" in State Table
                 match = ofproto_parser.OFPMatch(reg1=1)
                 actions = [ofproto_parser.OFPActionSetField(reg0=0)]
                 inst = [ofproto_parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
                 mod = ofproto_parser.OFPFlowMod(datapath=self, table_id=get_state_table_id(table_id), priority=10, match=match, instructions=inst)
                 super(OVSDatapath, self).send_msg(mod)
 
-                self.stages_in_use.add(table_id)
+                # keep track of stateful stages (useful when handling GotoTable instructions)
+                self.stateful_stages_in_use.add(table_id)
 
                 # OFPExpMsgConfigureStatefulTable msg is dropped
                 return
@@ -670,14 +671,17 @@ class OVSDatapath(Datapath):
                 (table_id,field_count) = struct.unpack(osproto.OFP_EXP_STATE_MOD_EXTRACTOR_PACK_STR,msg.data[command_offset:command_offset+struct.calcsize(osproto.OFP_EXP_STATE_MOD_EXTRACTOR_PACK_STR)])
                 if field_count>0:
                     fields_offset = command_offset+struct.calcsize(osproto.OFP_EXP_STATE_MOD_EXTRACTOR_PACK_STR)
+                    field_size = struct.calcsize('!I')
                     if command == osproto.OFPSC_EXP_SET_L_EXTRACTOR:
                         self.lookup_scope[table_id] = []
                         for f in range(field_count):
-                            self.lookup_scope[table_id].append(struct.unpack('!I',msg.data[fields_offset+struct.calcsize('!I')*f : fields_offset+struct.calcsize('!I')+struct.calcsize('!I')*f])[0])
+                            current_field_offset = fields_offset+field_size*f
+                            self.lookup_scope[table_id].append( struct.unpack('!I',msg.data[current_field_offset : current_field_offset+field_size])[0] )
                     elif command == osproto.OFPSC_EXP_SET_U_EXTRACTOR:
                         self.update_scope[table_id] = []
                         for f in range(field_count):
-                            self.update_scope[table_id].append(struct.unpack('!I',msg.data[fields_offset+struct.calcsize('!I')*f : fields_offset+struct.calcsize('!I')+struct.calcsize('!I')*f])[0])
+                            current_field_offset = fields_offset+field_size*f
+                            self.update_scope[table_id].append( struct.unpack('!I',msg.data[current_field_offset : current_field_offset+field_size])[0] )
                 else:
                     LOG.error("ERROR: no fields in lookup/update scope!")
                 # OFPExpMsgKeyExtract msg is dropped
@@ -685,11 +689,11 @@ class OVSDatapath(Datapath):
             elif command == osproto.OFPSC_EXP_SET_FLOW_STATE:
                 # We should send a FlowMod MODIFY by converting 'keys' into FlowMod's match fields and 'state' into OFPActionSetField(reg0=state) '''
                 '''
-                TODO: timeouts handling (see below comments in OFPAT_EXP_SET_STATE)
+                TODO: timeouts handling. Up to now timeouts are ignored (see comments below in OFPAT_EXP_SET_STATE)
 
                 TODO: 'state_mask' handling
                 Until now 'state_mask' is ignored because in OF1.3 SetField actions does not allow mask (only OF1.5 allows it with EXT-314)
-                In fact ovs-ofctl translates a set_field in a reg_load when we force OF version to 1.3.
+                In fact ovs-ofctl translates a set_field into a reg_load when we force OF version to 1.3.
                 sudo ovs-ofctl add-flow s1 -O OpenFlow13 "table=0 action=set_field:1/5->reg0"   -->     actions=load:0x1->NXM_NX_REG0[0],load:0->NXM_NX_REG0[2]
                 sudo ovs-ofctl add-flow s1 -O OpenFlow13 "table=0 action=set_field:1->reg0"     -->     actions=set_field:0x1->reg0
                 Seacrh for "set_field:value[/mask]->dst" in http://openvswitch.org/support/dist-docs/ovs-ofctl.8.txt
@@ -699,10 +703,18 @@ class OVSDatapath(Datapath):
                 (table_id, key_count, state, state_mask, hard_rollback, idle_rollback, hard_timeout, idle_timeout) = struct.unpack(osproto.OFP_EXP_STATE_MOD_SET_FLOW_STATE_PACK_STR, msg.data[command_offset:command_offset+struct.calcsize(osproto.OFP_EXP_STATE_MOD_SET_FLOW_STATE_PACK_STR)])
                 if key_count>0:
                     lookup_fields = {}
+                    key_starting_offset = command_offset+struct.calcsize(osproto.OFP_EXP_STATE_MOD_SET_FLOW_STATE_PACK_STR)
+                    key_offset = 0
+                    # Parse the remaning payload to get the matching values of all lookup fields
                     for f in self.lookup_scope[table_id]:
-                        '''TODO: parse the remaning payload to get the matching values of all lookup fields (e.g. lookup_fields['eth_dst']='00:00:00:0a:0a:0a') '''
-                        pass
-                    self.add_prereq_match_to_dict(lookup_fields)
+                        field_bytes_num = ofproto_parser.OFPMatchField._FIELDS_HEADERS[f](f,0,0).oxm_len()
+                        # if f is ofproto.OXM_OF_ETH_SRC then field_name would be 'eth_dst'
+                        field_name = ofproto_parser._NXFlowSpec._parse_subfield( bytearray(struct.pack('!IH',f,0)) )[0]
+                        key = list(struct.unpack('!'+'B'*field_bytes_num, msg.data[key_starting_offset+key_offset:key_starting_offset+key_offset+field_bytes_num]))
+                        # We'd like something like lookup_fields['eth_dst']='00:00:00:0a:0a:0a'
+                        lookup_fields[field_name] = self.bytes_to_match_value(f,key)
+                        key_offset += field_bytes_num
+                    self.add_prereq_match_to_dict(self.lookup_scope[table_id],lookup_fields)
                     match = ofproto_parser.OFPMatch(reg1=1,**lookup_fields)
                     actions = [ofproto_parser.OFPActionSetField(reg1=0),ofproto_parser.OFPActionSetField(reg0=state)]
                     inst = [ofproto_parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
@@ -714,19 +726,26 @@ class OVSDatapath(Datapath):
                     LOG.error("ERROR: empty key in STATE_MOD message!")
                 return
             elif command == osproto.OFPSC_EXP_DEL_FLOW_STATE:
-                print "OFPSC_EXP_DEL_FLOW_STATE msg"
                 # We should send a FlowMod DELETE by converting 'keys' into FlowMod's match fields
-                (table_id, key_count) = struct.unpack(osproto.OFP_EXP_STATE_MOD_SET_FLOW_STATE_PACK_STR, msg.data[command_offset:command_offset+struct.calcsize(osproto.OFP_EXP_STATE_MOD_SET_FLOW_STATE_PACK_STR)])
+                (table_id, key_count) = struct.unpack(osproto.OFP_EXP_STATE_MOD_DEL_FLOW_STATE_PACK_STR, msg.data[command_offset:command_offset+struct.calcsize(osproto.OFP_EXP_STATE_MOD_DEL_FLOW_STATE_PACK_STR)])
                 if key_count>0:
                     lookup_fields = {}
+                    key_starting_offset = command_offset+struct.calcsize(osproto.OFP_EXP_STATE_MOD_DEL_FLOW_STATE_PACK_STR)
+                    key_offset = 0
+                    # Parse the remaning payload to get the matching values of all lookup fields
                     for f in self.lookup_scope[table_id]:
-                        '''TODO: parse the remaning payload to get the matching values of all lookup fields (e.g. lookup_fields['eth_dst']='00:00:00:0a:0a:0a') '''
-                        pass
-                    self.add_prereq_match_to_dict(lookup_fields)
+                        field_bytes_num = ofproto_parser.OFPMatchField._FIELDS_HEADERS[f](f,0,0).oxm_len()
+                        # if f is ofproto.OXM_OF_ETH_SRC then field_name would be 'eth_dst'
+                        field_name = ofproto_parser._NXFlowSpec._parse_subfield( bytearray(struct.pack('!IH',f,0)) )[0]
+                        key = list(struct.unpack('!'+'B'*field_bytes_num, msg.data[key_starting_offset+key_offset:key_starting_offset+key_offset+field_bytes_num]))
+                        # We'd like something like lookup_fields['eth_dst']='00:00:00:0a:0a:0a'
+                        lookup_fields[field_name] = self.bytes_to_match_value(f,key)
+                        key_offset += field_bytes_num
+                    self.add_prereq_match_to_dict(self.lookup_scope[table_id],lookup_fields)
                     match = ofproto_parser.OFPMatch(reg1=1,**lookup_fields)
                     mod = ofproto_parser.OFPFlowMod(datapath=self, cookie=0, cookie_mask=0,table_id=get_state_table_id(table_id),
                         command=ofproto.OFPFC_DELETE, idle_timeout=0, hard_timeout=0, priority=100, buffer_id=ofproto.OFP_NO_BUFFER,
-                        out_port=ofproto.OFPP_ANY, out_group=ofproto.OFPG_ANY)
+                        out_port=ofproto.OFPP_ANY, out_group=ofproto.OFPG_ANY, match=match)
                     super(OVSDatapath, self).send_msg(mod)
                 else:
                     LOG.error("ERROR: empty key in STATE_MOD message!")
@@ -736,7 +755,7 @@ class OVSDatapath(Datapath):
                 We should send a FlowMod ADD. NB get_state_table_id() and get_flow_table_id() return value should be sincreased by 1 '''
                 return
             elif command == osproto.OFPSC_RESET_GLOBAL_STATE:
-                ''' TODO: We should send a FlowMod MOD that sets reg8=0 (or that just do GotoTable(1) ) in the table miss entry'''
+                ''' TODO: We could send a FlowMod MOD that sets reg8=0 (or that just do GotoTable(1) ) in the table miss entry'''
                 return
         elif isinstance(msg,ofproto_parser.OFPExperimenterStatsRequest) and msg.experimenter==0xBEBABEBA:
             if msg.exp_type==osproto.OFPMP_EXP_STATE_STATS:
@@ -745,22 +764,22 @@ class OVSDatapath(Datapath):
                 ''' TODO: in Open vSwitch, global states are a flow entry in the first table => we could send a OFPMultipartRequest, maybe '''
             return
         elif isinstance(msg,ofproto_parser.OFPFlowMod):
-            # check for the presence of any OpenState action in OFPInstructionActions
+            # [step 1 ] check for the presence of any OpenState action in OFPInstructionActions
             for instr in msg.instructions:
-                if isinstance(instr, ofproto_parser.OFPInstructionActions) and instr.type in [ofproto.OFPIT_WRITE_ACTIONS,ofproto.OFPIT_APPLY_ACTIONS]:
+                if isinstance(instr, ofproto_parser.OFPInstructionActions) and instr.type in [ofproto.OFPIT_WRITE_ACTIONS , ofproto.OFPIT_APPLY_ACTIONS]:
                     filtered_action_set = []
                     for act in instr.actions:
                         if isinstance(act, ofproto_parser.OFPActionExperimenterUnknown) and act.experimenter == 0xBEBABEBA:
                             (act_type,) = struct.unpack('!I', act.data[:struct.calcsize('!I')])
                             if act_type == osproto.OFPAT_EXP_SET_STATE:
                                 (act_type, state, state_mask, table_id, hard_rollback, idle_rollback, hard_timeout, idle_timeout) = struct.unpack(osproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act.data[:struct.calcsize(osproto.OFP_EXP_ACTION_SET_STATE_PACK_STR)])
-                                # OF flow entry's timeouts can be set only when a flow entry is added! (e.g. created for the first time).
-                                # Timeouts are ignored because flow entry's timeouts can be changed only when the flow entry is added! (e.g. created for the first time)
-                                # Rollback state!=0 could be supported with 2 learn actions, one with high priority (say 200) with the user-defined timeout and load:state->reg0
-                                # the other with the classic priority 200, no timeouts and load:rollback->reg0. How can we manage a state transitions with 2 (I/H) possible rollbacks?
+                                ''' TODO: timeouts handling. Up to now timeouts are ignored because OF flow entry's timeouts can be set only when a flow entry is added! (e.g. created for the first time) '''
+                                ''' TODO: multiple rollback states
+                                Rollback state!=0 could be supported with 2 learn actions, one with high priority (say 200) with the user-defined timeout and load:state->reg0,
+                                the other with the classic priority 100, no timeouts and load:rollback->reg0. But how can we manage a state transitions with 2 (I/H) possible rollbacks? '''
                                 specs = [ofproto_parser.NXFlowSpecMatch(dst=('reg1', 0),n_bits=32,src=1),
                                         ofproto_parser.NXFlowSpecLoad(dst=('reg1',0),n_bits=32,src=0)] 
-                                specs.extend(self.generate_NXFlowSpecMatch_prereq(table_id))
+                                specs.extend(self.generate_NXFlowSpecMatch_and_prereq(table_id))
                                 specs.extend(self.generate_NXFlowSpecLoad(state,state_mask))
                                 learn_action = ofproto_parser.NXActionLearn(table_id=get_state_table_id(table_id),priority=100,
                                     specs=specs)
@@ -776,8 +795,8 @@ class OVSDatapath(Datapath):
                     # or maybe it will not be sent at all). Instead of going to get_state_table_id(instr.table_id) OR get_flow_table_id(instr.table_id),
                     # a possible approach is going in any case to get_state_table_id(instr.table_id) and adding, if not already there, the table miss entry
                     # that sends packets to get_flow_table_id(instr.table_id).
-                    if instr.table_id not in self.stages_in_use:
-                        # table miss in state table (it's the same we'd install when we intercept a OFPExpMsgConfigureStatefulTable msg)
+                    if instr.table_id not in self.stateful_stages_in_use:
+                        # "control flow" table miss in State Table (it's the same we'd install when we intercept an OFPExpMsgConfigureStatefulTable msg)
                         match = ofproto_parser.OFPMatch(reg1=0)
                         actions = [ofproto_parser.OFPActionSetField(reg1=1),
                             ofproto_parser.NXActionResubmitTable(0xfff8,get_state_table_id(instr.table_id)),
@@ -786,18 +805,19 @@ class OVSDatapath(Datapath):
                         mod = ofproto_parser.OFPFlowMod(datapath=self, table_id=get_state_table_id(instr.table_id), priority=10, match=match, instructions=inst)
                         super(OVSDatapath, self).send_msg(mod)
 
-                        self.stages_in_use.add(instr.table_id)
+                        self.stateful_stages_in_use.add(instr.table_id)
                     instr.table_id = get_state_table_id(instr.table_id)
-            # check for OpenState match
-            new_fields = []
-            for field in msg.match._fields2:
-                if field[0]=='state':
-                    new_fields.append(('reg0',field[1]))
-                elif field[0]=='flags':
-                    continue # we should put new_fields.append(('reg8',field[1]))
+
+            # [step 2 ] check for he presence of any OpenState match
+            new_match_fields = []
+            for (match_field_name,match_field_value) in msg.match._fields2:
+                if match_field_name=='state':
+                    new_match_fields.append(('reg0',match_field_value))
+                elif match_field_name=='flags':
+                    continue # we should put new_match_fields.append(('reg8',match_field_value))
                 else:
-                    new_fields.append(field)
-            msg.match._fields2 = new_fields
+                    new_match_fields.append( (match_field_name,match_field_value) )
+            msg.match._fields2 = new_match_fields
 
             msg.table_id = get_flow_table_id(msg.table_id)
 
@@ -810,12 +830,12 @@ class OVSDatapath(Datapath):
                             (act_type,) = struct.unpack('!I', act.data[:struct.calcsize('!I')])
                             if act_type == osproto.OFPAT_EXP_SET_STATE:
                                 (act_type, state, state_mask, table_id, hard_rollback, idle_rollback, hard_timeout, idle_timeout) = struct.unpack(osproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act.data[:struct.calcsize(osproto.OFP_EXP_ACTION_SET_STATE_PACK_STR)])
-                                # Timeouts are ignored because flow entry's timeouts can be changed only when the flow entry is added! (e.g. created for the first time)
-                                # For the same reason we cannot have rollback state different from zero! At most flow entry's timeouts can cause the entry to be deleted,
-                                # because it's not possible to change the load action with rollback state when a timeout expires!
+                                ''' TODO: Timeouts are ignored because flow entry's timeouts can be changed only when the flow entry is added! (e.g. created for the first time)
+                                For the same reason we cannot have rollback state different from zero! At most flow entry's timeouts can cause the entry to be deleted,
+                                because it's not possible to change the load action with rollback state when a timeout expires! '''
                                 specs = [ofproto_parser.NXFlowSpecMatch(dst=('reg1', 0),n_bits=32,src=1),
                                         ofproto_parser.NXFlowSpecLoad(dst=('reg1',0),n_bits=32,src=0)] 
-                                specs.extend(self.generate_NXFlowSpecMatch_prereq(table_id))
+                                specs.extend(self.generate_NXFlowSpecMatch_and_prereq(table_id))
                                 specs.extend(self.generate_NXFlowSpecLoad(state,state_mask))
                                 learn_action = ofproto_parser.NXActionLearn(table_id=get_state_table_id(table_id),priority=100,
                                     specs=specs)
@@ -829,67 +849,81 @@ class OVSDatapath(Datapath):
 
         return super(OVSDatapath, self).send_msg(msg)
 
-    def generate_NXFlowSpecMatch_prereq(self,table_id):
+    # It builds a set of NXFlowSpecMatch(dst=(LOOKUP_SCOPE_FIELD_OXM_NAME, 0),n_bits=OXM_FIELD_BITS_LENGTH,src=UPDATE_SCOPE_FIELD_OXM_NAME)
+    # for each field of the lookup/update-scope. It adds to the set also an eventual match for being compliant to match prerequisites.
+    def generate_NXFlowSpecMatch_and_prereq(self,table_id):
         # We save the result in the object (attribute self.flowSpecMatchDict) to avoid generate NXFlowSpecMatch multiple times for the same table!
         if table_id in self.flowSpecMatchDict and self.flowSpecMatchDict[table_id]!=Set([]):
             return self.flowSpecMatchDict[table_id]
 
-        self.flowSpecMatchDict[table_id] = Set([]) # we use a Set instead of a list to avoid duplicates due to add_prereq_match() in case of 2 fields with the same pre-req
+        self.flowSpecMatchDict[table_id] = Set([]) # we use a Set instead of a list to avoid duplicates in case of 2 fields with the same pre-req
 
+        # We create an hashable NXFlowSpecMatch to be able to use NXFlowSpecMatch in a Set
         class NXHashableFlowSpecMatch(ofproto_parser.NXFlowSpecMatch):
             def __hash__(self):
                 return hash(str(self))
         
             def __eq__(self,other):
                 return hash(str(self))==hash(str(other))
+
+        # OVS wrapper transforms a state table lookup into a flow table lookup, hence we need to observe match prerequisites:
+        # for example, if lookup-scope contains OXM_OF_IPV4_SRC, we need a learn containing a NXFlowSpecMatch matching eth_type=0x800.
+        def add_prereq_match(flowSpecMatchDict,oxm_name,value):
+            oxm_field = struct.unpack('!I',ofproto_parser._NXFlowSpec._serialize_subfield((oxm_name,0))[0:4])[0]
+            n_bits = ofproto_parser.OFPMatchField._FIELDS_HEADERS[oxm_field](oxm_field,0,0).oxm_len()*8
+            flowSpecMatchDict.add(NXHashableFlowSpecMatch(dst=(oxm_name,0),n_bits=n_bits,src=value))
+
+        # This is the table 11 OF1.3 spec pag. 44
+        ''' TODO: how can we handle pre-requisite such as OXM_OF_IP_DSCP with ETH TYPE=0x0800 or ETH TYPE=0x86dd ?? '''
+        options = {
+            ofproto.OXM_OF_IPV4_SRC: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x800),
+            ofproto.OXM_OF_IPV4_DST: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x800),
+            ofproto.OXM_OF_TCP_SRC: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',6),
+            ofproto.OXM_OF_TCP_DST: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',6),
+            ofproto.OXM_OF_UDP_SRC: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',17),
+            ofproto.OXM_OF_UDP_DST: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',17),
+            ofproto.OXM_OF_SCTP_SRC: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',132),
+            ofproto.OXM_OF_SCTP_DST: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',132),
+            ofproto.OXM_OF_ICMPV4_TYPE: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',1),
+            ofproto.OXM_OF_ICMPV4_CODE: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',1),
+            ofproto.OXM_OF_ARP_OP: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x0806),
+            ofproto.OXM_OF_ARP_SPA: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x0806),
+            ofproto.OXM_OF_ARP_TPA: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x0806),
+            ofproto.OXM_OF_ARP_SHA: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x0806),
+            ofproto.OXM_OF_ARP_THA: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x0806),
+            ofproto.OXM_OF_IPV6_SRC: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x86dd),
+            ofproto.OXM_OF_IPV6_DST: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x86dd),
+            ofproto.OXM_OF_IPV6_FLABEL: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x86dd),
+            ofproto.OXM_OF_ICMPV6_TYPE: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',58),
+            ofproto.OXM_OF_ICMPV6_CODE: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',58),
+            ofproto.OXM_OF_IPV6_ND_SLL: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'icmpv6_type',135),
+            ofproto.OXM_OF_IPV6_ND_TLL: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'icmpv6_type',136),
+            ofproto.OXM_OF_PBB_ISID: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x88E7),
+            ofproto.OXM_OF_IPV6_EXTHDR: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x86dd)
+        }
         
-        for idx,field in enumerate(self.lookup_scope[table_id]): # assuming compatible lookup-scope/update-scope fields in terms of number of bits
+        for idx,field in enumerate(self.lookup_scope[table_id]):
             n_bits = ofproto_parser.OFPMatchField._FIELDS_HEADERS[field](field,0,0).oxm_len()*8
+            # When calculating n_bits we are assuming symmetric fields in the two lookups (e.g. if lookup-scope has eth_src, then
+            # update-scope would have eth_dst in the same position). Even in the unlikely case of completely unrelated fields,
+            # we hope they are compatible at least having the same number of bits. This is true for sure for the total number
+            # of bits, otherwise we would not be able to access the state table in read/write with keys of different lengths!!!
             src = ofproto_parser._NXFlowSpec._parse_subfield( bytearray(struct.pack('!IH',self.update_scope[table_id][idx],0)) )
             dst = ofproto_parser._NXFlowSpec._parse_subfield( bytearray(struct.pack('!IH',field,0)) )
             self.flowSpecMatchDict[table_id].add(NXHashableFlowSpecMatch(dst=dst,n_bits=n_bits,src=src))
 
-            def add_prereq_match(flowSpecMatchDict,oxm_name,value):
-                oxm_field = struct.unpack('!I',ofproto_parser._NXFlowSpec._serialize_subfield((oxm_name,0))[0:4])[0]
-                n_bits = ofproto_parser.OFPMatchField._FIELDS_HEADERS[oxm_field](oxm_field,0,0).oxm_len()*8
-                flowSpecMatchDict.add(NXHashableFlowSpecMatch(dst=(oxm_name,0),n_bits=n_bits,src=value))
-
-            '''TODO: [table 11 OF1.3 spec pag. 44] how can we handle pre-requisite such as OXM_OF_IP_DSCP with ETH TYPE=0x0800 or ETH TYPE=0x86dd ?? '''
-            options = {
-                ofproto.OXM_OF_IPV4_SRC: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x800),
-                ofproto.OXM_OF_IPV4_DST: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x800),
-                ofproto.OXM_OF_TCP_SRC: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',6),
-                ofproto.OXM_OF_TCP_DST: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',6),
-                ofproto.OXM_OF_UDP_SRC: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',17),
-                ofproto.OXM_OF_UDP_DST: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',17),
-                ofproto.OXM_OF_SCTP_SRC: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',132),
-                ofproto.OXM_OF_SCTP_DST: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',132),
-                ofproto.OXM_OF_ICMPV4_TYPE: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',1),
-                ofproto.OXM_OF_ICMPV4_CODE: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',1),
-                ofproto.OXM_OF_ARP_OP: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x0806),
-                ofproto.OXM_OF_ARP_SPA: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x0806),
-                ofproto.OXM_OF_ARP_TPA: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x0806),
-                ofproto.OXM_OF_ARP_SHA: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x0806),
-                ofproto.OXM_OF_ARP_THA: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x0806),
-                ofproto.OXM_OF_IPV6_SRC: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x86dd),
-                ofproto.OXM_OF_IPV6_DST: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x86dd),
-                ofproto.OXM_OF_IPV6_FLABEL: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x86dd),
-                ofproto.OXM_OF_ICMPV6_TYPE: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',58),
-                ofproto.OXM_OF_ICMPV6_CODE: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',58),
-                ofproto.OXM_OF_IPV6_ND_SLL: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'icmpv6_type',135),
-                ofproto.OXM_OF_IPV6_ND_TLL: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'icmpv6_type',136),
-                ofproto.OXM_OF_PBB_ISID: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x88E7),
-                ofproto.OXM_OF_IPV6_EXTHDR: lambda: add_prereq_match(self.flowSpecMatchDict[table_id],'eth_type',0x86dd)
-            }
+            # This is a simple switch-case-equivalent block: if field=ofproto.OXM_OF_TCP_SRC, then the function
+            # add_prereq_match(self.flowSpecMatchDict[table_id],'ip_proto',6) will be called and so a match ip_proto=6
+            # will be added to learned flow entry.
             try:
                 options[field]()
             except Exception:
                 pass
-        #print self.flowSpecMatchDict[table_id]
+
         return self.flowSpecMatchDict[table_id]
 
     def generate_NXFlowSpecLoad(self,state,state_mask):
-        ''' The new state to be loaded should be (old_state&~state_mask)|(state&state_mask) '''
+        ''' The new state to be loaded should be (old_state & ~state_mask)|(state & state_mask) '''
         import re
         if state_mask==0xffffffff:
             return [ofproto_parser.NXFlowSpecLoad(dst=('reg0',0),n_bits=32,src=state)]
@@ -912,11 +946,72 @@ class OVSDatapath(Datapath):
             flowSpecLoad.append(ofproto_parser.NXFlowSpecLoad(dst=('reg0',31-e),n_bits=e-s+1,src=int(masked_state_str[s:e+1],2)))
         return flowSpecLoad
 
-    def add_prereq_match_to_dict(self,d):
-        ''' TODO: add the prerequisites'''
-        #for field in d:
-        #    d[match_field]=value
+    def add_prereq_match_to_dict(self,lookup_scope,match):
+        # OVS wrapper transforms a state table lookup into a flow table lookup, hence we need to observe match prerequisites:
+        # for example, if lookup-scope contains OXM_OF_IPV4_SRC, we need a learn containing a NXFlowSpecMatch matching eth_type=0x800.
+        def add_prereq_match(d,oxm_name,value):
+            d[oxm_name]=value
+
+        # This is the table 11 OF1.3 spec pag. 44
+        ''' TODO: how can we handle pre-requisite such as OXM_OF_IP_DSCP with ETH TYPE=0x0800 or ETH TYPE=0x86dd ?? '''
+        options = {
+            ofproto.OXM_OF_IPV4_SRC: lambda: add_prereq_match(match,'eth_type',0x800),
+            ofproto.OXM_OF_IPV4_DST: lambda: add_prereq_match(match,'eth_type',0x800),
+            ofproto.OXM_OF_TCP_SRC: lambda: add_prereq_match(match,'ip_proto',6),
+            ofproto.OXM_OF_TCP_DST: lambda: add_prereq_match(match,'ip_proto',6),
+            ofproto.OXM_OF_UDP_SRC: lambda: add_prereq_match(match,'ip_proto',17),
+            ofproto.OXM_OF_UDP_DST: lambda: add_prereq_match(match,'ip_proto',17),
+            ofproto.OXM_OF_SCTP_SRC: lambda: add_prereq_match(match,'ip_proto',132),
+            ofproto.OXM_OF_SCTP_DST: lambda: add_prereq_match(match,'ip_proto',132),
+            ofproto.OXM_OF_ICMPV4_TYPE: lambda: add_prereq_match(match,'ip_proto',1),
+            ofproto.OXM_OF_ICMPV4_CODE: lambda: add_prereq_match(match,'ip_proto',1),
+            ofproto.OXM_OF_ARP_OP: lambda: add_prereq_match(match,'eth_type',0x0806),
+            ofproto.OXM_OF_ARP_SPA: lambda: add_prereq_match(match,'eth_type',0x0806),
+            ofproto.OXM_OF_ARP_TPA: lambda: add_prereq_match(match,'eth_type',0x0806),
+            ofproto.OXM_OF_ARP_SHA: lambda: add_prereq_match(match,'eth_type',0x0806),
+            ofproto.OXM_OF_ARP_THA: lambda: add_prereq_match(match,'eth_type',0x0806),
+            ofproto.OXM_OF_IPV6_SRC: lambda: add_prereq_match(match,'eth_type',0x86dd),
+            ofproto.OXM_OF_IPV6_DST: lambda: add_prereq_match(match,'eth_type',0x86dd),
+            ofproto.OXM_OF_IPV6_FLABEL: lambda: add_prereq_match(match,'eth_type',0x86dd),
+            ofproto.OXM_OF_ICMPV6_TYPE: lambda: add_prereq_match(match,'ip_proto',58),
+            ofproto.OXM_OF_ICMPV6_CODE: lambda: add_prereq_match(match,'ip_proto',58),
+            ofproto.OXM_OF_IPV6_ND_SLL: lambda: add_prereq_match(match,'icmpv6_type',135),
+            ofproto.OXM_OF_IPV6_ND_TLL: lambda: add_prereq_match(match,'icmpv6_type',136),
+            ofproto.OXM_OF_PBB_ISID: lambda: add_prereq_match(match,'eth_type',0x88E7),
+            ofproto.OXM_OF_IPV6_EXTHDR: lambda: add_prereq_match(match,'eth_type',0x86dd)
+        }
+
+        for field in lookup_scope:           
+            # This is a simple switch-case-equivalent block: if field=ofproto.OXM_OF_TCP_SRC, then the function
+            # add_prereq_match(match,'ip_proto',6) will be called and so a match ip_proto=6 will be added to d
+            try:
+                options[field]()
+            except Exception:
+                pass
+
         return
+
+    # OFP_EXP_STATE_MOD_SET_FLOW_STATE and OFP_EXP_STATE_MOD_DEL_FLOW_STATE sends keys as sequence of bytes.
+    # We are building a standard OF match. For example if field is OXM_OF_ETH_SRC and field_value is [0,0,0,10,10,10], we should return "00:00:00:0a:0a:0a".
+    def bytes_to_match_value(self,field,field_value):
+        field_bytes_num = len(field_value)
+
+        if field in [ofproto.OXM_OF_ETH_SRC,ofproto.OXM_OF_ETH_DST,ofproto.OXM_OF_ARP_SHA,ofproto.OXM_OF_ARP_THA,ofproto.OXM_OF_IPV6_ND_SLL,ofproto.OXM_OF_IPV6_ND_TLL]:
+            return "%02x:%02x:%02x:%02x:%02x:%02x" % struct.unpack("BBBBBB",''.join([chr(x) for x in field_value]))
+        elif field in [ofproto.OXM_OF_IPV4_SRC,ofproto.OXM_OF_IPV4_DST,ofproto.OXM_OF_ARP_SPA,ofproto.OXM_OF_ARP_TPA]:
+            return "%d.%d.%d.%d" % tuple(field_value)
+        elif field in [ofproto.OXM_OF_IPV6_SRC,ofproto.OXM_OF_IPV6_DST,ofproto.OXM_OF_IPV6_ND_TARGET]:
+            ''' TODO: check '''
+            return "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x" % struct.unpack("BBBBBBBBBBBBBBBB",''.join([chr(x) for x in field_value]))
+        elif field_bytes_num==8:
+            return struct.unpack('!Q',''.join([chr(x) for x in field_value]))[0]
+        elif field_bytes_num==4:
+            return struct.unpack('!I',''.join([chr(x) for x in field_value]))[0]
+        elif field_bytes_num==2:
+            return struct.unpack('!H',''.join([chr(x) for x in field_value]))[0]
+        elif field_bytes_num==1:
+            return struct.unpack('!B',''.join([chr(x) for x in field_value]))[0]
+
 '''
 By decorating 'switch_features_handler()' with '@OS2OVSWrapper', before the execution of the user-defined switch_features_handler()
 the decorator obtains the Datapath instance 'datapath', casts it to an OVSDatapath object and initializes lookup_scope and update_scope dict.
@@ -932,6 +1027,6 @@ def OS2OVSWrapper(function):
         datapath.lookup_scope = {}
         datapath.update_scope = {}
         datapath.flowSpecMatchDict = {}
-        datapath.stages_in_use = Set([])
+        datapath.stateful_stages_in_use = Set([])
         return function(self, ev)
     return inner
