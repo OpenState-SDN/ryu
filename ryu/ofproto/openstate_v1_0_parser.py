@@ -63,7 +63,7 @@ def OFPExpMsgKeyExtract(datapath, command, fields, table_id):
         for f in range(field_count):
             data+=struct.pack(field_extract_format,fields[f])
     else:
-        LOG.error("OFPExpMsgKeyExtract: Number of fields given > MAX_FIELD_COUNT")
+        LOG.debug("OFPExpMsgKeyExtract: Number of fields given > MAX_FIELD_COUNT")
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
     return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
@@ -79,7 +79,7 @@ def OFPExpMsgSetFlowState(datapath, state, keys, table_id, idle_timeout=0, idle_
         for f in range(key_count):
                 data+=struct.pack(field_extract_format,keys[f])
     else:
-        LOG.error("OFPExpMsgSetFlowState: Number of keys given > MAX_KEY_LEN")
+        LOG.debug("OFPExpMsgSetFlowState: Number of keys given > MAX_KEY_LEN")
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
     return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
@@ -95,7 +95,7 @@ def OFPExpMsgDelFlowState(datapath, keys, table_id):
         for f in range(key_count):
                 data+=struct.pack(field_extract_format,keys[f])
     else:
-        LOG.error("OFPExpMsgDelFlowState: Number of keys given > MAX_KEY_LEN")
+        LOG.debug("OFPExpMsgDelFlowState: Number of keys given > MAX_KEY_LEN")
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
     return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
@@ -707,7 +707,7 @@ class OVSDatapath(Datapath):
                             current_field_offset = fields_offset+field_size*f
                             self.update_scope[table_id].append( struct.unpack('!I',msg.data[current_field_offset : current_field_offset+field_size])[0] )
                 else:
-                    LOG.error("ERROR: no fields in lookup/update scope!")
+                    LOG.debug("ERROR: no fields in lookup/update scope!")
                 # OFPExpMsgKeyExtract msg is dropped
                 return
             elif command == osproto.OFPSC_EXP_SET_FLOW_STATE:
@@ -747,7 +747,7 @@ class OVSDatapath(Datapath):
                         out_port=ofproto.OFPP_ANY, out_group=ofproto.OFPG_ANY, match=match, instructions=inst)
                     super(OVSDatapath, self).send_msg(mod)
                 else:
-                    LOG.error("ERROR: empty key in STATE_MOD message!")
+                    LOG.debug("ERROR: empty key in STATE_MOD message!")
                 return
             elif command == osproto.OFPSC_EXP_DEL_FLOW_STATE:
                 # We should send a FlowMod DELETE by converting 'keys' into FlowMod's match fields
@@ -772,7 +772,7 @@ class OVSDatapath(Datapath):
                         out_port=ofproto.OFPP_ANY, out_group=ofproto.OFPG_ANY, match=match)
                     super(OVSDatapath, self).send_msg(mod)
                 else:
-                    LOG.error("ERROR: empty key in STATE_MOD message!")
+                    LOG.debug("ERROR: empty key in STATE_MOD message!")
                 return
             elif command == osproto.OFPSC_SET_GLOBAL_STATE:
                 ''' TODO: global states could be implemented by prepending a stage with just one table miss entry that sets reg8=global state value.
