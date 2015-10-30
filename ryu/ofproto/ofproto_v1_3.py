@@ -22,6 +22,7 @@ from ryu.lib import type_desc
 from ryu.ofproto import nx_match
 from ryu.ofproto import ofproto_utils
 from ryu.ofproto import oxm_fields
+from ryu.ofproto import openstate_v1_0
 
 from struct import calcsize
 
@@ -1202,11 +1203,7 @@ oxm_types = [
     # EXT-233 Output match Extension
     # NOTE(yamamoto): The spec says uint64_t but I assume it's an error.
     oxm_fields.ONFExperimenter('actset_output', 43, type_desc.Int4),
-
-    #Openstate experimenter fields
-    oxm_fields.OpenStateExperimenter('flags', 0, type_desc.Int4),
-    oxm_fields.OpenStateExperimenter('state', 1, type_desc.Int4)
-] + nx_match.oxm_types
+] + nx_match.oxm_types + openstate_v1_0.oxm_types
 
 oxm_fields.generate(__name__)
 
