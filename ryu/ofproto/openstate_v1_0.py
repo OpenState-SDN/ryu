@@ -1,6 +1,7 @@
 from struct import calcsize
 from ryu.lib import type_desc
 from ryu.ofproto import oxm_fields
+from ryu.ofproto import ofproto_utils
 
 from ryu.ofproto.ofproto_common import OFP_HEADER_SIZE
 OFP_OXM_EXPERIMENTER_HEADER_SIZE = 8
@@ -83,8 +84,22 @@ OFPAT_EXP_SET_FLAG  = 1
 OFPMP_EXP_STATE_STATS = 0
 OFPMP_EXP_FLAGS_STATS = 1
 
+# enum ofp_error_type
+OFPET_EXPERIMENTER = 0xffff
+
+# enum ofp_experimenter_code
+OFPEC_STATE_MOD_FAILED = 0
+OFPEC_SET_EXTRACTOR    = 1
+OFPEC_SET_FLOW_STATE   = 2
+OFPEC_DEL_FLOW_STATE   = 3
+OFPEC_SET_STATE_ACT    = 4
+OFPEC_BAD_EXP_MESSAGE  = 5
+
 #Openstate experimenter fields
 oxm_types = [
     oxm_fields.OpenStateExperimenter('flags', 0, type_desc.Int4),
     oxm_fields.OpenStateExperimenter('state', 1, type_desc.Int4)
 ]
+
+# generate utility methods
+ofproto_utils.generate(__name__)

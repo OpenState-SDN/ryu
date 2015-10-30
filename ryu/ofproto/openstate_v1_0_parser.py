@@ -4,6 +4,10 @@ from ryu.ofproto.ofproto_parser import StringifyMixin, MsgBase, msg_str_attr
 import ryu.ofproto.ofproto_v1_3_parser as ofproto_parser
 import ryu.ofproto.ofproto_v1_3 as ofproto
 import ryu.ofproto.openstate_v1_0 as osproto
+from ryu import utils
+import logging
+
+LOG = logging.getLogger('ryu.ofproto.openstate_v1_0_parser')
 
 def OFPExpActionSetState(state, table_id, hard_timeout=0, idle_timeout=0, hard_rollback=0, idle_rollback=0, state_mask=0xffffffff):
     """ 
@@ -131,6 +135,20 @@ def OFPExpGlobalStateStatsMultipartRequest(datapath, flags=0):
 
     exp_type=osproto.OFPMP_EXP_FLAGS_STATS
     return ofproto_parser.OFPExperimenterStatsRequest(datapath=datapath, flags=flags, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+
+def experimenter_error_msg_handler(ev):
+    msg = ev.msg
+    experimenter_id = struct.unpack_from('!I',msg.data[:4])[0]
+    LOG.debug('OFPErrorExperimenterMsg received.')
+    LOG.debug('version=%s, msg_type=%s, msg_len=%s, xid=%s',hex(msg.version),
+        hex(msg.msg_type), hex(msg.msg_len), hex(msg.xid))
+    LOG.debug(' `-- msg_type: %s',ofproto.ofp_msg_type_to_str(msg.msg_type))
+    LOG.debug("OFPErrorExperimenterMsg(type=%s, exp_type=%s, experimenter_id='%s')",hex(msg.type),
+        hex(msg.code), hex(experimenter_id))
+    LOG.debug(' |-- type: %s',ofproto.ofp_error_type_to_str(msg.type))
+    LOG.debug(' |-- exp_type: %s',osproto.ofp_error_code_to_str(msg.type,msg.code))
+    LOG.debug(' |-- experimenter_id: OPENSTATE')
+    LOG.debug(' `-- data: %s',utils.binary_str(msg.data))
 
 class OFPStateEntry(object):
     def __init__(self, key_count=None, key=None, state=None):
