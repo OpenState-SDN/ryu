@@ -6,6 +6,7 @@ import ryu.ofproto.ofproto_v1_3 as ofproto
 import ryu.ofproto.openstate_v1_0 as osproto
 from ryu import utils
 import logging
+import six
 
 LOG = logging.getLogger('ryu.ofproto.openstate_v1_0_parser')
 
@@ -139,6 +140,7 @@ def OFPExpGlobalStateStatsMultipartRequest(datapath, flags=0):
 def experimenter_error_msg_handler(ev):
     msg = ev.msg
     experimenter_id = struct.unpack_from('!I',msg.data[:4])[0]
+    LOG.debug('')
     LOG.debug('OFPErrorExperimenterMsg received.')
     LOG.debug('version=%s, msg_type=%s, msg_len=%s, xid=%s',hex(msg.version),
         hex(msg.msg_type), hex(msg.msg_len), hex(msg.xid))
@@ -148,7 +150,11 @@ def experimenter_error_msg_handler(ev):
     LOG.debug(' |-- type: %s',ofproto.ofp_error_type_to_str(msg.type))
     LOG.debug(' |-- exp_type: %s',osproto.ofp_error_code_to_str(msg.type,msg.code))
     LOG.debug(' |-- experimenter_id: OPENSTATE')
-    LOG.debug(' `-- data: %s',utils.binary_str(msg.data))
+    (version, msg_type, msg_len, xid) = struct.unpack_from(ofproto.OFP_HEADER_PACK_STR,
+                              six.binary_type(msg.data[4:]))
+    LOG.debug(
+            ' `-- data: version=%s, msg_type=%s, msg_len=%s, xid=%s',
+            hex(version), hex(msg_type), hex(msg_len), hex(xid))
 
 class OFPStateEntry(object):
     def __init__(self, key_count=None, key=None, state=None):
