@@ -74,6 +74,14 @@ ryu.ofproto.ofproto_v1_4_parser
 -------------------------------
 .. automodule:: ryu.ofproto.ofproto_v1_4_parser
 
+ryu.ofproto.ofproto_v1_5
+------------------------
+.. automodule:: ryu.ofproto.ofproto_v1_5
+
+ryu.ofproto.ofproto_v1_5_parser
+-------------------------------
+.. automodule:: ryu.ofproto.ofproto_v1_5_parser
+
 
 Ryu applications
 ================
@@ -85,42 +93,6 @@ ryu.app.cbench
 ryu.app.simple_switch
 ---------------------
 .. automodule:: ryu.app.simple_switch
-
-ryu.app.simple_isolation
-------------------------
-.. automodule:: ryu.app.simple_isolation
-
-ryu.app.simple_vlan
--------------------
-.. automodule:: ryu.app.simple_vlan
-
-ryu.app.gre_tunnel
-------------------
-.. automodule:: ryu.app.gre_tunnel
-
-ryu.app.tunnel_port_updater
----------------------------
-.. automodule:: ryu.app.tunnel_port_updater
-
-ryu.app.quantum_adapter
------------------------
-.. automodule:: ryu.app.quantum_adapter
-
-ryu.app.rest
-------------
-.. automodule:: ryu.app.rest
-
-ryu.app.rest_conf_switch
-------------------------
-.. automodule:: ryu.app.rest_conf_switch
-
-ryu.app.rest_quantum
---------------------
-.. automodule:: ryu.app.rest_quantum
-
-ryu.app.rest_tunnel
--------------------
-.. automodule:: ryu.app.rest_tunnel
 
 ryu.topology
 ------------

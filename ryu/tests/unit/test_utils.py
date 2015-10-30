@@ -15,6 +15,7 @@
 
 import unittest
 import logging
+import six
 from nose.tools import eq_
 
 from ryu import utils
@@ -31,19 +32,53 @@ class Test_utils(unittest.TestCase):
         pass
 
     def test_hex_array_string(self):
-        ''' Test string conversion into array of hexes '''
-        expected_result = '0x1 0x2 0x3 0x4'
-        data = b'\01\02\03\04'
+        """
+        Test hex_array() with str type.
+        """
+        expected_result = '0x01 0x02 0x03 0x04'
+        data = b'\x01\x02\x03\x04'
         eq_(expected_result, utils.hex_array(data))
 
     def test_hex_array_bytearray(self):
-        ''' Test bytearray conversion into array of hexes '''
-        expected_result = '0x1 0x2 0x3 0x4'
-        data = bytearray(b'\01\02\03\04')
+        """
+        Test hex_array() with bytearray type.
+        """
+        expected_result = '0x01 0x02 0x03 0x04'
+        data = bytearray(b'\x01\x02\x03\x04')
         eq_(expected_result, utils.hex_array(data))
 
-    def test_hex_array_invalid(self):
-        ''' Test conversion into array of hexes with invalid data type '''
-        expected_result = None
-        data = 1234
+    def test_hex_array_bytes(self):
+        """
+        Test hex_array() with bytes type. (Python3 only)
+        """
+        if six.PY2:
+            return
+        expected_result = '0x01 0x02 0x03 0x04'
+        data = bytes(b'\x01\x02\x03\x04')
         eq_(expected_result, utils.hex_array(data))
+
+    def test_binary_str_string(self):
+        """
+        Test binary_str() with str type.
+        """
+        expected_result = '\\x01\\x02\\x03\\x04'
+        data = b'\x01\x02\x03\x04'
+        eq_(expected_result, utils.binary_str(data))
+
+    def test_binary_str_bytearray(self):
+        """
+        Test binary_str() with bytearray type.
+        """
+        expected_result = '\\x01\\x02\\x03\\x04'
+        data = bytearray(b'\x01\x02\x03\x04')
+        eq_(expected_result, utils.binary_str(data))
+
+    def test_binary_str_bytes(self):
+        """
+        Test binary_str() with bytes type. (Python3 only)
+        """
+        if six.PY2:
+            return
+        expected_result = '\\x01\\x02\\x03\\x04'
+        data = bytes(b'\x01\x02\x03\x04')
+        eq_(expected_result, utils.binary_str(data))

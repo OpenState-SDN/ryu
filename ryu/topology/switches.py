@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import logging
+import six
 import struct
 import time
 import json
@@ -460,10 +461,10 @@ class LLDPPacket(object):
     def lldp_parse(data):
         pkt = packet.Packet(data)
         i = iter(pkt)
-        eth_pkt = i.next()
+        eth_pkt = six.next(i)
         assert type(eth_pkt) == ethernet.ethernet
 
-        lldp_pkt = i.next()
+        lldp_pkt = six.next(i)
         if type(lldp_pkt) != lldp.lldp:
             raise LLDPPacket.LLDPUnknownFormat()
 
@@ -804,7 +805,7 @@ class Switches(app_manager.RyuApp):
 
             # remove hosts from edge port
             for host in self.hosts.values():
-                if self._is_edge_port(host.port):
+                if not self._is_edge_port(host.port):
                     del self.hosts[host.mac]
 
         if not self.links.update_link(src, dst):

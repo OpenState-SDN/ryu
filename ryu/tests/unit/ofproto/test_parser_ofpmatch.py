@@ -22,21 +22,26 @@ except ImportError:
     pass
 
 import six
-import sys
 import unittest
 from nose.tools import eq_
 from nose.tools import ok_
 
 from ryu.ofproto import ofproto_v1_2
 from ryu.ofproto import ofproto_v1_3
+from ryu.ofproto import ofproto_v1_4
+from ryu.ofproto import ofproto_v1_5
 from ryu.ofproto import ofproto_v1_2_parser
 from ryu.ofproto import ofproto_v1_3_parser
+from ryu.ofproto import ofproto_v1_4_parser
+from ryu.ofproto import ofproto_v1_5_parser
 from ryu.tests import test_lib
 
 
 class Test_Parser_OFPMatch(unittest.TestCase):
     _ofp = {ofproto_v1_2_parser: ofproto_v1_2,
-            ofproto_v1_3_parser: ofproto_v1_3}
+            ofproto_v1_3_parser: ofproto_v1_3,
+            ofproto_v1_4_parser: ofproto_v1_4,
+            ofproto_v1_5_parser: ofproto_v1_5}
 
     def __init__(self, methodName):
         print('init %s' % methodName)
@@ -140,8 +145,10 @@ def _add_tests():
             yield 'aG9nZWhvZ2U='
             yield 'ZnVnYWZ1Z2E='
 
-    ofpps = [ofproto_v1_2_parser, ofproto_v1_3_parser]
+    ofpps = [ofproto_v1_2_parser, ofproto_v1_3_parser,
+             ofproto_v1_4_parser, ofproto_v1_5_parser]
     common = [
+        # OpenFlow Basic
         ('in_port', Int4),
         ('in_phy_port', Int4),
         ('metadata', Int8),
@@ -168,16 +175,39 @@ def _add_tests():
         ('arp_tpa', IPv4),
         ('arp_sha', Mac),
         ('arp_tha', Mac),
-        ('ipv6_dst', IPv6),
         ('ipv6_src', IPv6),
-        ('ipv6_flabel', Int3),
+        ('ipv6_dst', IPv6),
+        ('ipv6_flabel', Int4),
         ('icmpv6_type', Int1),
         ('icmpv6_code', Int1),
         ('ipv6_nd_target', IPv6),
         ('ipv6_nd_sll', Mac),
         ('ipv6_nd_tll', Mac),
-        ('mpls_label', Int3),
+        ('mpls_label', Int4),
         ('mpls_tc', Int1),
+        # Old ONF Experimenter --> OpenFlow Basic (OF1.4+)
+        ('pbb_uca', Int1),
+        # ONF Experimenter --> OpenFlow Basic (OF1.5+)
+        ('tcp_flags', Int2),
+        ('actset_output', Int4),
+        # Nicira Experimenter
+        ('eth_dst_nxm', Mac),
+        ('eth_src_nxm', Mac),
+        ('tunnel_id_nxm', Int8),
+        ('tun_ipv4_src', IPv4),
+        ('tun_ipv4_dst', IPv4),
+        ('pkt_mark', Int4),
+        ('conj_id', Int4),
+        ('_dp_hash', Int4),
+        ('reg0', Int4),
+        ('reg1', Int4),
+        ('reg2', Int4),
+        ('reg3', Int4),
+        ('reg4', Int4),
+        ('reg5', Int4),
+        ('reg6', Int4),
+        ('reg7', Int4),
+        # Common Experimenter
         ('field_100', B64),
     ]
     L = {}
@@ -189,9 +219,16 @@ def _add_tests():
         ('field_4194341', B64),
     ]
     L[ofproto_v1_3_parser] = common + [
+        # OpenFlow Basic (OF1.3+)
+        ('mpls_bos', Int1),
         ('pbb_isid', Int3),
         ('tunnel_id', Int8),
         ('ipv6_exthdr', Int2),
+    ]
+    L[ofproto_v1_4_parser] = L[ofproto_v1_3_parser]
+    L[ofproto_v1_5_parser] = L[ofproto_v1_4_parser] + [
+        # OpenFlow Basic (OF1.5+)
+        ('packet_type', Int4),
     ]
 
     def flatten_one(l, i):

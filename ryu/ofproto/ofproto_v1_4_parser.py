@@ -20,17 +20,14 @@ Decoder/Encoder implementations of OpenFlow 1.4.
 
 import six
 import struct
-import itertools
 
 from ryu.lib import addrconv
-from ryu.lib import mac
 from ryu.lib.pack_utils import msg_pack_into
 from ryu import utils
 from ryu.ofproto.ofproto_parser import StringifyMixin, MsgBase, MsgInMsgBase, msg_str_attr
-from . import ether
-from . import ofproto_parser
-from . import ofproto_common
-from . import ofproto_v1_4 as ofproto
+from ryu.ofproto import ether
+from ryu.ofproto import ofproto_parser
+from ryu.ofproto import ofproto_v1_4 as ofproto
 
 _MSG_PARSERS = {}
 
@@ -719,7 +716,8 @@ class OFPMatch(StringifyMixin):
                       in kwargs.items()]
             # assumption: sorting by OXM type values makes fields
             # meet ordering requirements (eg. eth_type before ipv4_src)
-            fields.sort()
+            fields.sort(
+                key=lambda x: x[0][0] if isinstance(x[0], tuple) else x[0])
             self._fields2 = [ofproto.oxm_to_user(n, v, m) for (n, v, m)
                              in fields]
 
@@ -1113,563 +1111,6 @@ class OFPBundlePropExperimenter(OFPPropCommonExperimenter4ByteData):
     pass
 
 
-class OFPMatchField(StringifyMixin):
-    _FIELDS_HEADERS = {}
-
-    @staticmethod
-    def register_field_header(headers):
-        def _register_field_header(cls):
-            for header in headers:
-                OFPMatchField._FIELDS_HEADERS[header] = cls
-            return cls
-        return _register_field_header
-
-    def __init__(self, header):
-        self.header = header
-        self.n_bytes = ofproto.oxm_tlv_header_extract_length(header)
-        self.length = 0
-
-    @classmethod
-    def cls_to_header(cls, cls_, hasmask):
-        # XXX efficiency
-        inv = dict((v, k) for k, v in cls._FIELDS_HEADERS.items()
-                   if (((k >> 8) & 1) != 0) == hasmask)
-        return inv[cls_]
-
-    @staticmethod
-    def make(header, value, mask=None):
-        cls_ = OFPMatchField._FIELDS_HEADERS.get(header)
-        return cls_(header, value, mask)
-
-    @classmethod
-    def parser(cls, buf, offset):
-        (header,) = struct.unpack_from('!I', buf, offset)
-        cls_ = OFPMatchField._FIELDS_HEADERS.get(header)
-        if cls_:
-            field = cls_.field_parser(header, buf, offset)
-        else:
-            field = OFPMatchField(header)
-        field.length = (header & 0xff) + 4
-        return field
-
-    @classmethod
-    def field_parser(cls, header, buf, offset):
-        hasmask = (header >> 8) & 1
-        mask = None
-        if ofproto.oxm_tlv_header_extract_hasmask(header):
-            pack_str = '!' + cls.pack_str[1:] * 2
-            (value, mask) = struct.unpack_from(pack_str, buf, offset + 4)
-        else:
-            (value,) = struct.unpack_from(cls.pack_str, buf, offset + 4)
-        return cls(header, value, mask)
-
-    def serialize(self, buf, offset):
-        if ofproto.oxm_tlv_header_extract_hasmask(self.header):
-            self.put_w(buf, offset, self.value, self.mask)
-        else:
-            self.put(buf, offset, self.value)
-
-    def _put_header(self, buf, offset):
-        msg_pack_into('!I', buf, offset, self.header)
-        self.length = 4
-
-    def _put(self, buf, offset, value):
-        msg_pack_into(self.pack_str, buf, offset, value)
-        self.length += self.n_bytes
-
-    def put_w(self, buf, offset, value, mask):
-        self._put_header(buf, offset)
-        self._put(buf, offset + self.length, value)
-        self._put(buf, offset + self.length, mask)
-
-    def put(self, buf, offset, value):
-        self._put_header(buf, offset)
-        self._put(buf, offset + self.length, value)
-
-    def _putv6(self, buf, offset, value):
-        msg_pack_into(self.pack_str, buf, offset, *value)
-        self.length += self.n_bytes
-
-    def putv6(self, buf, offset, value, mask=None):
-        self._put_header(buf, offset)
-        self._putv6(buf, offset + self.length, value)
-        if mask and len(mask):
-            self._putv6(buf, offset + self.length, mask)
-
-    def oxm_len(self):
-        return self.header & 0xff
-
-    def to_jsondict(self):
-        # remove some redundant attributes
-        d = super(OFPMatchField, self).to_jsondict()
-        v = d[self.__class__.__name__]
-        del v['header']
-        del v['length']
-        del v['n_bytes']
-        return d
-
-    @classmethod
-    def from_jsondict(cls, dict_):
-        # just pass the dict around.
-        # it will be converted by OFPMatch.__init__().
-        return {cls.__name__: dict_}
-
-    def stringify_attrs(self):
-        f = super(OFPMatchField, self).stringify_attrs
-        if not ofproto.oxm_tlv_header_extract_hasmask(self.header):
-            # something like the following, but yield two values (k,v)
-            # return itertools.ifilter(lambda k, v: k != 'mask', iter())
-            def g():
-                for k, v in f():
-                    if k != 'mask':
-                        yield (k, v)
-            return g()
-        else:
-            return f()
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IN_PORT])
-class MTInPort(OFPMatchField):
-    pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTInPort, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_METADATA,
-                                      ofproto.OXM_OF_METADATA_W])
-class MTMetadata(OFPMatchField):
-    pack_str = '!Q'
-
-    def __init__(self, header, value, mask=None):
-        super(MTMetadata, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IN_PHY_PORT])
-class MTInPhyPort(OFPMatchField):
-    pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTInPhyPort, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_ETH_DST,
-                                      ofproto.OXM_OF_ETH_DST_W])
-class MTEthDst(OFPMatchField):
-    pack_str = '!6s'
-
-    def __init__(self, header, value, mask=None):
-        super(MTEthDst, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_ETH_SRC,
-                                      ofproto.OXM_OF_ETH_SRC_W])
-class MTEthSrc(OFPMatchField):
-    pack_str = '!6s'
-
-    def __init__(self, header, value, mask=None):
-        super(MTEthSrc, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_ETH_TYPE])
-class MTEthType(OFPMatchField):
-    pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTEthType, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_VLAN_VID,
-                                      ofproto.OXM_OF_VLAN_VID_W])
-class MTVlanVid(OFPMatchField):
-    pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTVlanVid, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-    @classmethod
-    def field_parser(cls, header, buf, offset):
-        m = super(MTVlanVid, cls).field_parser(header, buf, offset)
-        m.value &= ~ofproto.OFPVID_PRESENT
-        return m
-
-    def serialize(self, buf, offset):
-        self.value |= ofproto.OFPVID_PRESENT
-        super(MTVlanVid, self).serialize(buf, offset)
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_VLAN_PCP])
-class MTVlanPcp(OFPMatchField):
-    pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTVlanPcp, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IP_DSCP])
-class MTIPDscp(OFPMatchField):
-    pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPDscp, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IP_ECN])
-class MTIPECN(OFPMatchField):
-    pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPECN, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IP_PROTO])
-class MTIPProto(OFPMatchField):
-    pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPProto, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IPV4_SRC,
-                                      ofproto.OXM_OF_IPV4_SRC_W])
-class MTIPV4Src(OFPMatchField):
-    pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPV4Src, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IPV4_DST,
-                                      ofproto.OXM_OF_IPV4_DST_W])
-class MTIPV4Dst(OFPMatchField):
-    pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPV4Dst, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_TCP_SRC])
-class MTTCPSrc(OFPMatchField):
-    pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTTCPSrc, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_TCP_DST])
-class MTTCPDst(OFPMatchField):
-    pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTTCPDst, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_UDP_SRC])
-class MTUDPSrc(OFPMatchField):
-    pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTUDPSrc, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_UDP_DST])
-class MTUDPDst(OFPMatchField):
-    pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTUDPDst, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_SCTP_SRC])
-class MTSCTPSrc(OFPMatchField):
-    pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTSCTPSrc, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_SCTP_DST])
-class MTSCTPDst(OFPMatchField):
-    pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTSCTPDst, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_ICMPV4_TYPE])
-class MTICMPV4Type(OFPMatchField):
-    pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTICMPV4Type, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_ICMPV4_CODE])
-class MTICMPV4Code(OFPMatchField):
-    pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTICMPV4Code, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_ARP_OP])
-class MTArpOp(OFPMatchField):
-    pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTArpOp, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_ARP_SPA,
-                                      ofproto.OXM_OF_ARP_SPA_W])
-class MTArpSpa(OFPMatchField):
-    pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTArpSpa, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_ARP_TPA,
-                                      ofproto.OXM_OF_ARP_TPA_W])
-class MTArpTpa(OFPMatchField):
-    pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTArpTpa, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_ARP_SHA,
-                                      ofproto.OXM_OF_ARP_SHA_W])
-class MTArpSha(OFPMatchField):
-    pack_str = '!6s'
-
-    def __init__(self, header, value, mask=None):
-        super(MTArpSha, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_ARP_THA,
-                                      ofproto.OXM_OF_ARP_THA_W])
-class MTArpTha(OFPMatchField):
-    pack_str = '!6s'
-
-    def __init__(self, header, value, mask=None):
-        super(MTArpTha, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-class MTIPv6(StringifyMixin):
-    @classmethod
-    def field_parser(cls, header, buf, offset):
-        if ofproto.oxm_tlv_header_extract_hasmask(header):
-            pack_str = '!' + cls.pack_str[1:] * 2
-            value = struct.unpack_from(pack_str, buf, offset + 4)
-            return cls(header, list(value[:8]), list(value[8:]))
-        else:
-            value = struct.unpack_from(cls.pack_str, buf, offset + 4)
-            return cls(header, list(value))
-
-    def serialize(self, buf, offset):
-        self.putv6(buf, offset, self.value, self.mask)
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IPV6_SRC,
-                                      ofproto.OXM_OF_IPV6_SRC_W])
-class MTIPv6Src(MTIPv6, OFPMatchField):
-    pack_str = '!8H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPv6Src, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IPV6_DST,
-                                      ofproto.OXM_OF_IPV6_DST_W])
-class MTIPv6Dst(MTIPv6, OFPMatchField):
-    pack_str = '!8H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPv6Dst, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IPV6_FLABEL,
-                                      ofproto.OXM_OF_IPV6_FLABEL_W])
-class MTIPv6Flabel(OFPMatchField):
-    pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPv6Flabel, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_MPLS_LABEL])
-class MTMplsLabel(OFPMatchField):
-    pack_str = '!I'
-
-    def __init__(self, header, value, mask=None):
-        super(MTMplsLabel, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_ICMPV6_TYPE])
-class MTICMPV6Type(OFPMatchField):
-    pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTICMPV6Type, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_ICMPV6_CODE])
-class MTICMPV6Code(OFPMatchField):
-    pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTICMPV6Code, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IPV6_ND_TARGET])
-class MTIPv6NdTarget(MTIPv6, OFPMatchField):
-    pack_str = '!8H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPv6NdTarget, self).__init__(header)
-        self.value = value
-
-    def serialize(self, buf, offset):
-        self.putv6(buf, offset, self.value)
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IPV6_ND_SLL])
-class MTIPv6NdSll(OFPMatchField):
-    pack_str = '!6s'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPv6NdSll, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IPV6_ND_TLL])
-class MTIPv6NdTll(OFPMatchField):
-    pack_str = '!6s'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPv6NdTll, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_MPLS_TC])
-class MTMplsTc(OFPMatchField):
-    pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTMplsTc, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_MPLS_BOS])
-class MTMplsBos(OFPMatchField):
-    pack_str = '!B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTMplsBos, self).__init__(header)
-        self.value = value
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_PBB_ISID,
-                                      ofproto.OXM_OF_PBB_ISID_W])
-class MTPbbIsid(OFPMatchField):
-    pack_str = '!3B'
-
-    def __init__(self, header, value, mask=None):
-        super(MTPbbIsid, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-    @classmethod
-    def field_parser(cls, header, buf, offset):
-        hasmask = (header >> 8) & 1
-        mask = None
-        if ofproto.oxm_tlv_header_extract_hasmask(header):
-            pack_str = '!' + cls.pack_str[1:] * 2
-            (v1, v2, v3, m1, m2, m3) = struct.unpack_from(pack_str, buf,
-                                                          offset + 4)
-            value = v1 << 16 | v2 << 8 | v3
-            mask = m1 << 16 | m2 << 8 | m3
-        else:
-            (v1, v2, v3,) = struct.unpack_from(cls.pack_str, buf, offset + 4)
-            value = v1 << 16 | v2 << 8 | v3
-        return cls(header, value, mask)
-
-    def _put(self, buf, offset, value):
-        msg_pack_into(self.pack_str, buf, offset,
-                      (value >> 16) & 0xff,
-                      (value >> 8) & 0xff,
-                      (value >> 0) & 0xff)
-        self.length += self.n_bytes
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_TUNNEL_ID,
-                                      ofproto.OXM_OF_TUNNEL_ID_W])
-class MTTunnelId(OFPMatchField):
-    pack_str = '!Q'
-
-    def __init__(self, header, value, mask=None):
-        super(MTTunnelId, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
-@OFPMatchField.register_field_header([ofproto.OXM_OF_IPV6_EXTHDR,
-                                      ofproto.OXM_OF_IPV6_EXTHDR_W])
-class MTIPv6ExtHdr(OFPMatchField):
-    pack_str = '!H'
-
-    def __init__(self, header, value, mask=None):
-        super(MTIPv6ExtHdr, self).__init__(header)
-        self.value = value
-        self.mask = mask
-
-
 @_register_parser
 @_set_msg_type(ofproto.OFPT_PACKET_IN)
 class OFPPacketIn(MsgBase):
@@ -1860,6 +1301,34 @@ class OFPFlowRemoved(MsgBase):
 
 
 class OFPPort(StringifyMixin):
+
+    """
+    Description of a port
+
+    ========== =========================================================
+    Attribute  Description
+    ========== =========================================================
+    port_no    Port number and it uniquely identifies a port within
+               a switch.
+    length     Length of ofp_port (excluding padding).
+    hw_addr    MAC address for the port.
+    name       Null-terminated string containing a human-readable name
+               for the interface.
+    config     Bitmap of port configration flags.
+
+               | OFPPC_PORT_DOWN
+               | OFPPC_NO_RECV
+               | OFPPC_NO_FWD
+               | OFPPC_NO_PACKET_IN
+    state      Bitmap of port state flags.
+
+               | OFPPS_LINK_DOWN
+               | OFPPS_BLOCKED
+               | OFPPS_LIVE
+    properties List of ``OFPPortDescProp`` subclass instance
+    ========== =========================================================
+    """
+
     _TYPE = {
         'ascii': [
             'hw_addr',
@@ -1966,6 +1435,7 @@ class OFPMultipartRequest(MsgBase):
         self._serialize_stats_body()
 
 
+@_register_parser
 @_set_msg_type(ofproto.OFPT_METER_MOD)
 class OFPMeterMod(MsgBase):
     """
@@ -2002,6 +1472,23 @@ class OFPMeterMod(MsgBase):
         self.flags = flags
         self.meter_id = meter_id
         self.bands = bands
+
+    @classmethod
+    def parser(cls, datapath, version, msg_type, msg_len, xid, buf):
+        msg = super(OFPMeterMod, cls).parser(
+            datapath, version, msg_type, msg_len, xid, buf)
+
+        (msg.command, msg.flags, msg.meter_id) = struct.unpack_from(
+            ofproto.OFP_METER_MOD_PACK_STR, buf, ofproto.OFP_HEADER_SIZE)
+        offset = ofproto.OFP_METER_MOD_SIZE
+
+        msg.bands = []
+        while offset < msg.msg_len:
+            band = OFPMeterBandHeader.parser(buf, offset)
+            msg.bands.append(band)
+            offset += band.len
+
+        return msg
 
     def _serialize_body(self):
         msg_pack_into(ofproto.OFP_METER_MOD_PACK_STR, self.buf,
@@ -4589,6 +4076,7 @@ class OFPTableStatus(MsgBase):
         return msg
 
 
+@_register_parser
 @_set_msg_type(ofproto.OFPT_REQUESTFORWARD)
 class OFPRequestForward(MsgInMsgBase):
     """
@@ -4604,36 +4092,45 @@ class OFPRequestForward(MsgInMsgBase):
     ================ ======================================================
 
     Example::
+        @set_ev_cls(ofp_event.EventOFPRequestForward, MAIN_DISPATCHER)
+        def request_forward_handler(self, ev):
+            msg = ev.msg
+            dp = msg.datapath
+            ofp = dp.ofproto
 
-        def send_request_forward_message(self, datapath):
-            ofp = datapath.ofproto
-            ofp_parser = datapath.ofproto_parser
-
-            port = 1
-            max_len = 2000
-            actions = [ofp_parser.OFPActionOutput(port, max_len)]
-
-            weight = 100
-            watch_port = 0
-            watch_group = 0
-            buckets = [ofp_parser.OFPBucket(weight, watch_port, watch_group,
-                                            actions)]
-
-            group_id = 1
-            msg = ofp_parser.OFPGroupMod(datapath, ofp.OFPGC_ADD,
-                                         ofp.OFPGT_SELECT, group_id, buckets)
-
-            req = ofp_parser.OFPRequestForward(datapath, msg)
-            datapath.send_msg(req)
+            if msg.request.msg_type == ofp.OFPT_GROUP_MOD:
+                self.logger.debug(
+                    'OFPRequestForward received: request=OFPGroupMod('
+                    'command=%d, type=%d, group_id=%d, buckets=%s)',
+                    msg.request.command, msg.request.type,
+                    msg.request.group_id, msg.request.buckets)
+            elif msg.request.msg_type == ofp.OFPT_METER_MOD:
+                self.logger.debug(
+                    'OFPRequestForward received: request=OFPMeterMod('
+                    'command=%d, flags=%d, meter_id=%d, bands=%s)',
+                    msg.request.command, msg.request.flags,
+                    msg.request.meter_id, msg.request.bands)
+            else:
+                self.logger.debug(
+                    'OFPRequestForward received: request=Unknown')
     """
-    def __init__(self, datapath, request):
+    def __init__(self, datapath, request=None):
         super(OFPRequestForward, self).__init__(datapath)
-        assert(isinstance(request, OFPGroupMod) or
-               isinstance(request, OFPMeterMod))
         self.request = request
 
+    @classmethod
+    def parser(cls, datapath, version, msg_type, msg_len, xid, buf):
+        msg = super(OFPRequestForward, cls).parser(
+            datapath, version, msg_type, msg_len, xid, buf)
+        req_buf = buf[ofproto.OFP_HEADER_SIZE:]
+        (_ver, _type, _len, _xid) = ofproto_parser.header(req_buf)
+        msg.request = ofproto_parser.msg(
+            datapath, _ver, _type, _len, _xid, req_buf)
+        return msg
+
     def _serialize_body(self):
-        tail_buf = self.request.serialize()
+        assert isinstance(self.request, (OFPGroupMod, OFPMeterMod))
+        self.request.serialize()
         self.buf += self.request.buf
 
 
@@ -5357,7 +4854,7 @@ class OFPActionSetField(OFPAction):
 
     Example::
 
-        set_field = OFPActionSetField(eth_src="00:00:00:00:00")
+        set_field = OFPActionSetField(eth_src="00:00:00:00:00:00")
     """
     def __init__(self, field=None, **kwargs):
         super(OFPActionSetField, self).__init__()
@@ -5488,6 +4985,7 @@ class OFPActionExperimenter(OFPAction):
             buf += self.data
 
 
+@_register_parser
 @_set_msg_type(ofproto.OFPT_GROUP_MOD)
 class OFPGroupMod(MsgBase):
     """
@@ -5543,6 +5041,22 @@ class OFPGroupMod(MsgBase):
         self.type = type_
         self.group_id = group_id
         self.buckets = buckets
+
+    @classmethod
+    def parser(cls, datapath, version, msg_type, msg_len, xid, buf):
+        msg = super(OFPGroupMod, cls).parser(
+            datapath, version, msg_type, msg_len, xid, buf)
+        (msg.command, msg.type, msg.group_id) = struct.unpack_from(
+            ofproto.OFP_GROUP_MOD_PACK_STR, buf, ofproto.OFP_HEADER_SIZE)
+        offset = ofproto.OFP_GROUP_MOD_SIZE
+
+        msg.buckets = []
+        while offset < msg.msg_len:
+            bucket = OFPBucket.parser(buf, offset)
+            msg.buckets.append(bucket)
+            offset += bucket.len
+
+        return msg
 
     def _serialize_body(self):
         msg_pack_into(ofproto.OFP_GROUP_MOD_PACK_STR, self.buf,

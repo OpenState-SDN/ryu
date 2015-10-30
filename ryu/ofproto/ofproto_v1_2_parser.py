@@ -20,16 +20,15 @@ Decoder/Encoder implementations of OpenFlow 1.2.
 
 import six
 import struct
-import itertools
 
 from ryu.lib import addrconv
 from ryu.lib import mac
 from ryu.lib.pack_utils import msg_pack_into
 from ryu import utils
-from ryu.ofproto.ofproto_parser import StringifyMixin, MsgBase, msg_str_attr
-from . import ether
-from . import ofproto_parser
-from . import ofproto_v1_2 as ofproto
+from ryu.ofproto.ofproto_parser import StringifyMixin, MsgBase
+from ryu.ofproto import ether
+from ryu.ofproto import ofproto_parser
+from ryu.ofproto import ofproto_v1_2 as ofproto
 
 import logging
 LOG = logging.getLogger('ryu.ofproto.ofproto_v1_2_parser')
@@ -312,6 +311,36 @@ class OFPExperimenter(MsgBase):
 class OFPPort(ofproto_parser.namedtuple('OFPPort', (
         'port_no', 'hw_addr', 'name', 'config', 'state', 'curr',
         'advertised', 'supported', 'peer', 'curr_speed', 'max_speed'))):
+    """
+    Description of a port
+
+    ========== =========================================================
+    Attribute  Description
+    ========== =========================================================
+    port_no    Port number and it uniquely identifies a port within
+               a switch.
+    hw_addr    MAC address for the port.
+    name       Null-terminated string containing a human-readable name
+               for the interface.
+    config     Bitmap of port configration flags.
+
+               | OFPPC_PORT_DOWN
+               | OFPPC_NO_RECV
+               | OFPPC_NO_FWD
+               | OFPPC_NO_PACKET_IN
+    state      Bitmap of port state flags.
+
+               | OFPPS_LINK_DOWN
+               | OFPPS_BLOCKED
+               | OFPPS_LIVE
+    curr       Current features.
+    advertised Features being advertised by the port.
+    supported  Features supported by the port.
+    peer       Features advertised by peer.
+    curr_speed Current port bitrate in kbps.
+    max_speed  Max port bitrate in kbps.
+    ========== =========================================================
+    """
 
     _TYPE = {
         'ascii': [
@@ -1464,7 +1493,7 @@ class OFPActionSetField(OFPAction):
 
     Example::
 
-        set_field = OFPActionSetField(eth_src="00:00:00:00:00")
+        set_field = OFPActionSetField(eth_src="00:00:00:00:00:00")
     """
     def __init__(self, field=None, **kwargs):
         # old api
@@ -3399,7 +3428,8 @@ class OFPMatch(StringifyMixin):
                       in kwargs.items()]
             # assumption: sorting by OXM type values makes fields
             # meet ordering requirements (eg. eth_type before ipv4_src)
-            fields.sort()
+            fields.sort(
+                key=lambda x: x[0][0] if isinstance(x[0], tuple) else x[0])
             self._fields2 = [ofproto.oxm_to_user(n, v, m) for (n, v, m)
                              in fields]
 

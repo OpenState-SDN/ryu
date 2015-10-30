@@ -19,6 +19,8 @@ OpenFlow 1.4 definitions.
 """
 
 from ryu.lib import type_desc
+from ryu.ofproto import nx_match
+from ryu.ofproto import ofproto_utils
 from ryu.ofproto import oxm_fields
 
 from struct import calcsize
@@ -389,10 +391,12 @@ oxm_types = [
     oxm_fields.OpenFlowBasic('tunnel_id', 38, type_desc.Int8),
     oxm_fields.OpenFlowBasic('ipv6_exthdr', 39, type_desc.Int2),
     oxm_fields.OpenFlowBasic('pbb_uca', 41, type_desc.Int1),
-    oxm_fields.NiciraExtended1('tun_ipv4_src', 31, type_desc.IPv4Addr),
-    oxm_fields.NiciraExtended1('tun_ipv4_dst', 32, type_desc.IPv4Addr),
-    oxm_fields.NiciraExtended1('pkt_mark', 33, type_desc.Int4),
-]
+    # EXT-109 TCP flags match field Extension
+    oxm_fields.ONFExperimenter('tcp_flags', 42, type_desc.Int2),
+    # EXT-233 Output match Extension
+    # NOTE(yamamoto): The spec says uint64_t but I assume it's an error.
+    oxm_fields.ONFExperimenter('actset_output', 43, type_desc.Int4),
+] + nx_match.oxm_types
 
 oxm_fields.generate(__name__)
 
@@ -1481,6 +1485,9 @@ OFP_PROP_EXPERIMENTER_PACK_STR = '!HHII'
 OFP_PROP_EXPERIMENTER_SIZE = 12
 assert (calcsize(OFP_PROP_EXPERIMENTER_PACK_STR) ==
         OFP_PROP_EXPERIMENTER_SIZE)
+
+# generate utility methods
+ofproto_utils.generate(__name__)
 
 # define constants
 OFP_VERSION = 0x05

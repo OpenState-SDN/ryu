@@ -19,6 +19,8 @@ OpenFlow 1.3 definitions.
 """
 
 from ryu.lib import type_desc
+from ryu.ofproto import nx_match
+from ryu.ofproto import ofproto_utils
 from ryu.ofproto import oxm_fields
 
 from struct import calcsize
@@ -1157,9 +1159,7 @@ oxm_types = [
     oxm_fields.OpenFlowBasic('in_phy_port', 1, type_desc.Int4),
     oxm_fields.OpenFlowBasic('metadata', 2, type_desc.Int8),
     oxm_fields.OpenFlowBasic('eth_dst', 3, type_desc.MacAddr),
-    oxm_fields.NiciraExtended0('eth_dst_nxm', 1, type_desc.MacAddr),
     oxm_fields.OpenFlowBasic('eth_src', 4, type_desc.MacAddr),
-    oxm_fields.NiciraExtended0('eth_src_nxm', 2, type_desc.MacAddr),
     oxm_fields.OpenFlowBasic('eth_type', 5, type_desc.Int2),
     oxm_fields.OpenFlowBasic('vlan_vid', 6, type_desc.Int2),
     oxm_fields.OpenFlowBasic('vlan_pcp', 7, type_desc.Int1),
@@ -1194,37 +1194,19 @@ oxm_types = [
     oxm_fields.OpenFlowBasic('mpls_bos', 36, type_desc.Int1),
     oxm_fields.OpenFlowBasic('pbb_isid', 37, type_desc.Int3),
     oxm_fields.OpenFlowBasic('tunnel_id', 38, type_desc.Int8),
-    oxm_fields.NiciraExtended1('tunnel_id_nxm', 16, type_desc.Int8),
     oxm_fields.OpenFlowBasic('ipv6_exthdr', 39, type_desc.Int2),
+    # EXT-256 Old version of ONF Extension
     oxm_fields.OldONFExperimenter('pbb_uca', 2560, type_desc.Int1),
     # EXT-109 TCP flags match field Extension
     oxm_fields.ONFExperimenter('tcp_flags', 42, type_desc.Int2),
     # EXT-233 Output match Extension
     # NOTE(yamamoto): The spec says uint64_t but I assume it's an error.
     oxm_fields.ONFExperimenter('actset_output', 43, type_desc.Int4),
-    oxm_fields.NiciraExtended1('tun_ipv4_src', 31, type_desc.IPv4Addr),
-    oxm_fields.NiciraExtended1('tun_ipv4_dst', 32, type_desc.IPv4Addr),
-    oxm_fields.NiciraExtended1('pkt_mark', 33, type_desc.Int4),
-    oxm_fields.NiciraExtended1('conj_id', 37, type_desc.Int4),
 
-    # The following definition is merely for testing 64-bit experimenter OXMs.
-    # Following Open vSwitch, we use dp_hash for this purpose.
-    # Prefix the name with '_' to indicate this is not intended to be used
-    # in wild.
-    oxm_fields.NiciraExperimenter('_dp_hash', 0, type_desc.Int4),
-    # Support for matching/setting NX registers 1-7
-    oxm_fields.NiciraExtended1('reg0', 0, type_desc.Int4),
-    oxm_fields.NiciraExtended1('reg1', 1, type_desc.Int4),
-    oxm_fields.NiciraExtended1('reg2', 2, type_desc.Int4),
-    oxm_fields.NiciraExtended1('reg3', 3, type_desc.Int4),
-    oxm_fields.NiciraExtended1('reg4', 4, type_desc.Int4),
-    oxm_fields.NiciraExtended1('reg5', 5, type_desc.Int4),
-    oxm_fields.NiciraExtended1('reg6', 6, type_desc.Int4),
-    oxm_fields.NiciraExtended1('reg7', 7, type_desc.Int4),
     #Openstate experimenter fields
     oxm_fields.OpenStateExperimenter('flags', 0, type_desc.Int4),
     oxm_fields.OpenStateExperimenter('state', 1, type_desc.Int4)
-]
+] + nx_match.oxm_types
 
 oxm_fields.generate(__name__)
 
@@ -1237,6 +1219,9 @@ OFP_PROP_EXPERIMENTER_PACK_STR = '!HHII'
 OFP_PROP_EXPERIMENTER_SIZE = 12
 assert (calcsize(OFP_PROP_EXPERIMENTER_PACK_STR) ==
         OFP_PROP_EXPERIMENTER_SIZE)
+
+# generate utility methods
+ofproto_utils.generate(__name__)
 
 # define constants
 OFP_VERSION = 0x04
