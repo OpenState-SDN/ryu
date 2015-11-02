@@ -275,7 +275,7 @@ class OFPHandler(ryu.base.app_manager.RyuApp):
 
     @set_ev_handler(ofp_event.EventOFPErrorExperimenterMsg,
                     [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
-    def error_msg_handler(self, ev):
+    def exp_error_msg_handler(self, ev):
         msg = ev.msg
         if msg.experimenter == OPENSTATE_EXPERIMENTER_ID:
             osparser.OFPErrorExperimenterMsg_handler(ev)
