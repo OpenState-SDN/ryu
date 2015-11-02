@@ -137,21 +137,20 @@ def OFPExpGlobalStateStatsMultipartRequest(datapath, flags=0):
     exp_type=osproto.OFPMP_EXP_FLAGS_STATS
     return ofproto_parser.OFPExperimenterStatsRequest(datapath=datapath, flags=flags, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
-def experimenter_error_msg_handler(ev):
+def OFPErrorExperimenterMsg_handler(ev):
     msg = ev.msg
-    experimenter_id = struct.unpack_from('!I',msg.data[:4])[0]
     LOG.debug('')
     LOG.debug('OFPErrorExperimenterMsg received.')
     LOG.debug('version=%s, msg_type=%s, msg_len=%s, xid=%s',hex(msg.version),
         hex(msg.msg_type), hex(msg.msg_len), hex(msg.xid))
     LOG.debug(' `-- msg_type: %s',ofproto.ofp_msg_type_to_str(msg.msg_type))
     LOG.debug("OFPErrorExperimenterMsg(type=%s, exp_type=%s, experimenter_id='%s')",hex(msg.type),
-        hex(msg.code), hex(experimenter_id))
+        hex(msg.exp_type), hex(msg.experimenter))
     LOG.debug(' |-- type: %s',ofproto.ofp_error_type_to_str(msg.type))
-    LOG.debug(' |-- exp_type: %s',osproto.ofp_error_code_to_str(msg.type,msg.code))
-    LOG.debug(' |-- experimenter_id: OPENSTATE')
+    LOG.debug(' |-- exp_type: %s',osproto.ofp_error_code_to_str(msg.type,msg.exp_type))
+    LOG.debug(' |-- experimenter_id: %s',hex(msg.experimenter))
     (version, msg_type, msg_len, xid) = struct.unpack_from(ofproto.OFP_HEADER_PACK_STR,
-                              six.binary_type(msg.data[4:]))
+                              six.binary_type(msg.data))
     LOG.debug(
             ' `-- data: version=%s, msg_type=%s, msg_len=%s, xid=%s',
             hex(version), hex(msg_type), hex(msg_len), hex(xid))

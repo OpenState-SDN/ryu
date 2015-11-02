@@ -246,7 +246,7 @@ class OFPErrorMsg(MsgBase):
                       ofproto.OFP_HEADER_SIZE, self.type, self.code)
         self.buf += self.data
 
-
+@_set_msg_type(ofproto.OFPT_ERROR)
 class OFPErrorExperimenterMsg(MsgBase):
     def __init__(self, datapath, type_=None, exp_type=None, experimenter=None,
                  data=None):

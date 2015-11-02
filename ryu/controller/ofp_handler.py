@@ -32,7 +32,6 @@ from ryu.controller.handler import set_ev_handler
 from ryu.controller.handler import HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER,\
     MAIN_DISPATCHER
 from ryu.ofproto import ofproto_parser
-import struct
 from ryu.ofproto.ofproto_common import OPENSTATE_EXPERIMENTER_ID
 import ryu.ofproto.openstate_v1_0_parser as osparser
 
@@ -255,19 +254,6 @@ class OFPHandler(ryu.base.app_manager.RyuApp):
         msg = ev.msg
         ofp = msg.datapath.ofproto
         (version, msg_type, msg_len, xid) = ofproto_parser.header(msg.data)
-
-        # ofsoftswitch13 keeps the MSB of error_type always set to 1, but it sends a msg with the MSB set to 0
-        if (msg.type | 0x8000 == ofp.OFPET_EXPERIMENTER):
-            (experimenter_id,) = struct.unpack_from('!I',msg.data[:4])
-            if experimenter_id == OPENSTATE_EXPERIMENTER_ID:
-                #OpenState OFPErrorExperimenterMsg are handled in osparser library
-                msg.type = msg.type | 0x8000
-                osparser.experimenter_error_msg_handler(ev)
-                return
-            '''elif experimenter_id == {OTHER_EXPERIMENTER_ID}:
-                ...
-                return'''
-
         self.logger.debug('EventOFPErrorMsg received.')
         self.logger.debug(
             'version=%s, msg_type=%s, msg_len=%s, xid=%s', hex(msg.version),
@@ -286,3 +272,14 @@ class OFPHandler(ryu.base.app_manager.RyuApp):
             hex(version), hex(msg_type), hex(msg_len), hex(xid))
         self.logger.debug(
             '     `-- msg_type: %s', ofp.ofp_msg_type_to_str(msg_type))
+
+    @set_ev_handler(ofp_event.EventOFPErrorExperimenterMsg,
+                    [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
+    def error_msg_handler(self, ev):
+        msg = ev.msg
+        if msg.experimenter == OPENSTATE_EXPERIMENTER_ID:
+            osparser.OFPErrorExperimenterMsg_handler(ev)
+        '''
+        elif experimenter_id == {OTHER_EXPERIMENTER_ID}:
+            {module}.experimenter_error_msg_handler(ev)
+        '''
