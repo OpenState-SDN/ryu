@@ -55,6 +55,11 @@ def OFPExpMsgConfigureStatefulTable(datapath, stateful, table_id):
 
 def OFPExpMsgKeyExtract(datapath, command, fields, table_id):
     field_count=len(fields)
+
+    if field_count > osproto.MAX_FIELD_COUNT:
+        field_count = 0
+        LOG.debug("OFPExpMsgKeyExtract: Number of fields given > MAX_FIELD_COUNT")
+
     data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, command)
     data+=struct.pack(osproto.OFP_EXP_STATE_MOD_EXTRACTOR_PACK_STR,table_id,field_count)
     field_extract_format='!I'
@@ -62,14 +67,17 @@ def OFPExpMsgKeyExtract(datapath, command, fields, table_id):
     if field_count <= osproto.MAX_FIELD_COUNT:
         for f in range(field_count):
             data+=struct.pack(field_extract_format,fields[f])
-    else:
-        LOG.debug("OFPExpMsgKeyExtract: Number of fields given > MAX_FIELD_COUNT")
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
     return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpMsgSetFlowState(datapath, state, keys, table_id, idle_timeout=0, idle_rollback=0, hard_timeout=0, hard_rollback=0, state_mask=0xffffffff):
     key_count=len(keys)
+
+    if key_count > osproto.MAX_KEY_LEN:
+        key_count = 0
+        LOG.debug("OFPExpMsgSetFlowState: Number of keys given > MAX_KEY_LEN")
+
     command=osproto.OFPSC_EXP_SET_FLOW_STATE
     data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, command)
     data+=struct.pack(osproto.OFP_EXP_STATE_MOD_SET_FLOW_STATE_PACK_STR, table_id, key_count, state, state_mask, hard_rollback, idle_rollback, hard_timeout*1000000, idle_timeout*1000000)
@@ -78,14 +86,17 @@ def OFPExpMsgSetFlowState(datapath, state, keys, table_id, idle_timeout=0, idle_
     if key_count <= osproto.MAX_KEY_LEN:
         for f in range(key_count):
                 data+=struct.pack(field_extract_format,keys[f])
-    else:
-        LOG.debug("OFPExpMsgSetFlowState: Number of keys given > MAX_KEY_LEN")
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
     return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpMsgDelFlowState(datapath, keys, table_id):
     key_count=len(keys)
+
+    if key_count > osproto.MAX_KEY_LEN:
+        key_count = 0
+        LOG.debug("OFPExpMsgDelFlowState: Number of keys given > MAX_KEY_LEN")
+
     command=osproto.OFPSC_EXP_DEL_FLOW_STATE
     data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, command)
     data+=struct.pack(osproto.OFP_EXP_STATE_MOD_DEL_FLOW_STATE_PACK_STR,table_id,key_count)
@@ -94,8 +105,6 @@ def OFPExpMsgDelFlowState(datapath, keys, table_id):
     if key_count <= osproto.MAX_KEY_LEN:
         for f in range(key_count):
                 data+=struct.pack(field_extract_format,keys[f])
-    else:
-        LOG.debug("OFPExpMsgDelFlowState: Number of keys given > MAX_KEY_LEN")
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
     return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
