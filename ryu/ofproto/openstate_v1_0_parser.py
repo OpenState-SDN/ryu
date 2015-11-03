@@ -28,25 +28,25 @@ def OFPExpActionSetState(state, table_id, hard_timeout=0, idle_timeout=0, hard_r
     data=struct.pack(osproto.OFP_EXP_ACTION_SET_STATE_PACK_STR, act_type, state, state_mask, table_id, hard_rollback, idle_rollback, hard_timeout*1000000, idle_timeout*1000000)
     return ofproto_parser.OFPActionExperimenterUnknown(experimenter=0xBEBABEBA, data=data)
 
-def OFPExpActionSetFlag(flag, flag_mask=0xffffffff):
+def OFPExpActionSetGlobalState(global_state, global_state_mask=0xffffffff):
     """ 
-    Returns a Set Flag experimenter action
+    Returns a Set Global State experimenter action
 
-    This action updates flags in the switch global state.
+    This action updates the switch global state.
     
     ================ ======================================================
     Attribute        Description
     ================ ======================================================
-    flag             Flags value
-    flag_mask        Mask value
+    global_state     Global State value
+    global_state_mask        Mask value
     ================ ======================================================
     """
-    act_type=osproto.OFPAT_EXP_SET_FLAG
-    data=struct.pack(osproto.OFP_EXP_ACTION_SET_FLAG_PACK_STR, act_type, flag, flag_mask)
+    act_type=osproto.OFPAT_EXP_SET_GLOBAL_STATE
+    data=struct.pack(osproto.OFP_EXP_ACTION_SET_GLOBAL_STATE_PACK_STR, act_type, global_state, global_state_mask)
     return ofproto_parser.OFPActionExperimenterUnknown(experimenter=0XBEBABEBA, data=data)
 
 def OFPExpMsgConfigureStatefulTable(datapath, stateful, table_id):
-    command=osproto.OFPSC_STATEFUL_TABLE_CONFIG
+    command=osproto.OFPSC_EXP_STATEFUL_TABLE_CONFIG
     data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, command)
     data+=struct.pack(osproto.OFP_EXP_STATE_MOD_STATEFUL_TABLE_CONFIG_PACK_STR,table_id,stateful)
     
@@ -109,20 +109,21 @@ def OFPExpMsgDelFlowState(datapath, keys, table_id):
     exp_type=osproto.OFPT_EXP_STATE_MOD
     return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
-def OFPExpSetGlobalState(datapath, flag, flag_mask=0xffffffff):
-    data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, osproto.OFPSC_SET_GLOBAL_STATE)
-    data+=struct.pack(osproto.OFP_EXP_STATE_MOD_SET_GLOBAL_STATE_PACK_STR,flag,flag_mask)
+def OFPExpSetGlobalState(datapath, global_state, global_state_mask=0xffffffff):
+    data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, osproto.OFPSC_EXP_SET_GLOBAL_STATE)
+    data+=struct.pack(osproto.OFP_EXP_STATE_MOD_SET_GLOBAL_STATE_PACK_STR,global_state,global_state_mask)
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
     return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPExpResetGlobalState(datapath):
-    data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, osproto.OFPSC_RESET_GLOBAL_STATE)
+    data=struct.pack(osproto.OFP_EXP_STATE_MOD_PACK_STR, osproto.OFPSC_EXP_RESET_GLOBAL_STATE)
     
     exp_type=osproto.OFPT_EXP_STATE_MOD
     return ofproto_parser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
-def OFPExpStateStatsMultipartRequest(datapath, flags=0, table_id=ofproto.OFPTT_ALL, state=None, match=None):
+def OFPExpStateStatsMultipartRequest(datapath, table_id=ofproto.OFPTT_ALL, state=None, match=None):
+    flags = 0 # Zero or ``OFPMPF_REQ_MORE``
     get_from_state = 1
     if state is None:
         get_from_state = 0
@@ -140,10 +141,11 @@ def OFPExpStateStatsMultipartRequest(datapath, flags=0, table_id=ofproto.OFPTT_A
     exp_type=osproto.OFPMP_EXP_STATE_STATS
     return ofproto_parser.OFPExperimenterStatsRequest(datapath=datapath, flags=flags, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
-def OFPExpGlobalStateStatsMultipartRequest(datapath, flags=0):
+def OFPExpGlobalStateStatsMultipartRequest(datapath):
+    flags = 0 # Zero or ``OFPMPF_REQ_MORE``
     data=bytearray()
 
-    exp_type=osproto.OFPMP_EXP_FLAGS_STATS
+    exp_type=osproto.OFPMP_EXP_GLOBAL_STATE_STATS
     return ofproto_parser.OFPExperimenterStatsRequest(datapath=datapath, flags=flags, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
 
 def OFPErrorExperimenterMsg_handler(ev):
@@ -240,15 +242,15 @@ class OFPStateStats(StringifyMixin):
         return state_stats_list
 
 class OFPGlobalStateStats(StringifyMixin):
-    def __init__(self, flags=None):
+    def __init__(self, global_state=None):
         super(OFPGlobalStateStats, self).__init__()
-        self.flags = flags
+        self.global_state = global_state
         
     @classmethod
     def parser(cls, buf, offset):
         global_state_stats = cls()
 
-        (global_state_stats.flags, ) = struct.unpack_from('!4xI', buf, offset)
+        (global_state_stats.global_state, ) = struct.unpack_from('!4xI', buf, offset)
 
         return global_state_stats
 
@@ -541,17 +543,17 @@ def state_entry_key_to_str(extr,key,key_count):
 
 
 '''
-Flags are 32, numbered from 0 to 31 from right to left
+Global states are 32, numbered from 0 to 31 from right to left
 
-maskedflags("0*1100")       -> **************************0*1100 -> (12,47)
-maskedflags("0*1100",12)    -> ***************0*1100*********** -> (49152, 192512)
+masked_global_state_from_str("0*1100")       -> **************************0*1100 -> (12,47)
+masked_global_state_from_str("0*1100",12)    -> ***************0*1100*********** -> (49152, 192512)
 
 '''
-def maskedflags(string,offset=0):
+def masked_global_state_from_str(string,offset=0):
     import re
     str_len=len(string)
     if re.search('r[^01*]', string) or str_len>32 or str_len<1:
-        print("ERROR: flags string can only contain 0,1 and * and must have at least 1 bit and at most 32 bits!")
+        print("ERROR: global_state string can only contain 0,1 and * and must have at least 1 bit and at most 32 bits!")
         return (0,0)
     if offset>31 or offset<0:
         print("ERROR: offset must be in range 0-31!")
@@ -672,7 +674,7 @@ class OVSDatapath(Datapath):
             # method returning an instance of OFPExperimenter with the packed payload (refactoring!?!)
             command_offset = struct.calcsize(osproto.OFP_EXP_STATE_MOD_PACK_STR)
             (command,) = struct.unpack(osproto.OFP_EXP_STATE_MOD_PACK_STR, msg.data[:command_offset])
-            if command == osproto.OFPSC_STATEFUL_TABLE_CONFIG:
+            if command == osproto.OFPSC_EXP_STATEFUL_TABLE_CONFIG:
                 (table_id,stateful) = struct.unpack(osproto.OFP_EXP_STATE_MOD_STATEFUL_TABLE_CONFIG_PACK_STR, msg.data[command_offset:command_offset+struct.calcsize(osproto.OFP_EXP_STATE_MOD_STATEFUL_TABLE_CONFIG_PACK_STR)])
 
                 # "control flow" table miss in State Table
@@ -782,17 +784,17 @@ class OVSDatapath(Datapath):
                 else:
                     LOG.debug("ERROR: empty key in STATE_MOD message!")
                 return
-            elif command == osproto.OFPSC_SET_GLOBAL_STATE:
+            elif command == osproto.OFPSC_EXP_SET_GLOBAL_STATE:
                 ''' TODO: global states could be implemented by prepending a stage with just one table miss entry that sets reg8=global state value.
                 We should send a FlowMod ADD. NB get_state_table_id() and get_flow_table_id() return value should be sincreased by 1 '''
                 return
-            elif command == osproto.OFPSC_RESET_GLOBAL_STATE:
+            elif command == osproto.OFPSC_EXP_RESET_GLOBAL_STATE:
                 ''' TODO: We could send a FlowMod MOD that sets reg8=0 (or that just do GotoTable(1) ) in the table miss entry'''
                 return
         elif isinstance(msg,ofproto_parser.OFPExperimenterStatsRequest) and msg.experimenter==0xBEBABEBA:
             if msg.exp_type==osproto.OFPMP_EXP_STATE_STATS:
                 ''' TODO: In Open vSwitch the state table is a simple flow table => we could send a OFPMultipartRequest, maybe '''
-            elif msg.exp_type==osproto.OFPMP_EXP_FLAGS_STATS:
+            elif msg.exp_type==osproto.OFPMP_EXP_GLOBAL_STATE_STATS:
                 ''' TODO: in Open vSwitch, global states are a flow entry in the first table => we could send a OFPMultipartRequest, maybe '''
             return
         elif isinstance(msg,ofproto_parser.OFPFlowMod):
@@ -816,7 +818,7 @@ class OVSDatapath(Datapath):
                                 learn_action = ofproto_parser.NXActionLearn(table_id=get_state_table_id(table_id),priority=100,
                                     specs=specs)
                                 filtered_action_set.append(learn_action)
-                            elif act_type == osproto.OFPAT_EXP_SET_FLAG:
+                            elif act_type == osproto.OFPAT_EXP_SET_GLOBAL_STATE:
                                 ''' TODO we could add an action learn() that install a flow entry in table 0 which sets reg8=global state value, with mask '''
                         else:
                             # non-OpenState actions are left unchanged
@@ -845,7 +847,7 @@ class OVSDatapath(Datapath):
             for (match_field_name,match_field_value) in msg.match._fields2:
                 if match_field_name=='state':
                     new_match_fields.append(('reg0',match_field_value))
-                elif match_field_name=='flags':
+                elif match_field_name=='global_state':
                     continue # we should put new_match_fields.append(('reg8',match_field_value))
                 else:
                     new_match_fields.append( (match_field_name,match_field_value) )
@@ -872,7 +874,7 @@ class OVSDatapath(Datapath):
                                 learn_action = ofproto_parser.NXActionLearn(table_id=get_state_table_id(table_id),priority=100,
                                     specs=specs)
                                 filtered_action_set.append(learn_action)
-                            elif act_type == osproto.OFPAT_EXP_SET_FLAG:
+                            elif act_type == osproto.OFPAT_EXP_SET_GLOBAL_STATE:
                                 ''' TODO we could add an action learn() that install a flow entry in table 0 which sets reg8=global state value, with mask '''
                         else:
                             # non-OpenState actions are left unchanged
