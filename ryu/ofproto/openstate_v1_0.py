@@ -98,6 +98,7 @@ OFPEC_BAD_EXP_MESSAGE      = 6
 OFPEC_BAD_EXP_ACTION       = 7
 OFPEC_BAD_EXP_LEN          = 8
 OFPEC_BAD_TABLE_ID         = 9
+OFPEC_BAD_MATCH_WILDCARD   = 10
 
 #Openstate experimenter fields
 oxm_types = [
