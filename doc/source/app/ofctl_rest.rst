@@ -324,6 +324,307 @@ Get aggregate flow stats filtered by fields
         }
 
 
+Get table stats
+---------------
+
+    Get table stats of the switch which specified with Datapath ID in URI.
+
+    Usage:
+
+        ======= ===================
+        Method  GET
+        URI     /stats/table/<dpid>
+        ======= ===================
+
+    Response message body(OpenFlow1.0):
+
+        =============== ============================================================ ============
+        Attribute       Description                                                  Example
+        =============== ============================================================ ============
+        dpid            Datapath ID                                                  "1"
+        table_id        Table ID                                                     0
+        name            Name of Table                                                "classifier"
+        max_entries     Max number of entries supported                              1e+06
+        wildcards       Bitmap of OFPFW_* wildcards that are supported by the table  ["IN_PORT","DL_VLAN"]
+        active_count    Number of active entries                                     0
+        lookup_count    Number of packets looked up in table                         8
+        matched_count   Number of packets that hit table                             0
+        =============== ============================================================ ============
+
+    Response message body(OpenFlow1.2):
+
+        =============== ============================================================ ====================
+        Attribute       Description                                                  Example
+        =============== ============================================================ ====================
+        dpid            Datapath ID                                                  "1"
+        table_id        Table ID                                                     0
+        name            Name of Table                                                "classifier"
+        match           Bitmap of (1 << OFPXMT_*) that indicate the                  ["OFB_IN_PORT","OFB_METADATA"]
+                        fields the table can match on
+        wildcards       Bitmap of (1 << OFPXMT_*) wildcards that are                 ["OFB_IN_PORT","OFB_METADATA"]
+                        supported by the table
+        write_actions   Bitmap of OFPAT_* that are supported                         ["OUTPUT","SET_MPLS_TTL"]
+                        by the table with OFPIT_WRITE_ACTIONS
+        apply_actions   Bitmap of OFPAT_* that are supported                         ["OUTPUT","SET_MPLS_TTL"]
+                        by the table with OFPIT_APPLY_ACTIONS
+        write_setfields Bitmap of (1 << OFPXMT_*) header fields that                 ["OFB_IN_PORT","OFB_METADATA"]
+                        can be set with OFPIT_WRITE_ACTIONS
+        apply_setfields Bitmap of (1 << OFPXMT_*) header fields that                 ["OFB_IN_PORT","OFB_METADATA"]
+                        can be set with OFPIT_APPLY_ACTIONS
+        metadata_match  Bits of metadata table can match                             18446744073709552000
+        metadata_write  Bits of metadata table can write                             18446744073709552000
+        instructions    Bitmap of OFPIT_* values supported                           ["GOTO_TABLE","WRITE_METADATA"]
+        config          Bitmap of OFPTC_* values                                     []
+        max_entries     Max number of entries supported                              1e+06
+        active_count    Number of active entries                                     0
+        lookup_count    Number of packets looked up in table                         0
+        matched_count   Number of packets that hit table                             8
+        =============== ============================================================ ====================
+
+    Response message body(OpenFlow1.3):
+
+        ============== ============================================================= =========
+        Attribute      Description                                                   Example
+        ============== ============================================================= =========
+        dpid           Datapath ID                                                   "1"
+        table_id       Table ID                                                      0
+        active_count   Number of active entries                                      0
+        lookup_count   Number of packets looked up in table                          8
+        matched_count  Number of packets that hit table                              0
+        ============== ============================================================= =========
+
+
+    Example of use::
+
+        $ curl -X GET http://localhost:8080/stats/table/1
+
+    Response (OpenFlow1.0):
+
+    ::
+
+        {
+          "1": [
+            {
+              "table_id": 0,
+              "lookup_count": 8,
+              "max_entries": 1e+06,
+              "active_count": 0,
+              "name": "classifier",
+              "matched_count": 0,
+              "wildcards": [
+               "IN_PORT",
+               "DL_VLAN"
+              ]
+            },
+            ...
+            {
+              "table_id": 253,
+              "lookup_count": 0,
+              "max_entries": 1e+06,
+              "active_count": 0,
+              "name": "table253",
+              "matched_count": 0,
+              "wildcards": [
+               "IN_PORT",
+               "DL_VLAN"
+              ]
+            }
+          ]
+        }
+
+    Response (OpenFlow1.2):
+
+    ::
+
+        {
+          "1": [
+            {
+              "apply_setfields": [
+               "OFB_IN_PORT",
+               "OFB_METADATA"
+              ],
+              "match": [
+               "OFB_IN_PORT",
+               "OFB_METADATA"
+              ],
+              "metadata_write": 18446744073709552000,
+              "config": [],
+              "instructions":[
+               "GOTO_TABLE",
+               "WRITE_METADATA"
+              ],
+              "table_id": 0,
+              "metadata_match": 18446744073709552000,
+              "lookup_count": 8,
+              "wildcards": [
+               "OFB_IN_PORT",
+               "OFB_METADATA"
+              ],
+              "write_setfields": [
+               "OFB_IN_PORT",
+               "OFB_METADATA"
+              ],
+              "write_actions": [
+               "OUTPUT",
+               "SET_MPLS_TTL"
+              ],
+              "name": "classifier",
+              "matched_count": 0,
+              "apply_actions": [
+               "OUTPUT",
+               "SET_MPLS_TTL"
+              ],
+              "active_count": 0,
+              "max_entries": 1e+06
+            },
+            ...
+            {
+              "apply_setfields": [
+               "OFB_IN_PORT",
+               "OFB_METADATA"
+              ],
+              "match": [
+               "OFB_IN_PORT",
+               "OFB_METADATA"
+              ],
+              "metadata_write": 18446744073709552000,
+              "config": [],
+              "instructions": [
+               "GOTO_TABLE",
+               "WRITE_METADATA"
+              ],
+              "table_id": 253,
+              "metadata_match": 18446744073709552000,
+              "lookup_count": 0,
+              "wildcards": [
+               "OFB_IN_PORT",
+               "OFB_METADATA"
+              ],
+              "write_setfields": [
+               "OFB_IN_PORT",
+               "OFB_METADATA"
+              ],
+              "write_actions": [
+               "OUTPUT",
+               "SET_MPLS_TTL"
+              ],
+              "name": "table253",
+              "matched_count": 0,
+              "apply_actions": [
+               "OUTPUT",
+               "SET_MPLS_TTL"
+              ],
+              "active_count": 0,
+              "max_entries": 1e+06
+            }
+          ]
+        }
+
+    Response (OpenFlow1.3):
+
+    ::
+
+        {
+          "1": [
+            {
+              "active_count": 0,
+              "table_id": 0,
+              "lookup_count": 8,
+              "matched_count": 0
+            },
+            ...
+            {
+              "active_count": 0,
+              "table_id": 253,
+              "lookup_count": 0,
+              "matched_count": 0
+            }
+          ]
+        }
+
+
+Get table features
+------------------
+
+    Get table features of the switch which specified with Datapath ID in URI.
+
+    Usage:
+
+        ======= ===========================
+        Method  GET
+        URI     /stats/tablefeatures/<dpid>
+        ======= ===========================
+
+    Response message body:
+
+        ============== ==================================== =======================================================
+        Attribute      Description                          Example
+        ============== ==================================== =======================================================
+        dpid           Datapath ID                          "1"
+        table_id       Table ID                             0
+        name           Name of Table                        "table_0"
+        metadata_match Bits of metadata table can match     18446744073709552000
+        metadata_write Bits of metadata table can write     18446744073709552000
+        config         Bitmap of OFPTC_* values             0
+        max_entries    Max number of entries supported      4096
+        properties     struct ofp_table_feature_prop_header [{"type": "INSTRUCTIONS","instruction_ids": [...]},...]
+        ============== ==================================== =======================================================
+
+    Example of use::
+
+        $ curl -X GET http://localhost:8080/stats/tablefeatures/1
+
+    ::
+
+        {
+          "1": [
+            {
+              "metadata_write": 18446744073709552000,
+              "config": 0,
+              "table_id": 0,
+              "metadata_match": 18446744073709552000,
+              "max_entries": 4096,
+              "properties": [
+                {
+                  "type": "INSTRUCTIONS",
+                  "instruction_ids": [
+                   {
+                   "len": 4,
+                   "type": 1
+                   },
+                   ...
+                  ]
+                },
+                ...
+              ],
+              "name": "table_0"
+            },
+            {
+              "metadata_write": 18446744073709552000,
+              "config": 0,
+              "table_id": 1,
+              "metadata_match": 18446744073709552000,
+              "max_entries": 4096,
+              "properties": [
+                {
+                  "type": "INSTRUCTIONS",
+                  "instruction_ids": [
+                   {
+                   "len": 4,
+                   "type": 1
+                   },
+                   ...
+                  ]
+                },
+                ...
+              ],
+              "name": "table_1"
+            },
+            ...
+          ]
+        }
+
+
 Get ports stats
 ---------------
 
@@ -506,6 +807,79 @@ Get queues stats
               "tx_errors": 0,
               "duration_sec": 4294963425,
               "duration_nsec": 3912967296
+            }
+          ]
+        }
+
+
+Get queues config
+-----------------
+
+    Get queues config of the switch which specified with Datapath ID and Port in URI.
+
+    Usage:
+
+        ======= ================================
+        Method  GET
+        URI     /stats/queueconfig/<dpid>/<port>
+        ======= ================================
+
+    Response message body:
+
+        ================ ====================================================== ========================================
+        Attribute        Description                                            Example
+        ================ ====================================================== ========================================
+        dpid             Datapath ID                                            "1"
+        port             Port which was queried                                 1
+        queues           struct ofp_packet_queue
+        -- queue_id      ID for the specific queue                              2
+        -- port          Port this queue is attached to                         0
+        -- properties    struct ofp_queue_prop_header properties                [{"property": "MIN_RATE","rate": 80}]
+        ================ ====================================================== ========================================
+
+    Example of use::
+
+        $ curl -X GET http://localhost:8080/stats/queueconfig/1/1
+
+    ::
+
+        {
+          "1": [
+            {
+              "port": 1,
+              "queues": [
+                {
+                  "properties": [
+                    {
+                      "property": "MIN_RATE",
+                      "rate": 80
+                    }
+                  ],
+                  "port": 0,
+                  "queue_id": 1
+                },
+                {
+                  "properties": [
+                    {
+                      "property": "MAX_RATE",
+                      "rate": 120
+                    }
+                  ],
+                  "port": 2,
+                  "queue_id": 2
+                },
+                {
+                  "properties": [
+                    {
+                      "property": "EXPERIMENTER",
+                      "data": [],
+                      "experimenter": 999
+                    }
+                  ],
+                  "port": 3,
+                  "queue_id": 3
+                }
+              ]
             }
           ]
         }
