@@ -27,6 +27,7 @@ if drop_perc == 0.0:
 	print 'Ping between all hosts: \x1b[32mSUCCESS!\x1b[0m'
 else:
 	print 'Ping between all hosts: \x1b[31mFAIL\x1b[0m'
+	exit(1)
 
 t = 0
 while t<15:
@@ -52,6 +53,7 @@ if 'ICMP echo request' in h2data and 'ICMP echo reply' in h2data and 'ICMP echo 
 	print '\nPing from h1 to h2 (request should be in broadcast, reply in unicast): \x1b[32mSUCCESS!\x1b[0m'
 else:
 	print '\nPing from h1 to h2 (request should be in broadcast, reply in unicast): \x1b[31mFAIL\x1b[0m'
+	exit(1)
 
 # Kill Mininet and/or Ryu
 net.stop()

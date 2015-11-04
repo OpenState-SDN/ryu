@@ -40,6 +40,7 @@ if 'ESTABLISHED' in out:
 	print '\x1b[32mSUCCESS!\x1b[0m'
 else:
 	print '\x1b[31mFAIL\x1b[0m'
+	exit(1)
 
 # Kill Mininet and/or Ryu
 net.stop()
