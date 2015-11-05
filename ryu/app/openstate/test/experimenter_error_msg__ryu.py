@@ -29,6 +29,7 @@ from mininet.topo import SingleSwitchTopo
 from mininet.node import UserSwitch,RemoteController
 import os,subprocess,time,sys
 from ryu.ofproto.ofproto_common import OPENSTATE_EXPERIMENTER_ID
+import struct
 
 class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
 
@@ -229,25 +230,193 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
         match = ofparser.OFPMatch(in_port=6,eth_type=0x800,ip_proto=1)
         self.add_flow(datapath, 200, match, actions)
 
-    def _monitor0(self,datapath):
-        print("Network is ready")
+    def test14(self,datapath):
+        self.send_table_mod(datapath)
+        self.send_key_lookup(datapath)
+        self.send_key_update(datapath)
 
-        # [TEST 0] Setting the extractor on a stateless stage should be impossible
-        self.test0(datapath)
+        command=255
+        data=struct.pack(osp.OFP_EXP_STATE_MOD_PACK_STR, command)
+        exp_type=osp.OFPT_EXP_STATE_MOD
+        msg = ofparser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+        datapath.send_msg(msg)
 
+    def test15(self,datapath):
+        self.send_table_mod(datapath)
+        self.send_key_lookup(datapath)
+        self.send_key_update(datapath)
+
+        # dummy data payload
+        command=255
+        data=struct.pack(osp.OFP_EXP_STATE_MOD_PACK_STR, command)
+
+        exp_type=2**32-1
+        msg = ofparser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+        datapath.send_msg(msg)
+
+    def test16(self,datapath):
+        self.send_table_mod(datapath)
+        self.send_key_lookup(datapath)
+        self.send_key_update(datapath)
+
+        command=osp.OFPSC_EXP_SET_FLOW_STATE
+        # instead of packing into '!Bx'
+        data=struct.pack('!B', command)
+        exp_type=osp.OFPT_EXP_STATE_MOD
+        msg = ofparser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+        datapath.send_msg(msg)
+
+    def test17(self,datapath):
+        state = osparser.OFPExpMsgSetFlowState(datapath=datapath, state=88, keys=[0,0,0,0,0,2,0,0,0,0,0,4], table_id=0)
+        datapath.send_msg(state)
+
+    def test18(self,datapath):
+        state = osparser.OFPExpMsgDelFlowState(datapath=datapath, keys=[0,0,0,0,0,2,0,0,0,0,0,4], table_id=0)
+        datapath.send_msg(state)
+
+    def test19(self,datapath):
+        data=struct.pack(osp.OFP_EXP_STATE_MOD_PACK_STR, osp.OFPSC_EXP_SET_GLOBAL_STATE)
+    
+        exp_type=osp.OFPT_EXP_STATE_MOD
+        msg = ofparser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+        datapath.send_msg(msg)
+
+    def test20(self,datapath):
+        self.send_table_mod(datapath)
+        self.send_key_lookup(datapath)
+        self.send_key_update(datapath)
+        act_type=2
+        data=struct.pack('!I4xB',act_type,0)
+        a = ofparser.OFPActionExperimenterUnknown(experimenter=0XBEBABEBA, data=data)
+        actions = [a]
+        match = ofparser.OFPMatch(in_port=5,eth_type=0x800,ip_proto=1)
+        self.add_flow(datapath, 100, match, actions)
+
+    def test21(self,datapath):
+        command=osp.OFPSC_EXP_STATEFUL_TABLE_CONFIG
+        data=struct.pack(osp.OFP_EXP_STATE_MOD_PACK_STR, command)
+        data+=struct.pack('!B',0)
+    
+        exp_type=osp.OFPT_EXP_STATE_MOD
+        msg = ofparser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+        datapath.send_msg(msg)
+
+    def test22(self,datapath):
+        command=osp.OFPSC_EXP_STATEFUL_TABLE_CONFIG
+        data=struct.pack(osp.OFP_EXP_STATE_MOD_PACK_STR, command)
+        data+=struct.pack(osp.OFP_EXP_STATE_MOD_STATEFUL_TABLE_CONFIG_PACK_STR,250,1)
+    
+        exp_type=osp.OFPT_EXP_STATE_MOD
+        msg = ofparser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+        datapath.send_msg(msg)
+
+    def test23(self,datapath):
+        self.send_table_mod(datapath)
+        key_lookup_extractor = osparser.OFPExpMsgKeyExtract(datapath=datapath, command=osp.OFPSC_EXP_SET_L_EXTRACTOR, fields=[ofp.OXM_OF_ETH_SRC], table_id=250)
+        datapath.send_msg(key_lookup_extractor)
+
+    def test24(self,datapath):
+        self.send_table_mod(datapath)
+        self.send_key_lookup(datapath)
+        self.send_key_update(datapath)
+        state = osparser.OFPExpMsgDelFlowState(datapath=datapath, keys=[0,0,0,0,0,2,0,0,0,0,0,4], table_id=0)
+        datapath.send_msg(state)
+
+    def test25(self,datapath):
+        self.send_table_mod(datapath)
+        self.send_key_lookup(datapath)
+        self.send_key_update(datapath)
+        state = osparser.OFPExpMsgDelFlowState(datapath=datapath, keys=[0,0,0,0,0,2,0,0,0,0,0,4], table_id=250)
+        datapath.send_msg(state)
+
+    def test26(self,datapath):
+        command=osp.OFPSC_EXP_DEL_FLOW_STATE
+        data=struct.pack(osp.OFP_EXP_STATE_MOD_PACK_STR, command)
+        data+=struct.pack('!B3xIBBBB',0,3,0,0,0,1)
+        
+        exp_type=osp.OFPT_EXP_STATE_MOD
+        msg = ofparser.OFPExperimenter(datapath=datapath, experimenter=0xBEBABEBA, exp_type=exp_type, data=data)
+        datapath.send_msg(msg)
+
+    def test27(self,datapath):
+        self.send_table_mod(datapath)
+        self.send_key_lookup(datapath)
+        self.send_key_update(datapath)
+        state = osparser.OFPExpMsgDelFlowState(datapath=datapath, keys=[0,0,0,0,0,2,0,0,0,0,0,4,0], table_id=0)
+        datapath.send_msg(state)
+
+    def test28(self,datapath):
+        self.send_table_mod(datapath)
+        self.send_key_lookup(datapath)
+        self.send_key_update(datapath)
+        act_type=osp.OFPAT_EXP_SET_STATE
+        data=struct.pack('!I4xB',act_type,0)
+        a = ofparser.OFPActionExperimenterUnknown(experimenter=0XBEBABEBA, data=data)
+        actions = [a]
+        match = ofparser.OFPMatch(in_port=5,eth_type=0x800,ip_proto=1)
+        self.add_flow(datapath, 100, match, actions)
+
+    def test29(self,datapath):
+        self.send_table_mod(datapath)
+        self.send_key_lookup(datapath)
+        self.send_key_update(datapath)
+        act_type=osp.OFPAT_EXP_SET_GLOBAL_STATE
+        data=struct.pack('!I4x',act_type)
+        a = ofparser.OFPActionExperimenterUnknown(experimenter=0XBEBABEBA, data=data)
+        actions = [a]
+        match = ofparser.OFPMatch(in_port=5,eth_type=0x800,ip_proto=1)
+        self.add_flow(datapath, 100, match, actions)     
+
+
+    def wait_for_error(self,test_num,err_type,err_code):
+        attempts = 0
+        while len(self.last_error_queue)!=1 and attempts<3:
+            print 'Waiting %d seconds...' % (3-attempts)
+            attempts += 1
+            time.sleep(1)
+
+        if len(self.last_error_queue)==1 and self.last_error_queue[0]==(err_type,err_code):
+            print 'Test %d: \x1b[32mSUCCESS!\x1b[0m' % test_num
+            self.last_error_queue = []
+        else:
+            print 'Test %d: \x1b[31mFAIL\x1b[0m' % test_num
+            self.stop_test_and_exit()
+
+    def wait_for_two_errors(self,test_num,err_type1,err_code1,err_type2,err_code2):
         attempts = 0
         while len(self.last_error_queue)!=2 and attempts<3:
             print 'Waiting %d seconds...' % (3-attempts)
             attempts += 1
             time.sleep(1)
 
-        if len(self.last_error_queue)==2 and self.last_error_queue[0]==(ofp.OFPET_EXPERIMENTER,osp.OFPEC_EXP_SET_EXTRACTOR) and self.last_error_queue[1]==(ofp.OFPET_EXPERIMENTER,osp.OFPEC_EXP_SET_EXTRACTOR):
-            print 'Test 0: \x1b[32mSUCCESS!\x1b[0m'
+        if len(self.last_error_queue)==2 and self.last_error_queue[0]==(err_type1,err_code1) and self.last_error_queue[1]==(err_type2,err_code2):
+            print 'Test %d: \x1b[32mSUCCESS!\x1b[0m' % test_num
             self.last_error_queue = []
         else:
-            print 'Test 0: \x1b[31mFAIL\x1b[0m'
+            print 'Test %d: \x1b[31mFAIL\x1b[0m' % test_num
             self.stop_test_and_exit()
 
+    def try_ping(self,test_num,source,dest,drop_perc,wait=True):
+        if wait:
+            attempts = 0
+            while len(self.last_error_queue)==0 and attempts<3:
+                print 'Waiting %d seconds...' % (3-attempts)
+                attempts += 1
+                time.sleep(1)
+
+        drop_perc = self.net.ping(hosts=[self.net.hosts[source],self.net.hosts[dest]],timeout=1)
+        if len(self.last_error_queue)==0 and drop_perc == drop_perc:
+            print 'Test %d: \x1b[32mSUCCESS!\x1b[0m' % test_num
+        else:
+            print 'Test %d: \x1b[31mFAIL\x1b[0m' % test_num
+            self.stop_test_and_exit()
+
+    def _monitor0(self,datapath):
+        print("Network is ready")
+
+        # [TEST 0] Setting the extractor on a stateless stage should be impossible
+        self.test0(datapath)
+        self.wait_for_two_errors(0,ofp.OFPET_EXPERIMENTER,osp.OFPEC_EXP_SET_EXTRACTOR,ofp.OFPET_EXPERIMENTER,osp.OFPEC_EXP_SET_EXTRACTOR)
         self.restart_mininet()
 
     def _monitor1(self,datapath):
@@ -257,20 +426,7 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
         # mininet> h1 ping -c5 h2
         # ping should fail, but rules are correctly installed
         self.test1(datapath)
-        
-        attempts = 0
-        while len(self.last_error_queue)==0 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
-        drop_perc = self.net.ping(hosts=[self.net.hosts[0],self.net.hosts[1]],timeout=1)
-        if len(self.last_error_queue)==0 and drop_perc == 100.0:
-            print 'Test 1: \x1b[32mSUCCESS!\x1b[0m'
-        else:
-            print 'Test 1: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
+        self.try_ping(test_num=1,source=0,dest=1,drop_perc=100)
         self.restart_mininet()
 
     def _monitor2(self,datapath):
@@ -278,20 +434,7 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
 
         # [TEST 2] Set state action must be performed onto a stage with table_id less or equal than the number of pipeline's tables (install-time check)
         self.test2(datapath)
-
-        attempts = 0
-        while len(self.last_error_queue)!=1 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
-        if len(self.last_error_queue)==1 and self.last_error_queue[0]==(ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_TABLE_ID):
-            print 'Test 2: \x1b[32mSUCCESS!\x1b[0m'
-            self.last_error_queue = []
-        else:
-            print 'Test 2: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
+        self.wait_for_error(2,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_TABLE_ID)
         self.restart_mininet()
         
     def _monitor3(self,datapath):
@@ -299,20 +442,7 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
 
         # [TEST 3]  OFPExpMsgKeyExtract: I should provide a number of fields >0 and <MAX_FIELD_COUNT
         self.test3(datapath)
-
-        attempts = 0
-        while len(self.last_error_queue)!=2 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
-        if len(self.last_error_queue)==2 and self.last_error_queue[0]==(ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN) and self.last_error_queue[1]==(ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN):
-            print 'Test 3: \x1b[32mSUCCESS!\x1b[0m'
-            self.last_error_queue = []
-        else:
-            print 'Test 3: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
+        self.wait_for_two_errors(3,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
         self.restart_mininet()
 
     def _monitor4(self,datapath):
@@ -320,20 +450,7 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
 
         # [TEST 4] OFPExpMsgSetFlowState: I should provide a key of size >0 and <MAX_KEY_LEN
         self.test4(datapath)
-
-        attempts = 0
-        while len(self.last_error_queue)!=2 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
-        if len(self.last_error_queue)==2 and self.last_error_queue[0]==(ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN) and self.last_error_queue[1]==(ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN):
-            print 'Test 4: \x1b[32mSUCCESS!\x1b[0m'
-            self.last_error_queue = []
-        else:
-            print 'Test 4: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
+        self.wait_for_two_errors(4,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
         self.restart_mininet()
 
     def _monitor5(self,datapath):
@@ -341,20 +458,7 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
 
         # [TEST 5] OFPExpMsgSetFlowState: I should provide a key of size consistent with the number of fields of the update-scope
         self.test5(datapath)
-
-        attempts = 0
-        while len(self.last_error_queue)!=1 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
-        if len(self.last_error_queue)==1 and self.last_error_queue[0]==(ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN):
-            print 'Test 5: \x1b[32mSUCCESS!\x1b[0m'
-            self.last_error_queue = []
-        else:
-            print 'Test 5: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
+        self.wait_for_error(5,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
         self.restart_mininet()
 
     def _monitor6(self,datapath):
@@ -362,20 +466,7 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
 
         # [TEST 6] OFPExpMsgDelFlowState: I should provide a key of size consistent with the number of fields of the update-scope
         self.test6(datapath)
-
-        attempts = 0
-        while len(self.last_error_queue)!=1 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
-        if len(self.last_error_queue)==1 and self.last_error_queue[0]==(ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN):
-            print 'Test 6: \x1b[32mSUCCESS!\x1b[0m'
-            self.last_error_queue = []
-        else:
-            print 'Test 6: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
+        self.wait_for_error(6,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
         self.restart_mininet()
 
     def _monitor7(self,datapath):
@@ -383,20 +474,7 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
 
         # [TEST 7] OFPExpMsgKeyExtract: lookup-scope and update-scope must provide same length keys
         self.test7(datapath)
-
-        attempts = 0
-        while len(self.last_error_queue)!=1 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
-        if len(self.last_error_queue)==1 and self.last_error_queue[0]==(ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN):
-            print 'Test 7: \x1b[32mSUCCESS!\x1b[0m'
-            self.last_error_queue = []
-        else:
-            print 'Test 7: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
+        self.wait_for_error(7,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
         self.restart_mininet()
 
     def _monitor8(self,datapath):
@@ -404,20 +482,7 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
 
         # [TEST 8] OFPExpMsgKeyExtract: lookup-scope and update-scope must provide same length keys
         self.test8(datapath)
-
-        attempts = 0
-        while len(self.last_error_queue)!=1 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
-        if len(self.last_error_queue)==1 and self.last_error_queue[0]==(ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN):
-            print 'Test 8: \x1b[32mSUCCESS!\x1b[0m'
-            self.last_error_queue = []
-        else:
-            print 'Test 8: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
+        self.wait_for_error(8,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
         self.restart_mininet()
 
     def _monitor9(self,datapath):
@@ -425,20 +490,7 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
 
         # [TEST 9] OFPExpMsgSetFlowState: must be executed onto a stage with table_id<=64 (number of pipeline's tables)
         self.test9(datapath)
-
-        attempts = 0
-        while len(self.last_error_queue)!=1 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
-        if len(self.last_error_queue)==1 and self.last_error_queue[0]==(ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_TABLE_ID):
-            print 'Test 9: \x1b[32mSUCCESS!\x1b[0m'
-            self.last_error_queue = []
-        else:
-            print 'Test 9: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
+        self.wait_for_error(9,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_TABLE_ID)
         self.restart_mininet()
 
     def _monitor10(self,datapath):
@@ -447,20 +499,7 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
         # [TEST 10] exact match on global_state
         # mininet> h5 ping -c1 h6
         self.test10(datapath)
-        
-        attempts = 0
-        while len(self.last_error_queue)==0 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
-        drop_perc = self.net.ping(hosts=[self.net.hosts[4],self.net.hosts[5]],timeout=1)
-        if len(self.last_error_queue)==0 and drop_perc == 0.0:
-            print 'Test 10: \x1b[32mSUCCESS!\x1b[0m'
-        else:
-            print 'Test 10: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
+        self.try_ping(test_num=10,source=4,dest=5,drop_perc=0)
         self.restart_mininet()
 
     def _monitor11(self,datapath):
@@ -469,20 +508,7 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
         # [TEST 11] masked match on global_state
         # mininet> h5 ping -c1 h6
         self.test11(datapath)
-        
-        attempts = 0
-        while len(self.last_error_queue)==0 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
-        drop_perc = self.net.ping(hosts=[self.net.hosts[4],self.net.hosts[5]],timeout=1)
-        if len(self.last_error_queue)==0 and drop_perc == 0.0:
-            print 'Test 11: \x1b[32mSUCCESS!\x1b[0m'
-        else:
-            print 'Test 11: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
+        self.try_ping(test_num=11,source=4,dest=5,drop_perc=0)
         self.restart_mininet()
 
     def _monitor12(self,datapath):
@@ -492,27 +518,9 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
         # mininet> h5 ping -c2 h6
         # the first ping should fail
         self.test12(datapath)
-        
-        attempts = 0
-        while len(self.last_error_queue)==0 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
         # TODO: if Mininet had 'count' parameter we could simplify the code by checking drop_perc=0.25 with count=2
-
-        drop_perc = self.net.ping(hosts=[self.net.hosts[4],self.net.hosts[5]],timeout=1)
-        if len(self.last_error_queue)!=0 or drop_perc != 50.0:
-            print 'Test 12: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
-        drop_perc = self.net.ping(hosts=[self.net.hosts[4],self.net.hosts[5]],timeout=1)
-        if len(self.last_error_queue)==0 and drop_perc == 0.0:
-            print 'Test 12: \x1b[32mSUCCESS!\x1b[0m'
-        else:
-            print 'Test 12: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
-
+        self.try_ping(test_num=12,source=4,dest=5,drop_perc=50)
+        self.try_ping(test_num=12,source=4,dest=5,drop_perc=0,wait=False)
         self.restart_mininet()
 
     def _monitor13(self,datapath):
@@ -522,27 +530,137 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
         # mininet> h5 ping -c5 h6
         # the first ping should fail
         self.test12(datapath)
-        
-        attempts = 0
-        while len(self.last_error_queue)==0 and attempts<3:
-            print 'Waiting %d seconds...' % (3-attempts)
-            attempts += 1
-            time.sleep(1)
-
         # TODO: if Mininet had 'count' parameter we could simplify the code by checking drop_perc=0.25 with count=2
+        self.try_ping(test_num=13,source=4,dest=5,drop_perc=50)
+        self.try_ping(test_num=13,source=4,dest=5,drop_perc=0,wait=False)
+        self.restart_mininet()
 
-        drop_perc = self.net.ping(hosts=[self.net.hosts[4],self.net.hosts[5]],timeout=1)
-        if len(self.last_error_queue)!=0 or drop_perc != 50.0:
-            print 'Test 13: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
+    def _monitor14(self,datapath):
+        print("Network is ready")
 
-        drop_perc = self.net.ping(hosts=[self.net.hosts[4],self.net.hosts[5]],timeout=1)
-        if len(self.last_error_queue)==0 and drop_perc == 0.0:
-            print 'Test 13: \x1b[32mSUCCESS!\x1b[0m'
-        else:
-            print 'Test 13: \x1b[31mFAIL\x1b[0m'
-            self.stop_test_and_exit()
+        # [TEST 14]_STATE MOD with unknown command
+        self.test14(datapath)
+        self.wait_for_error(14,ofp.OFPET_EXPERIMENTER,osp.OFPEC_EXP_STATE_MOD_BAD_COMMAND)
+        self.restart_mininet()
 
+    def _monitor15(self,datapath):
+        print("Network is ready")
+
+        # [TEST 15]_OpenState unknown experimenter message
+        self.test15(datapath)
+        self.wait_for_error(15,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_MESSAGE)
+        self.restart_mininet()
+
+    def _monitor16(self,datapath):
+        print("Network is ready")
+
+        # [TEST 16]_OpenState experimenter message too short
+        self.test16(datapath)
+        self.wait_for_error(16,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
+        self.restart_mininet()
+
+    def _monitor17(self,datapath):
+        print("Network is ready")
+
+        # [TEST 17]_Set_state in a non stateful stage
+        self.test17(datapath)
+        self.wait_for_error(17,ofp.OFPET_EXPERIMENTER,osp.OFPEC_EXP_SET_FLOW_STATE)
+        self.restart_mininet()
+
+    def _monitor18(self,datapath):
+        print("Network is ready")
+
+        # [TEST 18]_Del_flow_state in a non stateful stage
+        self.test18(datapath)
+        self.wait_for_error(18,ofp.OFPET_EXPERIMENTER,osp.OFPEC_EXP_DEL_FLOW_STATE)
+        self.restart_mininet()
+
+    def _monitor19(self,datapath):
+        print("Network is ready")
+
+        # [TEST 19]_setglobalstate with invalid length
+        self.test19(datapath)
+        self.wait_for_error(19,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
+        self.restart_mininet()
+    
+    def _monitor20(self,datapath):
+        print("Network is ready")
+
+        # [TEST 20]_unknown OpenState experimenter action
+        self.test20(datapath)
+        self.wait_for_error(20,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_ACTION)
+        self.restart_mininet()
+
+    def _monitor21(self,datapath):
+        print("Network is ready")
+
+        # [TEST 21]_State Mod Stateful table config with invalid length
+        self.test21(datapath)
+        self.wait_for_error(21,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
+        self.restart_mininet()
+
+    def _monitor22(self,datapath):
+        print("Network is ready")
+
+        # [TEST 22]_State Mod Stateful table config with invalid table ID
+        self.test22(datapath)
+        self.wait_for_error(22,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_TABLE_ID)
+        self.restart_mininet()
+
+    def _monitor23(self,datapath):
+        print("Network is ready")
+
+        # [TEST 23]_Set extractor with invalid table ID
+        self.test22(datapath)
+        self.wait_for_error(23,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_TABLE_ID)
+        self.restart_mininet()
+
+    def _monitor24(self,datapath):
+        print("Network is ready")
+
+        # [TEST 24]_Del_flow_state with empty state table
+        self.test24(datapath)
+        self.wait_for_error(24,ofp.OFPET_EXPERIMENTER,osp.OFPEC_EXP_DEL_FLOW_STATE)
+        self.restart_mininet()
+
+    def _monitor25(self,datapath):
+        print("Network is ready")
+
+        # [TEST 25]_Del_flow_state with invalid table ID
+        self.test25(datapath)
+        self.wait_for_error(25,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_TABLE_ID)
+        self.restart_mininet()
+
+    def _monitor26(self,datapath):
+        print("Network is ready")
+
+        # [TEST 26]_Del_flow_state with bad length
+        self.test26(datapath)
+        self.wait_for_error(26,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
+        self.restart_mininet()
+
+    def _monitor27(self,datapath):
+        print("Network is ready")
+
+        # [TEST 27]_Del_flow_state with key not consistent with update scope
+        self.test27(datapath)
+        self.wait_for_error(27,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
+        self.restart_mininet()
+
+    def _monitor28(self,datapath):
+        print("Network is ready")
+
+        # [TEST 28] Set state action with invalid length
+        self.test28(datapath)
+        self.wait_for_error(28,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
+        self.restart_mininet()
+
+    def _monitor29(self,datapath):
+        print("Network is ready")
+
+        # [TEST 29] Set global state action with invalid length
+        self.test29(datapath)
+        self.wait_for_error(29,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
         #self.restart_mininet()
         self.stop_test_and_gracefully_exit()
 
