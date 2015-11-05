@@ -35,7 +35,7 @@ makeTerm(net['h2'],cmd='python ~/ryu/ryu/app/openstate/echo_server.py 2000')
 
 ###############################################################################
 print '\nTest 1: h1 connects to h2 without any ongoing attack'
-time.sleep(2)
+time.sleep(5)
 net['h1'].cmd('(echo "HI!" | nc -q3 -T af11 10.0.0.2 2000) &')
 net['h1'].cmd('(echo "HI!" | nc -q3 -T af11 10.0.0.2 2000) &')
 
