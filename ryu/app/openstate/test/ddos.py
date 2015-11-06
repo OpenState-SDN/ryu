@@ -14,6 +14,15 @@ if os.geteuid() != 0:
 def is_tool(name):
   return distutils.spawn.find_executable(name) is not None
 
+def wait_for_connection_expiration(max_time=5):
+	t = 0
+	while t<max_time:
+		if 'ESTABLISHED' not in net['h2'].cmd('(netstat -an | grep tcp | grep 10.0.0.2:2000)'):
+			return
+		print 'Waiting %d sec for connection expiration...' % (max_time-t)
+		t += 1
+		time.sleep(1)
+
 if not is_tool('hping3'):
 		subprocess.call("sudo apt-get -q -y install hping3".split())
 
@@ -28,15 +37,14 @@ print 'Starting Mininet'
 net = Mininet(topo=SingleSwitchTopo(2),switch=UserSwitch,controller=RemoteController,cleanup=True,autoSetMacs=True,listenPort=6634,autoStaticArp=True)
 net.start()
 
-time.sleep(5)
+time.sleep(3)
 
 # Start Server @h2 on port 2000
-makeTerm(net['h2'],cmd='python ~/ryu/ryu/app/openstate/echo_server.py 2000')
+net['h2'].cmd('python ~/ryu/ryu/app/openstate/echo_server.py 2000 &')
 
 ###############################################################################
 print '\nTest 1: h1 connects to h2 without any ongoing attack'
-time.sleep(5)
-net['h1'].cmd('(echo "HI!" | nc -q3 -T af11 10.0.0.2 2000) &')
+time.sleep(2)
 net['h1'].cmd('(echo "HI!" | nc -q3 -T af11 10.0.0.2 2000) &')
 
 out = ''
@@ -54,12 +62,11 @@ else:
 	exit(1)
 
 ###############################################################################
-print 'Waiting 5 seconds for connection timeout...'
-time.sleep(5)
+wait_for_connection_expiration(max_time=5)
+
 print '\nTest 2: h1 connects to h2 after an ongoing attack below the the threshold'
 net['h1'].cmd('hping3 -S -p 80 -i u200000 -o 28 10.0.0.2 &')
 time.sleep(2)
-net['h1'].cmd('(echo "HI!" | nc -q3 -T af11 10.0.0.2 2000) &')
 net['h1'].cmd('(echo "HI!" | nc -q3 -T af11 10.0.0.2 2000) &')
 
 out = ''
@@ -78,9 +85,8 @@ else:
 net['h1'].cmd('kill -9 $(pidof hping3)')
 
 ###############################################################################
-print 'Waiting 5 seconds for connection timeout...'
+wait_for_connection_expiration(max_time=5)
 
-time.sleep(5)
 print '\nTest 3: h1 connects to h2 after an ongoing attack above the the threshold'
 net['h1'].cmd('hping3 -S -p 80 -i u5000 -o 28 10.0.0.2 &')
 time.sleep(2)
@@ -102,11 +108,11 @@ else:
 net['h1'].cmd('kill -9 $(pidof hping3)')
 
 ###############################################################################
-print 'Waiting 5 seconds for connection timeout...'
-time.sleep(5)
+time.sleep(2)
+
 print '\nTest 4: h1 connects to h2 before an ongoing attack above the the threshold and continues sending data after the attack'
 net['h1'].cmd('((echo "HI"; sleep 5; echo "HI2") | nc -T af11 10.0.0.2 2000) &')
-time.sleep(1)
+time.sleep(2)
 net['h1'].cmd('hping3 -S -p 80 -i u5000 -o 28 10.0.0.2 &')
 
 out = ''

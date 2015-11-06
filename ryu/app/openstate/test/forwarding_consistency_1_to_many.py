@@ -25,16 +25,16 @@ time.sleep(5)
 print 'Starting Echo Servers on h2, h3 and h4'
 
 for h in [2,3,4]:
-	makeTerm(net['h%d' % h],cmd='python ~/ryu/ryu/app/openstate/echo_server.py %d00' %h)
+	net['h%d' % h].cmd('python ~/ryu/ryu/app/openstate/echo_server.py %d00 &' %h)
 
-time.sleep(5)
+time.sleep(3)
 
 CONN_NUM = 20
 print 'Starting %d TCP connections from h1' %CONN_NUM
 for n in range(CONN_NUM):
 	net['h1'].cmd('(echo "HI!" | nc -q -1 10.0.0.2 80) &')
 
-time.sleep(5)
+time.sleep(3)
 
 established = {}
 syn_recv = {}

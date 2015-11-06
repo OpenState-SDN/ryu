@@ -20,7 +20,7 @@ size = 1024
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 server.bind((host,port)) 
 server.listen(backlog) 
-input = [server,sys.stdin] 
+input = [server,sys.stdin] if sys.stdin.isatty() else [server]
 running = 1 
 print("Press any key to stop the server...")
 while running: 
