@@ -674,6 +674,8 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
         self.test29(datapath)
         self.wait_for_error(29,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
         #self.restart_mininet()
+        self.stop_test_and_gracefully_exit()
+
     '''
     To perform the test #30 you have to comment lines 129-130 of ryu/ofproto/oxx_fields.py file and recompile the controller
     Furthermore you have to uncomment test30 in this file
@@ -686,8 +688,8 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
         self.test30(datapath)
         self.wait_for_error(30,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_MATCH_WILDCARD)
         #self.restart_mininet()
-    '''
         self.stop_test_and_gracefully_exit()
+    '''
 
     @set_ev_cls(ofp_event.EventOFPErrorExperimenterMsg,
                     [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
