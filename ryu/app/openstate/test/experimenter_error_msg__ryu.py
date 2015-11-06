@@ -367,6 +367,18 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
         match = ofparser.OFPMatch(in_port=5,eth_type=0x800,ip_proto=1)
         self.add_flow(datapath, 100, match, actions)     
 
+    '''
+    To perform test #30 you have to comment lines 129-130 of ryu/ofproto/oxx_fields.py file and recompile the controller.
+    Furthermore you have to uncomment _monitor30 in this file
+    With this little patch the controller does not mask the match field, triggering the error at switch side.
+    
+    def test30(self,datapath):
+        self.send_table_mod(datapath)
+        actions = []
+        match = ofparser.OFPMatch(in_port=1,ip_proto=1,eth_type=0x800,state=(7,8))
+        self.add_flow(datapath, 150, match, actions)
+    '''
+
 
     def wait_for_error(self,test_num,err_type,err_code):
         attempts = 0
@@ -662,6 +674,19 @@ class OpenStateErrorExperimenterMsg(app_manager.RyuApp):
         self.test29(datapath)
         self.wait_for_error(29,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_EXP_LEN)
         #self.restart_mininet()
+    '''
+    To perform the test #30 you have to comment lines 129-130 of ryu/ofproto/oxx_fields.py file and recompile the controller
+    Furthermore you have to uncomment test30 in this file
+    With this little patch the controller does not mask the match field, triggering the error at switch side.
+
+    def _monitor30(self,datapath):
+        print("Network is ready")
+
+        # [TEST 30] Bad masked state match field
+        self.test30(datapath)
+        self.wait_for_error(30,ofp.OFPET_EXPERIMENTER,osp.OFPEC_BAD_MATCH_WILDCARD)
+        #self.restart_mininet()
+    '''
         self.stop_test_and_gracefully_exit()
 
     @set_ev_cls(ofp_event.EventOFPErrorExperimenterMsg,
