@@ -3,9 +3,9 @@ from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import set_ev_cls
-import ryu.ofproto.ofproto_v1_3 as ofp
+import ryu.ofproto.ofproto_v1_3 as ofproto
 import ryu.ofproto.ofproto_v1_3_parser as ofparser
-import ryu.ofproto.openstate_v1_0 as osp
+import ryu.ofproto.openstate_v1_0 as osproto
 import ryu.ofproto.openstate_v1_0_parser as osparser
 
 LOG = logging.getLogger('app.openstate.maclearning')
@@ -15,15 +15,15 @@ N = 4
 
 LOG.info("Support max %d ports per switch" % N)
 
-class OSMacLearning(app_manager.RyuApp):
+class OpenStateMacLearning(app_manager.RyuApp):
 
 	def __init__(self, *args, **kwargs):
-		super(OSMacLearning, self).__init__(*args, **kwargs)
+		super(OpenStateMacLearning, self).__init__(*args, **kwargs)
 
 	def add_flow(self, datapath, table_id, priority, match, actions):
 		if len(actions) > 0:
 			inst = [ofparser.OFPInstructionActions(
-					ofp.OFPIT_APPLY_ACTIONS, actions)]
+					ofproto.OFPIT_APPLY_ACTIONS, actions)]
 		else:
 			inst = []
 		mod = ofparser.OFPFlowMod(datapath=datapath, table_id=table_id,
@@ -48,15 +48,15 @@ class OSMacLearning(app_manager.RyuApp):
 
 		""" Set lookup extractor = {eth_dst} """
 		req = osparser.OFPExpMsgKeyExtract(datapath=datapath,
-				command=osp.OFPSC_EXP_SET_L_EXTRACTOR,
-				fields=[ofp.OXM_OF_ETH_DST],
+				command=osproto.OFPSC_EXP_SET_L_EXTRACTOR,
+				fields=[ofproto.OXM_OF_ETH_DST],
 				table_id=0)
 		datapath.send_msg(req)
 
 		""" Set update extractor = {eth_src}  """
 		req = osparser.OFPExpMsgKeyExtract(datapath=datapath,
-				command=osp.OFPSC_EXP_SET_U_EXTRACTOR,
-				fields=[ofp.OXM_OF_ETH_SRC],
+				command=osproto.OFPSC_EXP_SET_U_EXTRACTOR,
+				fields=[ofproto.OXM_OF_ETH_SRC],
 				table_id=0)
 		datapath.send_msg(req)
 
@@ -65,7 +65,7 @@ class OSMacLearning(app_manager.RyuApp):
 			for s in range(N+1):
 				match = ofparser.OFPMatch(in_port=i, state=s)
 				if s == 0:
-					out_port = ofp.OFPP_FLOOD
+					out_port = ofproto.OFPP_FLOOD
 				else:
 					out_port = s
 				actions = [osparser.OFPExpActionSetState(state=i, table_id=0, hard_timeout=10),

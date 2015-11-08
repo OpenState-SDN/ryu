@@ -3,9 +3,9 @@ from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import set_ev_cls
-import ryu.ofproto.ofproto_v1_3 as ofp
+import ryu.ofproto.ofproto_v1_3 as ofproto
 import ryu.ofproto.ofproto_v1_3_parser as ofparser
-import ryu.ofproto.openstate_v1_0 as osp
+import ryu.ofproto.openstate_v1_0 as osproto
 import ryu.ofproto.openstate_v1_0_parser as osparser
 
 LOG = logging.getLogger('app.openstate.portknock')
@@ -18,10 +18,10 @@ second_last_port =  port_list[-2]
 LOG.info("Port knock sequence is %s" % port_list[0:-1])
 LOG.info("Final port to open is %s" % port_list[-1])
 
-class OSPortKnocking(app_manager.RyuApp):
+class OpenStatePortKnocking(app_manager.RyuApp):
 
 	def __init__(self, *args, **kwargs):
-		super(OSPortKnocking, self).__init__(*args, **kwargs)
+		super(OpenStatePortKnocking, self).__init__(*args, **kwargs)
 
 	@set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
 	def switch_features_handler(self, ev):
@@ -38,21 +38,21 @@ class OSPortKnocking(app_manager.RyuApp):
 
 		""" Set lookup extractor = {ip_src} """
 		req = osparser.OFPExpMsgKeyExtract(datapath=datapath,
-										command=osp.OFPSC_EXP_SET_L_EXTRACTOR,
-										fields=[ofp.OXM_OF_IPV4_SRC],
+										command=osproto.OFPSC_EXP_SET_L_EXTRACTOR,
+										fields=[ofproto.OXM_OF_IPV4_SRC],
 										table_id=0)
 		datapath.send_msg(req)
 
 		""" Set update extractor = {ip_src} (same as lookup) """
 		req = osparser.OFPExpMsgKeyExtract(datapath=datapath,
-									command=osp.OFPSC_EXP_SET_U_EXTRACTOR,
-									fields=[ofp.OXM_OF_IPV4_SRC],
+									command=osproto.OFPSC_EXP_SET_U_EXTRACTOR,
+									fields=[ofproto.OXM_OF_IPV4_SRC],
 									table_id=0)
 		datapath.send_msg(req)
 
 		""" ARP packets flooding """
 		match = ofparser.OFPMatch(eth_type=0x0806)
-		actions = [ofparser.OFPActionOutput(ofp.OFPP_FLOOD)]
+		actions = [ofparser.OFPActionOutput(ofproto.OFPP_FLOOD)]
 		self.add_flow(datapath=datapath, table_id=0, priority=100,
 						match=match, actions=actions)
 
@@ -87,7 +87,7 @@ class OSPortKnocking(app_manager.RyuApp):
 
 	def add_flow(self, datapath, table_id, priority, match, actions):
 		inst = [ofparser.OFPInstructionActions(
-				ofp.OFPIT_APPLY_ACTIONS, actions)]
+				ofproto.OFPIT_APPLY_ACTIONS, actions)]
 		mod = ofparser.OFPFlowMod(datapath=datapath, table_id=table_id,
 								priority=priority, match=match, instructions=inst)
 		datapath.send_msg(mod)
