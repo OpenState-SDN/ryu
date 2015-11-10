@@ -14,7 +14,7 @@ os.system("sudo mn -c 2> /dev/null")
 os.system("kill -9 $(pidof -x ryu-manager) 2> /dev/null")
 
 print 'Starting Ryu controller'
-os.system('ryu-manager ~/ryu/ryu/app/openstate/maclearning.py 2> /dev/null &')
+os.system('ryu-manager ../maclearning.py 2> /dev/null &')
 
 print 'Starting Mininet'
 net = Mininet(topo=SingleSwitchTopo(4),switch=UserSwitch,controller=RemoteController,cleanup=True,autoSetMacs=True,listenPort=6634,autoStaticArp=True)

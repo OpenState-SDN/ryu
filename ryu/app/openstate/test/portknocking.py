@@ -14,7 +14,7 @@ os.system("sudo mn -c 2> /dev/null")
 os.system("kill -9 $(pidof -x ryu-manager) 2> /dev/null")
 
 print 'Starting Ryu controller'
-os.system('ryu-manager ~/ryu/ryu/app/openstate/portknock.py 2> /dev/null &')
+os.system('ryu-manager ../portknock.py 2> /dev/null &')
 
 print 'Starting Mininet'
 net = Mininet(topo=SingleSwitchTopo(2),switch=UserSwitch,controller=RemoteController,cleanup=True,autoSetMacs=True,listenPort=6634)
@@ -26,7 +26,7 @@ time.sleep(5)
 net['h2'].cmd('nc -lu 22 &')
 
 # h1 attempts a wrong sequence and then the correct sequence
-net['h1'].cmd('(echo "HI!" | ~/ryu/ryu/app/openstate/test_port_knocking.sh) &')
+net['h1'].cmd('(echo "HI!" | ../test_port_knocking.sh) &')
 
 out = ''
 attempts = 0

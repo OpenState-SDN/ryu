@@ -31,7 +31,7 @@ os.system("sudo mn -c 2> /dev/null")
 os.system("kill -9 $(pidof -x ryu-manager) 2> /dev/null")
 
 print 'Starting Ryu controller'
-os.system('ryu-manager ~/ryu/ryu/app/openstate/ddos/ddos.py 2> /dev/null &')
+os.system('ryu-manager ../ddos/ddos.py 2> /dev/null &')
 
 print 'Starting Mininet'
 net = Mininet(topo=SingleSwitchTopo(2),switch=UserSwitch,controller=RemoteController,cleanup=True,autoSetMacs=True,listenPort=6634,autoStaticArp=True)
@@ -40,7 +40,7 @@ net.start()
 time.sleep(3)
 
 # Start Server @h2 on port 2000
-net['h2'].cmd('python ~/ryu/ryu/app/openstate/echo_server.py 2000 &')
+net['h2'].cmd('python ../echo_server.py 2000 &')
 
 ###############################################################################
 print '\nTest 1: h1 connects to h2 without any ongoing attack'

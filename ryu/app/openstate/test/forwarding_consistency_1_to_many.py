@@ -15,7 +15,7 @@ os.system("sudo mn -c 2> /dev/null")
 os.system("kill -9 $(pidof -x ryu-manager) 2> /dev/null")
 
 print 'Starting Ryu controller'
-os.system('ryu-manager ~/ryu/ryu/app/openstate/forwarding_consistency_1_to_many.py 2> /dev/null &')
+os.system('ryu-manager ../forwarding_consistency_1_to_many.py 2> /dev/null &')
 
 print 'Starting Mininet'
 net = Mininet(topo=SingleSwitchTopo(4),switch=UserSwitch,controller=RemoteController,cleanup=True,autoSetMacs=True,listenPort=6634)
@@ -25,7 +25,7 @@ time.sleep(5)
 print 'Starting Echo Servers on h2, h3 and h4'
 
 for h in [2,3,4]:
-	net['h%d' % h].cmd('python ~/ryu/ryu/app/openstate/echo_server.py %d00 &' %h)
+	net['h%d' % h].cmd('python ../echo_server.py %d00 &' %h)
 
 time.sleep(3)
 
