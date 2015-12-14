@@ -15,6 +15,8 @@
 # limitations under the License.
 
 
+from __future__ import print_function
+
 import itertools
 import logging
 import operator
@@ -122,7 +124,7 @@ def datum_from_string(type_, value_string, symtab=None):
 
 def ifind(pred, seq):
     try:
-        return itertools.ifilter(pred, seq).next()
+        return next(filter(pred, seq))
     except StopIteration:
         return None
 
