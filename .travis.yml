@@ -15,5 +15,5 @@ script:
   - NOSE_VERBOSE=0 tox -e $TOX_ENV
 
 notifications:
-  slack: bebaproj:QOVWgAeMr7r6YebwBWwApXea
+  slack: openstate-sdn:QOVWgAeMr7r6YebwBWwApXea
   email: false
